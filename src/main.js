@@ -13,7 +13,7 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
-  scene: [GameScene]
+  scene: [MenuScene, GameScene] // la primera de la lista es la que se muestra al abrir
 };
 
 const game = new Phaser.Game(config);

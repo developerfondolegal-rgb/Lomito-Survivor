@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.3** — experiencia, niveles e instintos.
+Versión actual: **v0.4** — pantalla de inicio y 4 razas con poderes.
 
 ## Cómo abrir el juego
 
@@ -16,28 +16,43 @@ Versión actual: **v0.3** — experiencia, niveles e instintos.
 
 | Acción | Teclas |
 |---|---|
+| Elegir raza (pantalla de inicio) | **clic**, o teclas **1**, **2**, **3**, **4** |
 | Mover al perro | **W A S D** o **flechas** |
+| Sprint (solo Galgo) | **Espacio** |
 | Elegir carta al subir de nivel | **clic**, o teclas **1**, **2**, **3** |
-| Reiniciar (en Game Over) | **R** |
+| Jugar de nuevo con la misma raza (en Game Over) | **R** |
+| Volver a la pantalla de inicio (en Game Over) | **M** |
 
 No hay botón para atacar: el perro muerde solo.
 
+## Razas
+
+Al abrir el juego eliges una raza. Cada una tiene distinta vida, velocidad, mordida, tamaño y un poder especial.
+
+| Raza | Color | Cómo es | Poder especial |
+|---|---|---|---|
+| **Quiltro** (mestizo) | café | Equilibrado y resistente | **Calle** (pasivo): los enemigos siempre sueltan hueso y te curas un poco con el tiempo |
+| **Pitbull** | gris azulado | Lento, mucha vida, mordida fuerte | **Mandíbula de hierro** (cada 6 s): la siguiente mordida aturde al enemigo (queda quieto y morado) y hace daño extra |
+| **Galgo** | beige claro, más chico | Muy rápido y frágil | **Sprint** (tecla Espacio, cada 4 s): carrera corta muy rápida hacia donde te mueves, sin recibir daño |
+| **Beagle** | blanco con manchas (tricolor), chico | Mordida débil, gran olfato | **Rastreo** (pasivo): imán de huesos gigante y flechas naranjas en el borde que apuntan a enemigos fuera de la pantalla |
+
+Con las otras razas (no Quiltro), los enemigos sueltan hueso 3 de cada 4 veces.
+
 ## Cómo se juega
 
-- **Tú**: el círculo café. Empiezas con **100 de vida**.
 - **Enemigos**: perros rivales (círculos rojos). Aparecen desde fuera de la pantalla y te persiguen. Con el tiempo llegan cada vez más seguido.
-- **Mordida automática**: una vez por segundo, tu perro muerde al enemigo más cercano si está cerca. Lo verás como un arco blanco. Al principio cada enemigo muere con 2 mordidas.
+- **Mordida automática**: tu perro muerde solo al enemigo más cercano si está cerca. Lo verás como un arco blanco (amarillo y grueso si es la Mandíbula de hierro).
 - **Daño**: si un enemigo te toca, pierdes vida y la pantalla tiembla. Después de cada golpe tienes medio segundo de invulnerabilidad (el perro se ve semitransparente).
 
 ### Huesos, experiencia y niveles
 
-- Cada enemigo derrotado suelta un **hueso** (cuadradito amarillo).
-- Pasa cerca para recogerlo: cuando estás cerca, el hueso vuela solo hacia ti (como un imán).
-- Cada hueso llena la **barra celeste** de arriba de la pantalla. Al llenarla subes de nivel. Cada nivel pide un poco más de huesos que el anterior.
+- Los enemigos derrotados sueltan **huesos** (cuadraditos amarillos).
+- Pasa cerca para recogerlos: cuando estás cerca, el hueso vuela solo hacia ti (como un imán).
+- Cada hueso llena la **barra celeste** de arriba. Al llenarla subes de nivel. Cada nivel pide un poco más de huesos que el anterior.
 
 ### Instintos (mejoras)
 
-Al subir de nivel el juego se pausa y aparecen **3 cartas al azar**. Elige una con clic o con las teclas 1, 2 o 3. Cada instinto llega hasta **nivel 5**; cuando llega al máximo ya no vuelve a aparecer.
+Al subir de nivel el juego se pausa y aparecen **3 cartas al azar**. Elige una con clic o con las teclas 1, 2 o 3. Cada instinto llega hasta **nivel 5**; cuando llega al máximo ya no vuelve a aparecer. Funcionan con todas las razas (se suman a los números de la raza).
 
 | Instinto | Qué hace |
 |---|---|
@@ -51,31 +66,63 @@ Al subir de nivel el juego se pausa y aparecen **3 cartas al azar**. Elige una c
 ### Pantalla
 
 - Arriba de todo: barra de experiencia y tu **nivel**.
-- Arriba a la izquierda: barra de **vida** (se pone roja cuando queda poca).
+- Arriba a la izquierda: barra de **vida**, tu **raza** y su poder. Si el poder tiene espera (Pitbull y Galgo), una barrita muestra cuánto falta; cuando se pone amarilla dice **¡Listo!**
 - Arriba a la derecha: **tiempo** sobrevivido.
 
 ### Game Over
 
-Al llegar a 0 de vida aparece "Game Over" con tu tiempo, el **nivel alcanzado** y los **enemigos derrotados**. Presiona **R** para jugar de nuevo.
+Al llegar a 0 de vida aparece "Game Over" con tu raza, tu tiempo, el nivel alcanzado y los enemigos derrotados.
+- **R**: jugar de nuevo con la misma raza.
+- **M**: volver a la pantalla de inicio para elegir otra raza.
 
-## Cómo ajustar el juego (`src/config.js`)
+## Cómo ajustar el juego
 
-Todos los números importantes están en `src/config.js`, con comentarios en español.
-
-1. Abre `src/config.js` con el Bloc de notas (clic derecho → Abrir con → Bloc de notas).
-2. Cambia solo el número que quieras (por ejemplo `PERRO_VIDA_MAX: 100` → `PERRO_VIDA_MAX: 200`).
+1. Abre el archivo con el Bloc de notas (clic derecho → Abrir con → Bloc de notas).
+2. Cambia solo el número o texto que quieras.
 3. Guarda el archivo y recarga el juego con **F5**.
 
-**El perro, la mordida y los enemigos**
+> Cuidado: no borres las comas, los dos puntos ni las comillas. Si el juego queda en pantalla negra después de un cambio, revisa lo último que editaste.
+
+### Números de las razas (`src/config.js`, sección `RAZAS`)
+
+Cada raza tiene su bloque (`quiltro`, `pitbull`, `galgo`, `beagle`) con:
 
 | Ajuste | Qué hace |
 |---|---|
-| `PERRO_VIDA_MAX` | Vida inicial del perro |
-| `PERRO_VELOCIDAD` | Qué tan rápido se mueve el perro |
-| `PERRO_INVULNERABLE_MS` | Tiempo sin recibir daño después de un golpe (1000 = 1 segundo) |
+| `COLOR` | Color del círculo (formato `0xRRGGBB`) |
+| `VIDA` | Vida inicial |
+| `VELOCIDAD` | Qué tan rápido se mueve |
 | `MORDIDA_DANO` | Daño de cada mordida |
-| `MORDIDA_ALCANCE` | Qué tan cerca debe estar un enemigo para morderlo |
 | `MORDIDA_CADA_MS` | Cada cuánto muerde (1000 = una vez por segundo) |
+| `RADIO` | Tamaño del círculo (más chico = más fácil esquivar) |
+| `HUESO_PROBABILIDAD` | Probabilidad de que un enemigo suelte hueso (1 = siempre, 0.75 = 3 de cada 4) |
+| `IMAN_EXTRA` | Alcance extra del imán de huesos |
+| `PODER` | Qué poder usa (`'calle'`, `'mandibula'`, `'sprint'`, `'rastreo'` o `''` para ninguno) |
+| `PODER_ESPERA_MS` | Espera del poder (0 = pasivo) |
+
+Y los números propios de cada poder:
+
+| Ajuste | Raza | Qué hace |
+|---|---|---|
+| `CALLE_CURA` / `CALLE_CURA_CADA_MS` | Quiltro | Vida que recupera / cada cuánto |
+| `MANDIBULA_DANO_EXTRA` | Pitbull | Daño extra de la mordida cargada |
+| `MANDIBULA_ATURDIR_MS` | Pitbull | Cuánto tiempo queda quieto el enemigo |
+| `SPRINT_VELOCIDAD` / `SPRINT_DURACION_MS` | Galgo | Velocidad / duración del sprint |
+| `RASTREO_FLECHAS_MAX` | Beagle | Máximo de flechas en pantalla |
+| `COLOR_MANCHA` / `COLOR_MANCHA_2` | Beagle | Colores de las manchas |
+
+### Textos de las razas (`src/razas.js`)
+
+Nombre, frase, fortalezas, debilidades y poder que se leen en las cartas de inicio.
+
+**Agregar una raza nueva:** copia un bloque en `src/razas.js` y otro en `src/config.js` (sección `RAZAS`) con el mismo `id` nuevo (sin espacios ni tildes, por ejemplo `chihuahua`), y cambia sus números y textos. En `PODER` puedes reutilizar un poder existente o dejar `''`. Aparecerá sola en la pantalla de inicio (hasta 9 razas).
+
+### Otros números (`src/config.js`)
+
+| Ajuste | Qué hace |
+|---|---|
+| `PERRO_INVULNERABLE_MS` | Tiempo sin recibir daño después de un golpe |
+| `MORDIDA_ALCANCE` | Qué tan cerca debe estar un enemigo para morderlo |
 | `ENEMIGO_VIDA` | Vida de cada enemigo |
 | `ENEMIGO_VELOCIDAD` | Qué tan rápido persiguen los enemigos |
 | `ENEMIGO_DANO` | Vida que te quitan al tocarte |
@@ -83,11 +130,6 @@ Todos los números importantes están en `src/config.js`, con comentarios en esp
 | `APARICION_INICIAL_MS` | Cada cuánto aparece un enemigo al empezar |
 | `APARICION_MINIMA_MS` | Lo más rápido que pueden llegar a aparecer |
 | `APARICION_ACELERA_MS` | Cuánto se acelera la aparición por cada segundo sobrevivido |
-
-**Huesos y niveles**
-
-| Ajuste | Qué hace |
-|---|---|
 | `HUESO_XP` | Experiencia que da cada hueso |
 | `IMAN_RADIO` | Desde qué distancia los huesos vuelan hacia ti |
 | `IMAN_VELOCIDAD` | Qué tan rápido vuelan los huesos |
@@ -109,17 +151,17 @@ Todos los números importantes están en `src/config.js`, con comentarios en esp
 | `LADRIDO_DANO` / `LADRIDO_DANO_EXTRA` | Ladrido: daño / daño extra por nivel |
 | `LADRIDO_EMPUJE` / `LADRIDO_EMPUJE_MS` | Ladrido: fuerza del empujón / cuánto dura |
 
-> Cuidado: no borres las comas ni los dos puntos. Si el juego queda en pantalla negra después de un cambio, revisa lo último que editaste.
-
 ## Archivos
 
 - `index.html` — la página que abre el juego.
-- `src/config.js` — los números para ajustar el juego.
+- `src/config.js` — los números para ajustar el juego (razas, enemigos, niveles, instintos).
+- `src/razas.js` — textos de las cartas de razas.
 - `src/instintos.js` — nombres y frases de las cartas de instintos.
 - `src/main.js` — configuración del motor del juego.
-- `src/scenes/GameScene.js` — la escena con el perro, los enemigos, los ataques, la experiencia, las cartas y el Game Over.
+- `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza.
+- `src/scenes/GameScene.js` — la partida: perro, enemigos, ataques, poderes, experiencia, cartas y Game Over.
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, revisa ese cambio.
-- El perro no se mueve, las teclas 1/2/3 o R no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js` o `src/razas.js`, revisa ese cambio.
+- El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.

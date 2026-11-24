@@ -1,27 +1,43 @@
 // Escena principal: la plaza donde el perro sobrevive la noche.
 // Los números para ajustar el juego están en src/config.js
-// Los instintos (mejoras) están en src/instintos.js
+// Los textos de razas e instintos están en src/razas.js y src/instintos.js
+// (FUENTE y dibujarPerro vienen de MenuScene.js)
 
-const COLOR_PERRO = 0x8b5a2b;   // café
-const COLOR_ENEMIGO = 0xd63c3c; // rojo
-const COLOR_HUESO = 0xf2d64b;   // amarillo
-const COLOR_XP = 0x4fc3f7;      // celeste
+const COLOR_ENEMIGO = 0xd63c3c;  // rojo
+const COLOR_ATURDIDO = 0x9575cd; // morado: enemigo aturdido por la Mandíbula de hierro
+const COLOR_HUESO = 0xf2d64b;    // amarillo
+const COLOR_XP = 0x4fc3f7;       // celeste
+const COLOR_FLECHA = 0xff8a50;   // naranjo: flechas del Rastreo
 const COLOR_BLANCO = 0xffffff;
-const FUENTE = 'Arial, sans-serif';
 
 class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
   }
 
+  // Recibe la raza elegida en la pantalla de inicio
+  init(datos) {
+    const id = datos && datos.raza;
+    this.razaId = CONFIG.RAZAS[id] ? id : Object.keys(CONFIG.RAZAS)[0];
+  }
+
   create() {
+    // Datos de la raza
+    this.base = CONFIG.RAZAS[this.razaId];
+    this.textosRaza = RAZAS.find((r) => r.id === this.razaId) || { nombre: this.razaId, poder: '' };
+    this.poder = this.base.PODER || '';
+    this.poderEsperaTotal = this.base.PODER_ESPERA_MS || 0;
+    this.poderCarga = this.poderEsperaTotal; // el poder empieza listo
+
     // Estado de la partida
-    this.vidaMax = CONFIG.PERRO_VIDA_MAX;
+    this.vidaMax = this.base.VIDA;
     this.vida = this.vidaMax;
     this.tiempoSobrevivido = 0;   // reloj del juego en ms (se detiene en pausa)
     this.invulnerableHasta = 0;
+    this.sprintHasta = 0;
+    this.ultimaDireccion = new Phaser.Math.Vector2(1, 0);
     this.gameOver = false;
-    this.eligiendo = false;       // true mientras se muestran las cartas
+    this.eligiendo = false;       // true mientras se muestran las cartas de instintos
     this.nivel = 1;
     this.xp = 0;
     this.nivelesPendientes = 0;
@@ -29,6 +45,7 @@ class GameScene extends Phaser.Scene {
     this.esperaMordida = 0;
     this.esperaLadrido = 0;
     this.esperaAparicion = 0;
+    this.esperaCura = 0;
     this.cartas = [];
 
     // Nivel de cada instinto (0 = no lo tiene)
@@ -43,12 +60,15 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
     this.dibujarSuelo();
 
-    // El perro
-    this.perro = this.add.circle(CONFIG.MAPA_ANCHO / 2, CONFIG.MAPA_ALTO / 2, CONFIG.PERRO_RADIO, COLOR_PERRO);
+    // El perro (con el color y tamaño de su raza)
+    const dibujo = dibujarPerro(this, CONFIG.MAPA_ANCHO / 2, CONFIG.MAPA_ALTO / 2, this.base);
+    this.perro = dibujo.cuerpo;
+    this.manchas = dibujo.manchas;
     this.physics.add.existing(this.perro);
-    this.perro.body.setCircle(CONFIG.PERRO_RADIO);
+    this.perro.body.setCircle(this.base.RADIO);
     this.perro.body.setCollideWorldBounds(true);
     this.perro.setDepth(10);
+    if (this.manchas) this.manchas.setDepth(11);
     this.cameras.main.startFollow(this.perro, true, 0.1, 0.1);
 
     // Enemigos
@@ -59,10 +79,15 @@ class GameScene extends Phaser.Scene {
     // Huesos
     this.huesos = this.add.group();
 
+    // Flechas del Rastreo (Beagle)
+    this.flechas = this.add.graphics().setScrollFactor(0).setDepth(900);
+
     // Controles
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys('W,A,S,D');
     this.teclaR = this.input.keyboard.addKey('R');
+    this.teclaM = this.input.keyboard.addKey('M');
+    this.teclaEspacio = this.input.keyboard.addKey('SPACE');
     this.teclasCartas = [
       this.input.keyboard.addKey('ONE'),
       this.input.keyboard.addKey('TWO'),
@@ -75,7 +100,9 @@ class GameScene extends Phaser.Scene {
   update(time, delta) {
     if (this.gameOver) {
       if (Phaser.Input.Keyboard.JustDown(this.teclaR)) {
-        this.scene.restart();
+        this.scene.restart({ raza: this.razaId }); // misma raza
+      } else if (Phaser.Input.Keyboard.JustDown(this.teclaM)) {
+        this.scene.start('MenuScene');             // volver al inicio
       }
       return;
     }
@@ -90,6 +117,17 @@ class GameScene extends Phaser.Scene {
     }
 
     this.tiempoSobrevivido += delta;
+
+    // Cargar el poder (si tiene espera). No carga mientras está en sprint.
+    if (this.poderEsperaTotal > 0 && !this.enSprint()) {
+      this.poderCarga = Math.min(this.poderEsperaTotal, this.poderCarga + delta);
+    }
+
+    // Sprint del Galgo
+    if (this.poder === 'sprint' && Phaser.Input.Keyboard.JustDown(this.teclaEspacio) && this.poderListo()) {
+      this.iniciarSprint();
+    }
+
     this.moverPerro();
     this.moverEnemigos();
     this.moverHuesos(delta);
@@ -117,28 +155,47 @@ class GameScene extends Phaser.Scene {
       }
     }
 
+    // Poder "Calle" (Quiltro): se cura un poco con el tiempo
+    if (this.poder === 'calle') {
+      this.esperaCura += delta;
+      if (this.esperaCura >= this.base.CALLE_CURA_CADA_MS) {
+        this.esperaCura = 0;
+        this.vida = Math.min(this.vidaMax, this.vida + this.base.CALLE_CURA);
+      }
+    }
+
+    // Poder "Rastreo" (Beagle): flechas a enemigos fuera de pantalla
+    if (this.poder === 'rastreo') {
+      this.dibujarFlechas();
+    }
+
     // Parpadeo mientras es invulnerable
-    this.perro.setAlpha(this.tiempoSobrevivido < this.invulnerableHasta ? 0.5 : 1);
+    const invulnerable = this.tiempoSobrevivido < this.invulnerableHasta;
+    this.perro.setAlpha(invulnerable ? 0.5 : 1);
+    if (this.manchas) {
+      this.manchas.setPosition(this.perro.x, this.perro.y);
+      this.manchas.setAlpha(this.perro.alpha);
+    }
 
     this.actualizarHUD();
   }
 
-  // ---------------- Valores que dependen de los instintos ----------------
+  // ---------------- Valores que dependen de la raza y los instintos ----------------
 
   velocidadPerro() {
-    return CONFIG.PERRO_VELOCIDAD + this.instintos.patasLigeras * CONFIG.PATAS_VELOCIDAD;
+    return this.base.VELOCIDAD + this.instintos.patasLigeras * CONFIG.PATAS_VELOCIDAD;
   }
 
   intervaloMordida() {
-    return Math.max(100, CONFIG.MORDIDA_CADA_MS - this.instintos.mordidaRapida * CONFIG.MORDIDA_RAPIDA_MS);
+    return Math.max(100, this.base.MORDIDA_CADA_MS - this.instintos.mordidaRapida * CONFIG.MORDIDA_RAPIDA_MS);
   }
 
   danoMordida() {
-    return CONFIG.MORDIDA_DANO + this.instintos.colmillos * CONFIG.COLMILLOS_DANO;
+    return this.base.MORDIDA_DANO + this.instintos.colmillos * CONFIG.COLMILLOS_DANO;
   }
 
   radioIman() {
-    return CONFIG.IMAN_RADIO + this.instintos.olfato * CONFIG.OLFATO_IMAN;
+    return CONFIG.IMAN_RADIO + (this.base.IMAN_EXTRA || 0) + this.instintos.olfato * CONFIG.OLFATO_IMAN;
   }
 
   intervaloLadrido() {
@@ -158,6 +215,14 @@ class GameScene extends Phaser.Scene {
     return CONFIG.XP_NIVEL_INICIAL + (this.nivel - 1) * CONFIG.XP_NIVEL_AUMENTO;
   }
 
+  poderListo() {
+    return this.poderEsperaTotal > 0 && this.poderCarga >= this.poderEsperaTotal;
+  }
+
+  enSprint() {
+    return this.tiempoSobrevivido < this.sprintHasta;
+  }
+
   // ---------------- Movimiento ----------------
 
   moverPerro() {
@@ -168,16 +233,99 @@ class GameScene extends Phaser.Scene {
     if (this.cursors.up.isDown || this.wasd.W.isDown) dy -= 1;
     if (this.cursors.down.isDown || this.wasd.S.isDown) dy += 1;
 
+    if (dx !== 0 || dy !== 0) {
+      this.ultimaDireccion.set(dx, dy).normalize();
+    }
+
+    // Durante el sprint va muy rápido en línea recta
+    if (this.enSprint()) {
+      const v = this.base.SPRINT_VELOCIDAD;
+      this.perro.body.setVelocity(this.direccionSprint.x * v, this.direccionSprint.y * v);
+      this.dejarEstela();
+      return;
+    }
+
     // Normalizar para que en diagonal no vaya más rápido
     const vel = new Phaser.Math.Vector2(dx, dy).normalize().scale(this.velocidadPerro());
     this.perro.body.setVelocity(vel.x, vel.y);
   }
 
   moverEnemigos() {
+    const ahora = this.tiempoSobrevivido;
     this.enemigos.getChildren().forEach((enemigo) => {
-      // Si lo acaban de empujar con un ladrido, lo dejamos volar un momento
-      if (this.tiempoSobrevivido < enemigo.empujadoHasta) return;
-      this.physics.moveToObject(enemigo, this.perro, CONFIG.ENEMIGO_VELOCIDAD);
+      if (ahora < enemigo.empujadoHasta) {
+        // Lo empujó un ladrido: lo dejamos volar un momento
+      } else if (ahora < enemigo.aturdidoHasta) {
+        enemigo.body.setVelocity(0, 0); // aturdido: se queda quieto
+      } else {
+        this.physics.moveToObject(enemigo, this.perro, CONFIG.ENEMIGO_VELOCIDAD);
+      }
+
+      // Color según su estado
+      let color = COLOR_ENEMIGO;
+      if (ahora < enemigo.destelloHasta) color = COLOR_BLANCO;
+      else if (ahora < enemigo.aturdidoHasta) color = COLOR_ATURDIDO;
+      if (enemigo.fillColor !== color) enemigo.setFillStyle(color);
+    });
+  }
+
+  // ---------------- Sprint (Galgo) ----------------
+
+  iniciarSprint() {
+    this.direccionSprint = this.ultimaDireccion.clone();
+    this.sprintHasta = this.tiempoSobrevivido + this.base.SPRINT_DURACION_MS;
+    this.poderCarga = 0;
+  }
+
+  // Sombras que quedan atrás durante el sprint
+  dejarEstela() {
+    const sombra = this.add.circle(this.perro.x, this.perro.y, this.base.RADIO, this.base.COLOR, 0.4);
+    sombra.setDepth(9);
+    this.tweens.add({
+      targets: sombra,
+      alpha: 0,
+      scale: 0.6,
+      duration: 250,
+      onComplete: () => sombra.destroy()
+    });
+  }
+
+  // ---------------- Rastreo (Beagle) ----------------
+
+  dibujarFlechas() {
+    const g = this.flechas;
+    g.clear();
+
+    const cam = this.cameras.main;
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const margen = 26;
+
+    // Enemigos fuera de la pantalla, los más cercanos primero
+    const fuera = this.enemigos.getChildren()
+      .map((e) => ({ sx: e.x - cam.scrollX, sy: e.y - cam.scrollY, d: Phaser.Math.Distance.Between(this.perro.x, this.perro.y, e.x, e.y) }))
+      .filter((p) => p.sx < 0 || p.sx > w || p.sy < 0 || p.sy > h)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, this.base.RASTREO_FLECHAS_MAX);
+
+    g.fillStyle(COLOR_FLECHA, 0.9);
+    fuera.forEach((p) => {
+      const dx = p.sx - cx;
+      const dy = p.sy - cy;
+      // Punto en el borde de la pantalla en dirección al enemigo
+      const t = Math.min((cx - margen) / Math.max(Math.abs(dx), 0.001), (cy - margen) / Math.max(Math.abs(dy), 0.001));
+      const px = cx + dx * t;
+      const py = cy + dy * t;
+      const a = Math.atan2(dy, dx);
+      const cos = Math.cos(a);
+      const sin = Math.sin(a);
+      g.fillTriangle(
+        px + cos * 10, py + sin * 10,
+        px - cos * 7 - sin * 8, py - sin * 7 + cos * 8,
+        px - cos * 7 + sin * 8, py - sin * 7 - cos * 8
+      );
     });
   }
 
@@ -198,6 +346,8 @@ class GameScene extends Phaser.Scene {
     enemigo.body.setCircle(CONFIG.ENEMIGO_RADIO);
     enemigo.vida = CONFIG.ENEMIGO_VIDA;
     enemigo.empujadoHasta = 0;
+    enemigo.aturdidoHasta = 0;
+    enemigo.destelloHasta = 0;
   }
 
   // Busca un punto justo fuera de lo que se ve en pantalla, pero dentro del mapa
@@ -233,23 +383,22 @@ class GameScene extends Phaser.Scene {
     };
   }
 
-  // Quita vida a un enemigo; si muere, suelta un hueso
+  // Quita vida a un enemigo; si muere, puede soltar un hueso
   danarEnemigo(enemigo, dano) {
     if (!enemigo.active) return;
     enemigo.vida -= dano;
 
     if (enemigo.vida <= 0) {
-      this.soltarHueso(enemigo.x, enemigo.y);
+      const probabilidad = this.base.HUESO_PROBABILIDAD === undefined ? 1 : this.base.HUESO_PROBABILIDAD;
+      if (Math.random() < probabilidad) {
+        this.soltarHueso(enemigo.x, enemigo.y);
+      }
       this.derrotados++;
       enemigo.destroy();
       return;
     }
 
-    // Destello blanco breve
-    enemigo.setFillStyle(COLOR_BLANCO);
-    this.time.delayedCall(80, () => {
-      if (enemigo.active) enemigo.setFillStyle(COLOR_ENEMIGO);
-    });
+    enemigo.destelloHasta = this.tiempoSobrevivido + 80; // destello blanco breve
   }
 
   // ---------------- Mordida ----------------
@@ -269,18 +418,29 @@ class GameScene extends Phaser.Scene {
     const alcanceReal = CONFIG.MORDIDA_ALCANCE + CONFIG.ENEMIGO_RADIO;
     if (!objetivo || distanciaMin > alcanceReal) return;
 
-    this.mostrarMordida(objetivo);
-    this.danarEnemigo(objetivo, this.danoMordida());
+    let dano = this.danoMordida();
+    let fuerte = false;
+
+    // Poder "Mandíbula de hierro" (Pitbull): si está cargado, aturde y hace daño extra
+    if (this.poder === 'mandibula' && this.poderListo()) {
+      dano += this.base.MANDIBULA_DANO_EXTRA;
+      objetivo.aturdidoHasta = this.tiempoSobrevivido + this.base.MANDIBULA_ATURDIR_MS;
+      this.poderCarga = 0;
+      fuerte = true;
+    }
+
+    this.mostrarMordida(objetivo, fuerte);
+    this.danarEnemigo(objetivo, dano);
   }
 
-  // Dibuja un arco blanco hacia el enemigo que se desvanece
-  mostrarMordida(objetivo) {
+  // Dibuja un arco hacia el enemigo que se desvanece (amarillo y grueso si es la Mandíbula)
+  mostrarMordida(objetivo, fuerte) {
     const angulo = Phaser.Math.Angle.Between(this.perro.x, this.perro.y, objetivo.x, objetivo.y);
-    const radioArco = CONFIG.PERRO_RADIO + 18;
+    const radioArco = this.base.RADIO + 18;
 
     const arco = this.add.graphics({ x: this.perro.x, y: this.perro.y });
     arco.setDepth(20);
-    arco.lineStyle(5, COLOR_BLANCO, 1);
+    arco.lineStyle(fuerte ? 9 : 5, fuerte ? COLOR_HUESO : COLOR_BLANCO, 1);
     arco.beginPath();
     arco.arc(0, 0, radioArco, angulo - 0.7, angulo + 0.7);
     arco.strokePath();
@@ -288,7 +448,7 @@ class GameScene extends Phaser.Scene {
     this.tweens.add({
       targets: arco,
       alpha: 0,
-      duration: 200,
+      duration: fuerte ? 350 : 200,
       onComplete: () => arco.destroy()
     });
   }
@@ -341,7 +501,7 @@ class GameScene extends Phaser.Scene {
 
   moverHuesos(delta) {
     const iman = this.radioIman();
-    const distanciaRecoger = CONFIG.PERRO_RADIO + CONFIG.HUESO_TAMANO;
+    const distanciaRecoger = this.base.RADIO + CONFIG.HUESO_TAMANO;
     const paso = CONFIG.IMAN_VELOCIDAD * (delta / 1000);
 
     this.huesos.getChildren().slice().forEach((hueso) => {
@@ -393,6 +553,7 @@ class GameScene extends Phaser.Scene {
     this.eligiendo = true;
     this.physics.pause();
     this.perro.setAlpha(1);
+    if (this.manchas) this.manchas.setAlpha(1);
     this.actualizarHUD();
 
     // Olvidar teclas 1/2/3 que se hayan presionado antes de abrir las cartas
@@ -494,6 +655,7 @@ class GameScene extends Phaser.Scene {
 
   recibirGolpe() {
     if (this.gameOver || this.eligiendo) return;
+    if (this.enSprint()) return; // el Galgo no recibe daño durante el sprint
     if (this.tiempoSobrevivido < this.invulnerableHasta) return;
 
     this.vida = Math.max(0, this.vida - CONFIG.ENEMIGO_DANO);
@@ -509,10 +671,13 @@ class GameScene extends Phaser.Scene {
     this.gameOver = true;
     this.physics.pause();
     this.perro.setAlpha(1);
+    if (this.manchas) this.manchas.setAlpha(1);
+    this.flechas.clear();
     this.actualizarHUD();
 
-    // Olvidar una R presionada durante la partida (si no, reiniciaría al instante)
+    // Olvidar R o M presionadas durante la partida (si no, actuarían al instante)
     Phaser.Input.Keyboard.JustDown(this.teclaR);
+    Phaser.Input.Keyboard.JustDown(this.teclaM);
 
     const cx = this.scale.width / 2;
     const cy = this.scale.height / 2;
@@ -521,11 +686,13 @@ class GameScene extends Phaser.Scene {
       .setScrollFactor(0).setDepth(2000);
 
     const lineas = [
-      { texto: 'Game Over', y: -100, tam: '64px', color: '#ff5555', negrita: true },
-      { texto: 'Sobreviviste: ' + this.formatearTiempo(this.tiempoSobrevivido), y: -25, tam: '26px', color: '#ffffff' },
-      { texto: 'Nivel alcanzado: ' + this.nivel, y: 12, tam: '26px', color: '#ffffff' },
-      { texto: 'Enemigos derrotados: ' + this.derrotados, y: 49, tam: '26px', color: '#ffffff' },
-      { texto: 'Presiona R para reiniciar', y: 105, tam: '22px', color: '#dddddd' }
+      { texto: 'Game Over', y: -135, tam: '64px', color: '#ff5555', negrita: true },
+      { texto: 'Raza: ' + this.textosRaza.nombre, y: -65, tam: '26px', color: '#ffe082' },
+      { texto: 'Sobreviviste: ' + this.formatearTiempo(this.tiempoSobrevivido), y: -28, tam: '26px', color: '#ffffff' },
+      { texto: 'Nivel alcanzado: ' + this.nivel, y: 9, tam: '26px', color: '#ffffff' },
+      { texto: 'Enemigos derrotados: ' + this.derrotados, y: 46, tam: '26px', color: '#ffffff' },
+      { texto: 'R: jugar de nuevo con la misma raza', y: 105, tam: '20px', color: '#dddddd' },
+      { texto: 'M: volver al inicio y elegir otra raza', y: 135, tam: '20px', color: '#dddddd' }
     ];
     lineas.forEach((l) => {
       this.add.text(cx, cy + l.y, l.texto, {
@@ -544,12 +711,23 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.3', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.4', estilo)
       .setScrollFactor(0).setDepth(1000);
 
     this.barraVida = this.add.graphics().setScrollFactor(0).setDepth(1000);
     this.textoVida = this.add.text(12 + 100, 57, '', { ...estilo, fontSize: '14px' })
       .setOrigin(0.5).setScrollFactor(0).setDepth(1001);
+
+    // Raza y poder
+    const espera = this.poderEsperaTotal > 0 ? '' : ' (pasivo)';
+    const poder = this.textosRaza.poder ? ' · ' + this.textosRaza.poder + espera : '';
+    this.add.text(12, 74, this.textosRaza.nombre + poder, { ...estilo, fontSize: '15px', color: '#ffe082' })
+      .setScrollFactor(0).setDepth(1000);
+
+    // Indicador de carga del poder (solo si tiene espera)
+    this.barraPoder = this.add.graphics().setScrollFactor(0).setDepth(1000);
+    this.textoPoder = this.add.text(160, 96, '', { ...estilo, fontSize: '14px' })
+      .setOrigin(0, 0.5).setScrollFactor(0).setDepth(1000);
 
     this.textoTiempo = this.add.text(this.scale.width - 12, 20, '', { ...estilo, fontSize: '22px' })
       .setOrigin(1, 0).setScrollFactor(0).setDepth(1000);
@@ -582,6 +760,28 @@ class GameScene extends Phaser.Scene {
     this.barraVida.lineStyle(2, COLOR_BLANCO, 0.8);
     this.barraVida.strokeRect(12, y, ancho, alto);
     this.textoVida.setText(this.vida + ' / ' + this.vidaMax);
+
+    // Poder con espera
+    if (this.poderEsperaTotal > 0) {
+      const carga = this.poderCarga / this.poderEsperaTotal;
+      const listo = this.poderListo();
+      this.barraPoder.clear();
+      this.barraPoder.fillStyle(0x000000, 0.6);
+      this.barraPoder.fillRect(12, 91, 140, 10);
+      this.barraPoder.fillStyle(listo ? COLOR_HUESO : 0x9e9e9e, 1);
+      this.barraPoder.fillRect(12, 91, 140 * carga, 10);
+      this.barraPoder.lineStyle(1, COLOR_BLANCO, 0.6);
+      this.barraPoder.strokeRect(12, 91, 140, 10);
+
+      if (listo) {
+        this.textoPoder.setText(this.poder === 'sprint' ? '¡Listo! [Espacio]' : '¡Listo!');
+        this.textoPoder.setColor('#ffe082');
+      } else {
+        const faltan = (this.poderEsperaTotal - this.poderCarga) / 1000;
+        this.textoPoder.setText(faltan.toFixed(1) + ' s');
+        this.textoPoder.setColor('#bbbbbb');
+      }
+    }
 
     this.textoTiempo.setText(this.formatearTiempo(this.tiempoSobrevivido));
   }
