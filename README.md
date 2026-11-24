@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.4** — pantalla de inicio y 4 razas con poderes.
+Versión actual: **v0.5** — enemigos nuevos.
 
 ## Cómo abrir el juego
 
@@ -22,8 +22,13 @@ Versión actual: **v0.4** — pantalla de inicio y 4 razas con poderes.
 | Elegir carta al subir de nivel | **clic**, o teclas **1**, **2**, **3** |
 | Jugar de nuevo con la misma raza (en Game Over) | **R** |
 | Volver a la pantalla de inicio (en Game Over) | **M** |
+| Modo de prueba: un enemigo de cada tipo cerca del perro | **T** |
 
 No hay botón para atacar: el perro muerde solo.
+
+### Modo de prueba (tecla T)
+
+Durante la partida, presiona **T** y aparecerá un enemigo de cada tipo en un círculo alrededor del perro (la Manada aparece como grupo completo). Sirve para ver cómo se mueve cada enemigo sin esperar minutos. Puedes presionarla varias veces. Estos enemigos cuentan igual que los normales (dan huesos y salen en el Game Over).
 
 ## Razas
 
@@ -40,13 +45,27 @@ Con las otras razas (no Quiltro), los enemigos sueltan hueso 3 de cada 4 veces.
 
 ## Cómo se juega
 
-- **Enemigos**: perros rivales (círculos rojos). Aparecen desde fuera de la pantalla y te persiguen. Con el tiempo llegan cada vez más seguido.
+- **Enemigos**: aparecen desde fuera de la pantalla y con el tiempo llegan cada vez más seguido (ver tabla abajo).
 - **Mordida automática**: tu perro muerde solo al enemigo más cercano si está cerca. Lo verás como un arco blanco (amarillo y grueso si es la Mandíbula de hierro).
 - **Daño**: si un enemigo te toca, pierdes vida y la pantalla tiembla. Después de cada golpe tienes medio segundo de invulnerabilidad (el perro se ve semitransparente).
 
+### Enemigos
+
+Al inicio solo hay perros rivales. Los demás se van sumando con el tiempo:
+
+| Enemigo | Cómo se ve | Qué hace | Aparece desde | Huesos |
+|---|---|---|---|---|
+| **Perro rival** | círculo rojo | Te persigue | 0:00 | 1 |
+| **Manada** | círculos rojo claro pequeños | Llegan en grupos de 4 a 6, rápidos y con poca vida | 0:45 | 1 cada uno |
+| **Borracho** | rectángulo naranjo | Lento, camina zigzagueando, mucha vida y golpe fuerte | 1:30 | 3 |
+| **Drogadicto** | triángulo verde | Se acerca, se queda quieto parpadeando con una **línea verde** que avisa hacia dónde va, y embiste muy rápido en línea recta. ¡Sal de la línea! | 2:30 | 3 |
+| **Perrera** | cuadrado azul con borde blanco | No hace daño, pero si te toca te deja **atrapado 1,5 segundos** (aparece una jaula azul). Después se ve transparente un rato y no puede volver a atraparte. Aparece poco (máximo 2 a la vez) | 3:30 | 5 |
+
+Los poderes de las razas, los instintos y el Ladrido funcionan contra todos. La Mandíbula de hierro del Pitbull también los aturde. El Sprint del Galgo evita que la Perrera te atrape.
+
 ### Huesos, experiencia y niveles
 
-- Los enemigos derrotados sueltan **huesos** (cuadraditos amarillos).
+- Los enemigos derrotados sueltan **huesos** (cuadraditos amarillos). Los más duros sueltan más.
 - Pasa cerca para recogerlos: cuando estás cerca, el hueso vuela solo hacia ti (como un imán).
 - Cada hueso llena la **barra celeste** de arriba. Al llenarla subes de nivel. Cada nivel pide un poco más de huesos que el anterior.
 
@@ -71,7 +90,7 @@ Al subir de nivel el juego se pausa y aparecen **3 cartas al azar**. Elige una c
 
 ### Game Over
 
-Al llegar a 0 de vida aparece "Game Over" con tu raza, tu tiempo, el nivel alcanzado y los enemigos derrotados.
+Al llegar a 0 de vida aparece "Game Over" con tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados y cuántos de cada tipo.
 - **R**: jugar de nuevo con la misma raza.
 - **M**: volver a la pantalla de inicio para elegir otra raza.
 
@@ -117,17 +136,52 @@ Nombre, frase, fortalezas, debilidades y poder que se leen en las cartas de inic
 
 **Agregar una raza nueva:** copia un bloque en `src/razas.js` y otro en `src/config.js` (sección `RAZAS`) con el mismo `id` nuevo (sin espacios ni tildes, por ejemplo `chihuahua`), y cambia sus números y textos. En `PODER` puedes reutilizar un poder existente o dejar `''`. Aparecerá sola en la pantalla de inicio (hasta 9 razas).
 
+### Números de los enemigos (`src/config.js`, sección `ENEMIGOS`)
+
+Cada enemigo tiene su bloque (`rival`, `manada`, `borracho`, `drogadicto`, `perrera`) con:
+
+| Ajuste | Qué hace |
+|---|---|
+| `FORMA` | `'circulo'`, `'rectangulo'`, `'triangulo'` o `'cuadrado'` |
+| `COLOR` / `BORDE` | Color de relleno / color del borde (opcional) |
+| `RADIO` | Tamaño (para choques y mordidas) |
+| `ANCHO` / `ALTO` | Solo para rectángulos |
+| `VIDA` | Vida del enemigo |
+| `VELOCIDAD` | Qué tan rápido se mueve |
+| `DANO` | Vida que te quita al tocarte (0 = no hace daño) |
+| `HUESOS` | Cuántos huesos suelta al morir |
+| `DESDE_SEGUNDOS` | Desde qué segundo aparece (45 = 0:45, 90 = 1:30, 150 = 2:30, 210 = 3:30) |
+| `PESO` | Qué tan seguido aparece comparado con los demás (10 = muy seguido, 1 = poco) |
+| `MAXIMO` | Máximo de ese enemigo a la vez (opcional) |
+| `COMPORTAMIENTO` | `'perseguir'`, `'zigzag'`, `'embestida'` o `'atrapar'` |
+
+Y los números propios de cada comportamiento:
+
+| Ajuste | Enemigo | Qué hace |
+|---|---|---|
+| `GRUPO_MIN` / `GRUPO_MAX` | Manada | Cuántos llegan juntos |
+| `ZIGZAG_GRADOS` / `ZIGZAG_CADA_MS` | Borracho | Cuánto se desvía / qué tan rápido va de lado a lado |
+| `DISTANCIA_EMBESTIDA` | Drogadicto | A qué distancia se detiene para embestir |
+| `AVISO_MS` | Drogadicto | Cuánto dura el aviso antes de embestir |
+| `EMBESTIDA_VELOCIDAD` / `EMBESTIDA_MS` | Drogadicto | Velocidad / duración de la embestida |
+| `DESCANSO_MS` | Drogadicto | Tiempo quieto después de embestir |
+| `ATRAPA_MS` | Perrera | Cuánto tiempo te deja quieto |
+| `RECARGA_MS` | Perrera | Cuánto espera antes de poder atraparte otra vez |
+
+### Nombres de los enemigos (`src/enemigos.js`)
+
+Nombre y descripción de cada enemigo (el nombre sale en el Game Over).
+
+**Agregar un enemigo nuevo:** copia un bloque en `src/enemigos.js` y otro en `src/config.js` (sección `ENEMIGOS`) con el mismo `id` nuevo (sin espacios ni tildes, por ejemplo `gato`), y cambia sus números, forma y color. En `COMPORTAMIENTO` puedes reutilizar uno existente.
+
 ### Otros números (`src/config.js`)
 
 | Ajuste | Qué hace |
 |---|---|
 | `PERRO_INVULNERABLE_MS` | Tiempo sin recibir daño después de un golpe |
 | `MORDIDA_ALCANCE` | Qué tan cerca debe estar un enemigo para morderlo |
-| `ENEMIGO_VIDA` | Vida de cada enemigo |
-| `ENEMIGO_VELOCIDAD` | Qué tan rápido persiguen los enemigos |
-| `ENEMIGO_DANO` | Vida que te quitan al tocarte |
 | `ENEMIGOS_MAXIMOS` | Máximo de enemigos a la vez |
-| `APARICION_INICIAL_MS` | Cada cuánto aparece un enemigo al empezar |
+| `APARICION_INICIAL_MS` | Cada cuánto aparece un enemigo (o una manada) al empezar |
 | `APARICION_MINIMA_MS` | Lo más rápido que pueden llegar a aparecer |
 | `APARICION_ACELERA_MS` | Cuánto se acelera la aparición por cada segundo sobrevivido |
 | `HUESO_XP` | Experiencia que da cada hueso |
@@ -156,6 +210,7 @@ Nombre, frase, fortalezas, debilidades y poder que se leen en las cartas de inic
 - `index.html` — la página que abre el juego.
 - `src/config.js` — los números para ajustar el juego (razas, enemigos, niveles, instintos).
 - `src/razas.js` — textos de las cartas de razas.
+- `src/enemigos.js` — nombres de los enemigos.
 - `src/instintos.js` — nombres y frases de las cartas de instintos.
 - `src/main.js` — configuración del motor del juego.
 - `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza.
@@ -163,5 +218,5 @@ Nombre, frase, fortalezas, debilidades y poder que se leen en las cartas de inic
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js` o `src/razas.js`, revisa ese cambio.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js` o `src/enemigos.js`, revisa ese cambio.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.

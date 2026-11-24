@@ -99,15 +99,118 @@ const CONFIG = {
   PERRO_INVULNERABLE_MS: 500,   // tiempo sin recibir daño después de un golpe
   MORDIDA_ALCANCE: 90,          // qué tan cerca debe estar el enemigo para morderlo
 
-  // --- Enemigos (perros rivales) ---
-  ENEMIGO_VIDA: 20,             // vida de cada enemigo
-  ENEMIGO_VELOCIDAD: 110,       // qué tan rápido persiguen
-  ENEMIGO_RADIO: 16,            // tamaño del círculo rojo
-  ENEMIGO_DANO: 5,              // vida que te quitan al tocarte
-  ENEMIGOS_MAXIMOS: 150,        // límite de enemigos a la vez (para que no se ponga lento)
+  // ---------------------------------------------------------------
+  //  ENEMIGOS
+  //  Los números de cada tipo de enemigo. Sus nombres están en
+  //  src/enemigos.js
+  //
+  //  FORMA: 'circulo', 'rectangulo', 'triangulo' o 'cuadrado'
+  //  COLOR: color de relleno (formato 0xRRGGBB)
+  //  BORDE: color del borde (opcional)
+  //  RADIO: tamaño del enemigo (para choques y mordidas)
+  //  ANCHO / ALTO: solo para 'rectangulo'
+  //  VIDA: vida del enemigo
+  //  VELOCIDAD: qué tan rápido se mueve
+  //  DANO: vida que te quita al tocarte (0 = no hace daño)
+  //  HUESOS: cuántos huesos suelta al morir (más duro = más huesos)
+  //  DESDE_SEGUNDOS: desde qué segundo de la partida empieza a aparecer
+  //                  (45 = 0:45, 90 = 1:30, 150 = 2:30, 210 = 3:30)
+  //  PESO: qué tan seguido aparece comparado con los demás
+  //        (10 = muy seguido, 1 = poco)
+  //  MAXIMO: máximo de este enemigo a la vez (opcional)
+  //  COMPORTAMIENTO: cómo se mueve: 'perseguir', 'zigzag',
+  //                  'embestida' o 'atrapar'
+  // ---------------------------------------------------------------
+  ENEMIGOS: {
+    // Perro rival: el enemigo básico
+    rival: {
+      FORMA: 'circulo',
+      COLOR: 0xd63c3c,          // rojo
+      RADIO: 16,
+      VIDA: 20,
+      VELOCIDAD: 110,
+      DANO: 5,
+      HUESOS: 1,
+      DESDE_SEGUNDOS: 0,
+      PESO: 10,
+      COMPORTAMIENTO: 'perseguir'
+    },
+
+    // Manada: grupos de perros chicos, rápidos y débiles
+    manada: {
+      FORMA: 'circulo',
+      COLOR: 0xff6e6e,          // rojo claro
+      RADIO: 10,
+      VIDA: 8,
+      VELOCIDAD: 165,
+      DANO: 3,
+      HUESOS: 1,
+      DESDE_SEGUNDOS: 45,
+      PESO: 3,
+      COMPORTAMIENTO: 'perseguir',
+      GRUPO_MIN: 4,             // llegan de a 4...
+      GRUPO_MAX: 6              // ...hasta 6 juntos
+    },
+
+    // Borracho: lento, zigzaguea, mucha vida y golpe fuerte
+    borracho: {
+      FORMA: 'rectangulo',
+      COLOR: 0xff9800,          // naranjo
+      ANCHO: 36,
+      ALTO: 26,
+      RADIO: 15,
+      VIDA: 70,
+      VELOCIDAD: 65,
+      DANO: 15,
+      HUESOS: 3,
+      DESDE_SEGUNDOS: 90,
+      PESO: 3,
+      COMPORTAMIENTO: 'zigzag',
+      ZIGZAG_GRADOS: 55,        // cuánto se desvía hacia los lados
+      ZIGZAG_CADA_MS: 1400      // cuánto demora en ir de un lado al otro y volver
+    },
+
+    // Drogadicto: se queda quieto, avisa y embiste rápido
+    drogadicto: {
+      FORMA: 'triangulo',
+      COLOR: 0x66bb6a,          // verde
+      RADIO: 16,
+      VIDA: 35,
+      VELOCIDAD: 80,            // velocidad cuando se acerca caminando
+      DANO: 10,
+      HUESOS: 3,
+      DESDE_SEGUNDOS: 150,
+      PESO: 3,
+      COMPORTAMIENTO: 'embestida',
+      DISTANCIA_EMBESTIDA: 280, // a esta distancia del perro se detiene para embestir
+      AVISO_MS: 700,            // tiempo quieto avisando (línea y parpadeo)
+      EMBESTIDA_VELOCIDAD: 520, // velocidad de la embestida
+      EMBESTIDA_MS: 550,        // cuánto dura la embestida
+      DESCANSO_MS: 900          // tiempo quieto después de embestir
+    },
+
+    // Perrera: no hace daño, pero te atrapa
+    perrera: {
+      FORMA: 'cuadrado',
+      COLOR: 0x1e63c8,          // azul
+      BORDE: 0xffffff,          // con borde blanco
+      RADIO: 17,
+      VIDA: 90,
+      VELOCIDAD: 95,
+      DANO: 0,
+      HUESOS: 5,
+      DESDE_SEGUNDOS: 210,
+      PESO: 1,
+      MAXIMO: 2,
+      COMPORTAMIENTO: 'atrapar',
+      ATRAPA_MS: 1500,          // cuánto tiempo te deja quieto
+      RECARGA_MS: 4000          // después de atraparte, cuánto espera para poder atraparte de nuevo
+    }
+  },
 
   // --- Aparición de enemigos ---
-  APARICION_INICIAL_MS: 2000,   // al empezar, aparece 1 enemigo cada 2 segundos
+  ENEMIGOS_MAXIMOS: 150,        // límite de enemigos a la vez (para que no se ponga lento)
+  APARICION_INICIAL_MS: 2000,   // al empezar, aparece 1 enemigo (o 1 manada) cada 2 segundos
   APARICION_MINIMA_MS: 300,     // lo más rápido que pueden llegar a aparecer
   APARICION_ACELERA_MS: 15,     // cada segundo sobrevivido, aparecen esta cantidad de ms antes
 

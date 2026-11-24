@@ -1,10 +1,12 @@
 // Escena principal: la plaza donde el perro sobrevive la noche.
 // Los números para ajustar el juego están en src/config.js
-// Los textos de razas e instintos están en src/razas.js y src/instintos.js
+// Los textos de razas, enemigos e instintos están en src/razas.js,
+// src/enemigos.js y src/instintos.js
 // (FUENTE y dibujarPerro vienen de MenuScene.js)
 
-const COLOR_ENEMIGO = 0xd63c3c;  // rojo
 const COLOR_ATURDIDO = 0x9575cd; // morado: enemigo aturdido por la Mandíbula de hierro
+const COLOR_AVISO = 0xb9f6ca;    // verde claro: aviso de embestida del Drogadicto
+const COLOR_JAULA = 0x64b5f6;    // azul: jaula cuando la Perrera te atrapa
 const COLOR_HUESO = 0xf2d64b;    // amarillo
 const COLOR_XP = 0x4fc3f7;       // celeste
 const COLOR_FLECHA = 0xff8a50;   // naranjo: flechas del Rastreo
@@ -35,6 +37,7 @@ class GameScene extends Phaser.Scene {
     this.tiempoSobrevivido = 0;   // reloj del juego en ms (se detiene en pausa)
     this.invulnerableHasta = 0;
     this.sprintHasta = 0;
+    this.atrapadoHasta = 0;       // la Perrera te deja quieto hasta este momento
     this.ultimaDireccion = new Phaser.Math.Vector2(1, 0);
     this.gameOver = false;
     this.eligiendo = false;       // true mientras se muestran las cartas de instintos
@@ -42,6 +45,8 @@ class GameScene extends Phaser.Scene {
     this.xp = 0;
     this.nivelesPendientes = 0;
     this.derrotados = 0;
+    this.derrotadosPorTipo = {};
+    Object.keys(CONFIG.ENEMIGOS).forEach((id) => { this.derrotadosPorTipo[id] = 0; });
     this.esperaMordida = 0;
     this.esperaLadrido = 0;
     this.esperaAparicion = 0;
@@ -82,12 +87,17 @@ class GameScene extends Phaser.Scene {
     // Flechas del Rastreo (Beagle)
     this.flechas = this.add.graphics().setScrollFactor(0).setDepth(900);
 
+    // Líneas de aviso del Drogadicto y jaula de la Perrera
+    this.avisos = this.add.graphics().setDepth(4);
+    this.jaula = this.add.graphics().setDepth(12);
+
     // Controles
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys('W,A,S,D');
     this.teclaR = this.input.keyboard.addKey('R');
     this.teclaM = this.input.keyboard.addKey('M');
     this.teclaEspacio = this.input.keyboard.addKey('SPACE');
+    this.teclaT = this.input.keyboard.addKey('T'); // modo de prueba
     this.teclasCartas = [
       this.input.keyboard.addKey('ONE'),
       this.input.keyboard.addKey('TWO'),
@@ -123,20 +133,27 @@ class GameScene extends Phaser.Scene {
       this.poderCarga = Math.min(this.poderEsperaTotal, this.poderCarga + delta);
     }
 
-    // Sprint del Galgo
-    if (this.poder === 'sprint' && Phaser.Input.Keyboard.JustDown(this.teclaEspacio) && this.poderListo()) {
+    // Sprint del Galgo (no se puede si la Perrera lo atrapó)
+    if (this.poder === 'sprint' && Phaser.Input.Keyboard.JustDown(this.teclaEspacio) &&
+        this.poderListo() && !this.estaAtrapado()) {
       this.iniciarSprint();
+    }
+
+    // Modo de prueba: un enemigo de cada tipo cerca del perro
+    if (Phaser.Input.Keyboard.JustDown(this.teclaT)) {
+      this.modoPrueba();
     }
 
     this.moverPerro();
     this.moverEnemigos();
     this.moverHuesos(delta);
+    this.dibujarJaula();
 
     // Aparición de enemigos
     this.esperaAparicion += delta;
     if (this.esperaAparicion >= this.intervaloAparicion()) {
       this.esperaAparicion = 0;
-      this.crearEnemigo();
+      this.aparecerEnemigos();
     }
 
     // Mordida automática
@@ -223,6 +240,10 @@ class GameScene extends Phaser.Scene {
     return this.tiempoSobrevivido < this.sprintHasta;
   }
 
+  estaAtrapado() {
+    return this.tiempoSobrevivido < this.atrapadoHasta;
+  }
+
   // ---------------- Movimiento ----------------
 
   moverPerro() {
@@ -235,6 +256,12 @@ class GameScene extends Phaser.Scene {
 
     if (dx !== 0 || dy !== 0) {
       this.ultimaDireccion.set(dx, dy).normalize();
+    }
+
+    // Atrapado por la Perrera: no se puede mover
+    if (this.estaAtrapado()) {
+      this.perro.body.setVelocity(0, 0);
+      return;
     }
 
     // Durante el sprint va muy rápido en línea recta
@@ -252,21 +279,120 @@ class GameScene extends Phaser.Scene {
 
   moverEnemigos() {
     const ahora = this.tiempoSobrevivido;
+    this.avisos.clear();
+
     this.enemigos.getChildren().forEach((enemigo) => {
+      const cfg = enemigo.cfg;
+      let avisando = false;
+
       if (ahora < enemigo.empujadoHasta) {
         // Lo empujó un ladrido: lo dejamos volar un momento
+        enemigo.estado = 'acercarse';
       } else if (ahora < enemigo.aturdidoHasta) {
         enemigo.body.setVelocity(0, 0); // aturdido: se queda quieto
+        enemigo.estado = 'acercarse';
+      } else if (cfg.COMPORTAMIENTO === 'zigzag') {
+        this.moverZigzag(enemigo, ahora);
+      } else if (cfg.COMPORTAMIENTO === 'embestida') {
+        avisando = this.moverEmbestida(enemigo, ahora);
       } else {
-        this.physics.moveToObject(enemigo, this.perro, CONFIG.ENEMIGO_VELOCIDAD);
+        // 'perseguir' y 'atrapar': van directo hacia el perro
+        this.physics.moveToObject(enemigo, this.perro, cfg.VELOCIDAD);
+      }
+
+      // Los triángulos miran hacia donde van
+      if (cfg.FORMA === 'triangulo') {
+        const v = enemigo.body.velocity;
+        if (enemigo.estado === 'avisar') enemigo.rotation = enemigo.anguloEmbestida + Math.PI / 2;
+        else if (v.lengthSq() > 1) enemigo.rotation = Math.atan2(v.y, v.x) + Math.PI / 2;
       }
 
       // Color según su estado
-      let color = COLOR_ENEMIGO;
+      let color = cfg.COLOR;
       if (ahora < enemigo.destelloHasta) color = COLOR_BLANCO;
       else if (ahora < enemigo.aturdidoHasta) color = COLOR_ATURDIDO;
+      else if (avisando && Math.floor(ahora / 100) % 2 === 0) color = COLOR_AVISO; // parpadeo
       if (enemigo.fillColor !== color) enemigo.setFillStyle(color);
+
+      // La Perrera se ve transparente mientras no puede atraparte
+      if (cfg.COMPORTAMIENTO === 'atrapar') {
+        enemigo.setAlpha(ahora < enemigo.recargaHasta ? 0.45 : 1);
+      }
     });
+  }
+
+  // Borracho: camina hacia el perro, pero desviándose de lado a lado
+  moverZigzag(enemigo, ahora) {
+    const cfg = enemigo.cfg;
+    const haciaPerro = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, this.perro.x, this.perro.y);
+    const vaiven = Math.sin((ahora / cfg.ZIGZAG_CADA_MS) * Math.PI * 2 + enemigo.fase);
+    const angulo = haciaPerro + Phaser.Math.DegToRad(cfg.ZIGZAG_GRADOS) * vaiven;
+    enemigo.body.setVelocity(Math.cos(angulo) * cfg.VELOCIDAD, Math.sin(angulo) * cfg.VELOCIDAD);
+  }
+
+  // Drogadicto: se acerca, se detiene avisando, embiste en línea recta y descansa.
+  // Devuelve true mientras está avisando.
+  moverEmbestida(enemigo, ahora) {
+    const cfg = enemigo.cfg;
+
+    if (enemigo.estado === 'acercarse') {
+      const d = Phaser.Math.Distance.Between(enemigo.x, enemigo.y, this.perro.x, this.perro.y);
+      if (d <= cfg.DISTANCIA_EMBESTIDA) {
+        // Fija la dirección ahora: el perro puede esquivar moviéndose
+        enemigo.estado = 'avisar';
+        enemigo.anguloEmbestida = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, this.perro.x, this.perro.y);
+        enemigo.estadoHasta = ahora + cfg.AVISO_MS;
+        enemigo.body.setVelocity(0, 0);
+      } else {
+        this.physics.moveToObject(enemigo, this.perro, cfg.VELOCIDAD);
+      }
+    }
+
+    if (enemigo.estado === 'avisar') {
+      enemigo.body.setVelocity(0, 0);
+      // Línea que muestra por dónde va a pasar
+      const largo = cfg.EMBESTIDA_VELOCIDAD * (cfg.EMBESTIDA_MS / 1000);
+      this.avisos.lineStyle(3, COLOR_AVISO, 0.7);
+      this.avisos.lineBetween(
+        enemigo.x, enemigo.y,
+        enemigo.x + Math.cos(enemigo.anguloEmbestida) * largo,
+        enemigo.y + Math.sin(enemigo.anguloEmbestida) * largo
+      );
+      if (ahora >= enemigo.estadoHasta) {
+        enemigo.estado = 'embestir';
+        enemigo.estadoHasta = ahora + cfg.EMBESTIDA_MS;
+      }
+      return true;
+    }
+
+    if (enemigo.estado === 'embestir') {
+      const v = cfg.EMBESTIDA_VELOCIDAD;
+      enemigo.body.setVelocity(Math.cos(enemigo.anguloEmbestida) * v, Math.sin(enemigo.anguloEmbestida) * v);
+      if (ahora >= enemigo.estadoHasta) {
+        enemigo.estado = 'descansar';
+        enemigo.estadoHasta = ahora + cfg.DESCANSO_MS;
+      }
+    } else if (enemigo.estado === 'descansar') {
+      enemigo.body.setVelocity(0, 0);
+      if (ahora >= enemigo.estadoHasta) enemigo.estado = 'acercarse';
+    }
+    return false;
+  }
+
+  // Jaula azul alrededor del perro mientras la Perrera lo tiene atrapado
+  dibujarJaula() {
+    this.jaula.clear();
+    if (!this.estaAtrapado()) return;
+
+    const r = this.base.RADIO + 8;
+    const x = this.perro.x;
+    const y = this.perro.y;
+    this.jaula.lineStyle(3, COLOR_JAULA, 1);
+    this.jaula.strokeRect(x - r, y - r, r * 2, r * 2);
+    for (let i = 1; i <= 3; i++) {
+      const bx = x - r + (r * 2 * i) / 4;
+      this.jaula.lineBetween(bx, y - r, bx, y + r);
+    }
   }
 
   // ---------------- Sprint (Galgo) ----------------
@@ -337,23 +463,97 @@ class GameScene extends Phaser.Scene {
     return Math.max(CONFIG.APARICION_MINIMA_MS, intervalo);
   }
 
-  crearEnemigo() {
-    if (this.enemigos.countActive() >= CONFIG.ENEMIGOS_MAXIMOS) return;
+  // Cuántos enemigos de un tipo hay ahora en el mapa
+  contarTipo(tipo) {
+    return this.enemigos.getChildren().filter((e) => e.tipo === tipo).length;
+  }
+
+  // Elige al azar qué enemigo aparece (según el tiempo y el PESO de cada uno)
+  aparecerEnemigos() {
+    const segundos = this.tiempoSobrevivido / 1000;
+    const disponibles = Object.keys(CONFIG.ENEMIGOS).filter((id) => {
+      const cfg = CONFIG.ENEMIGOS[id];
+      if (segundos < (cfg.DESDE_SEGUNDOS || 0)) return false;
+      if (cfg.MAXIMO !== undefined && this.contarTipo(id) >= cfg.MAXIMO) return false;
+      return (cfg.PESO || 0) > 0;
+    });
+    if (disponibles.length === 0) return;
+
+    const total = disponibles.reduce((suma, id) => suma + CONFIG.ENEMIGOS[id].PESO, 0);
+    let sorteo = Math.random() * total;
+    let tipo = disponibles[disponibles.length - 1];
+    for (const id of disponibles) {
+      sorteo -= CONFIG.ENEMIGOS[id].PESO;
+      if (sorteo < 0) { tipo = id; break; }
+    }
 
     const pos = this.posicionFueraDePantalla();
-    const enemigo = this.add.circle(pos.x, pos.y, CONFIG.ENEMIGO_RADIO, COLOR_ENEMIGO);
+    this.crearGrupo(tipo, pos.x, pos.y, false);
+  }
+
+  // Crea un enemigo (o un grupo, si el tipo tiene GRUPO_MIN / GRUPO_MAX)
+  crearGrupo(tipo, x, y, ignorarLimite) {
+    const cfg = CONFIG.ENEMIGOS[tipo];
+    const cantidad = cfg.GRUPO_MIN ? Phaser.Math.Between(cfg.GRUPO_MIN, cfg.GRUPO_MAX || cfg.GRUPO_MIN) : 1;
+    for (let i = 0; i < cantidad; i++) {
+      const ox = cantidad > 1 ? Phaser.Math.Between(-40, 40) : 0;
+      const oy = cantidad > 1 ? Phaser.Math.Between(-40, 40) : 0;
+      this.crearEnemigo(tipo, x + ox, y + oy, ignorarLimite);
+    }
+  }
+
+  crearEnemigo(tipo, x, y, ignorarLimite) {
+    if (!ignorarLimite && this.enemigos.countActive() >= CONFIG.ENEMIGOS_MAXIMOS) return null;
+
+    const cfg = CONFIG.ENEMIGOS[tipo];
+    const r = cfg.RADIO;
+    let enemigo;
+    if (cfg.FORMA === 'rectangulo') {
+      enemigo = this.add.rectangle(x, y, cfg.ANCHO, cfg.ALTO, cfg.COLOR);
+    } else if (cfg.FORMA === 'cuadrado') {
+      enemigo = this.add.rectangle(x, y, r * 2, r * 2, cfg.COLOR);
+    } else if (cfg.FORMA === 'triangulo') {
+      enemigo = this.add.triangle(x, y, r, 0, r * 2, r * 2, 0, r * 2, cfg.COLOR);
+    } else {
+      enemigo = this.add.circle(x, y, r, cfg.COLOR);
+    }
+    if (cfg.BORDE !== undefined) enemigo.setStrokeStyle(3, cfg.BORDE);
+    enemigo.setDepth(6);
+
     this.enemigos.add(enemigo);
-    enemigo.body.setCircle(CONFIG.ENEMIGO_RADIO);
-    enemigo.vida = CONFIG.ENEMIGO_VIDA;
+    // El "cuerpo" para choques es siempre un círculo centrado en la figura
+    enemigo.body.setCircle(r, enemigo.width / 2 - r, enemigo.height / 2 - r);
+
+    enemigo.tipo = tipo;
+    enemigo.cfg = cfg;
+    enemigo.radio = r;
+    enemigo.vida = cfg.VIDA;
     enemigo.empujadoHasta = 0;
     enemigo.aturdidoHasta = 0;
     enemigo.destelloHasta = 0;
+    enemigo.recargaHasta = 0;
+    enemigo.estado = 'acercarse';
+    enemigo.estadoHasta = 0;
+    enemigo.anguloEmbestida = 0;
+    enemigo.fase = Math.random() * Math.PI * 2; // para que los borrachos no zigzagueen todos igual
+    return enemigo;
+  }
+
+  // Modo de prueba (tecla T): un enemigo de cada tipo alrededor del perro
+  modoPrueba() {
+    const tipos = Object.keys(CONFIG.ENEMIGOS);
+    tipos.forEach((tipo, i) => {
+      const angulo = (i / tipos.length) * Math.PI * 2;
+      const x = Phaser.Math.Clamp(this.perro.x + Math.cos(angulo) * 220, 20, CONFIG.MAPA_ANCHO - 20);
+      const y = Phaser.Math.Clamp(this.perro.y + Math.sin(angulo) * 220, 20, CONFIG.MAPA_ALTO - 20);
+      this.crearGrupo(tipo, x, y, true);
+    });
   }
 
   // Busca un punto justo fuera de lo que se ve en pantalla, pero dentro del mapa
   posicionFueraDePantalla() {
     const vista = this.cameras.main.worldView;
-    const margen = CONFIG.ENEMIGO_RADIO * 3;
+    const margen = 50;
 
     for (let intento = 0; intento < 10; intento++) {
       let x;
@@ -378,22 +578,28 @@ class GameScene extends Phaser.Scene {
 
     // Si no encontró lugar (raro), aparece en una esquina del mapa
     return {
-      x: Phaser.Math.RND.pick([CONFIG.ENEMIGO_RADIO, CONFIG.MAPA_ANCHO - CONFIG.ENEMIGO_RADIO]),
-      y: Phaser.Math.RND.pick([CONFIG.ENEMIGO_RADIO, CONFIG.MAPA_ALTO - CONFIG.ENEMIGO_RADIO])
+      x: Phaser.Math.RND.pick([30, CONFIG.MAPA_ANCHO - 30]),
+      y: Phaser.Math.RND.pick([30, CONFIG.MAPA_ALTO - 30])
     };
   }
 
-  // Quita vida a un enemigo; si muere, puede soltar un hueso
+  // Quita vida a un enemigo; si muere, suelta huesos (más duro = más huesos)
   danarEnemigo(enemigo, dano) {
     if (!enemigo.active) return;
     enemigo.vida -= dano;
 
     if (enemigo.vida <= 0) {
       const probabilidad = this.base.HUESO_PROBABILIDAD === undefined ? 1 : this.base.HUESO_PROBABILIDAD;
-      if (Math.random() < probabilidad) {
-        this.soltarHueso(enemigo.x, enemigo.y);
+      const cantidad = enemigo.cfg.HUESOS === undefined ? 1 : enemigo.cfg.HUESOS;
+      for (let i = 0; i < cantidad; i++) {
+        if (Math.random() < probabilidad) {
+          const ox = cantidad > 1 ? Phaser.Math.Between(-14, 14) : 0;
+          const oy = cantidad > 1 ? Phaser.Math.Between(-14, 14) : 0;
+          this.soltarHueso(enemigo.x + ox, enemigo.y + oy);
+        }
       }
       this.derrotados++;
+      this.derrotadosPorTipo[enemigo.tipo] = (this.derrotadosPorTipo[enemigo.tipo] || 0) + 1;
       enemigo.destroy();
       return;
     }
@@ -404,19 +610,18 @@ class GameScene extends Phaser.Scene {
   // ---------------- Mordida ----------------
 
   morder() {
-    // Buscar el enemigo más cercano dentro del alcance
+    // Buscar el enemigo más cercano dentro del alcance (medido hasta su borde)
     let objetivo = null;
     let distanciaMin = Infinity;
     this.enemigos.getChildren().forEach((enemigo) => {
-      const d = Phaser.Math.Distance.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y);
+      const d = Phaser.Math.Distance.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y) - enemigo.radio;
       if (d < distanciaMin) {
         distanciaMin = d;
         objetivo = enemigo;
       }
     });
 
-    const alcanceReal = CONFIG.MORDIDA_ALCANCE + CONFIG.ENEMIGO_RADIO;
-    if (!objetivo || distanciaMin > alcanceReal) return;
+    if (!objetivo || distanciaMin > CONFIG.MORDIDA_ALCANCE) return;
 
     let dano = this.danoMordida();
     let fuerte = false;
@@ -478,7 +683,7 @@ class GameScene extends Phaser.Scene {
     // Copia de la lista, porque algunos enemigos mueren dentro del ciclo
     this.enemigos.getChildren().slice().forEach((enemigo) => {
       const d = Phaser.Math.Distance.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y);
-      if (d > radio + CONFIG.ENEMIGO_RADIO) return;
+      if (d > radio + enemigo.radio) return;
 
       // Empujar hacia afuera
       const angulo = Phaser.Math.Angle.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y);
@@ -653,12 +858,25 @@ class GameScene extends Phaser.Scene {
 
   // ---------------- Vida ----------------
 
-  recibirGolpe() {
+  recibirGolpe(perro, enemigo) {
     if (this.gameOver || this.eligiendo) return;
-    if (this.enSprint()) return; // el Galgo no recibe daño durante el sprint
-    if (this.tiempoSobrevivido < this.invulnerableHasta) return;
+    if (this.enSprint()) return; // el Galgo no recibe daño ni lo atrapan durante el sprint
 
-    this.vida = Math.max(0, this.vida - CONFIG.ENEMIGO_DANO);
+    const cfg = enemigo.cfg;
+    const ahora = this.tiempoSobrevivido;
+
+    // La Perrera no hace daño: te deja quieto un momento
+    if (cfg.COMPORTAMIENTO === 'atrapar') {
+      if (ahora < enemigo.recargaHasta || ahora < enemigo.aturdidoHasta) return;
+      this.atrapadoHasta = ahora + cfg.ATRAPA_MS;
+      enemigo.recargaHasta = ahora + cfg.RECARGA_MS;
+      return;
+    }
+
+    if (!cfg.DANO || cfg.DANO <= 0) return;
+    if (ahora < this.invulnerableHasta) return;
+
+    this.vida = Math.max(0, this.vida - cfg.DANO);
     this.invulnerableHasta = this.tiempoSobrevivido + CONFIG.PERRO_INVULNERABLE_MS;
     this.cameras.main.shake(100, 0.005);
 
@@ -673,6 +891,8 @@ class GameScene extends Phaser.Scene {
     this.perro.setAlpha(1);
     if (this.manchas) this.manchas.setAlpha(1);
     this.flechas.clear();
+    this.avisos.clear();
+    this.jaula.clear();
     this.actualizarHUD();
 
     // Olvidar R o M presionadas durante la partida (si no, actuarían al instante)
@@ -686,19 +906,37 @@ class GameScene extends Phaser.Scene {
       .setScrollFactor(0).setDepth(2000);
 
     const lineas = [
-      { texto: 'Game Over', y: -135, tam: '64px', color: '#ff5555', negrita: true },
-      { texto: 'Raza: ' + this.textosRaza.nombre, y: -65, tam: '26px', color: '#ffe082' },
-      { texto: 'Sobreviviste: ' + this.formatearTiempo(this.tiempoSobrevivido), y: -28, tam: '26px', color: '#ffffff' },
-      { texto: 'Nivel alcanzado: ' + this.nivel, y: 9, tam: '26px', color: '#ffffff' },
-      { texto: 'Enemigos derrotados: ' + this.derrotados, y: 46, tam: '26px', color: '#ffffff' },
-      { texto: 'R: jugar de nuevo con la misma raza', y: 105, tam: '20px', color: '#dddddd' },
-      { texto: 'M: volver al inicio y elegir otra raza', y: 135, tam: '20px', color: '#dddddd' }
+      { texto: 'Game Over', y: 62, tam: '60px', color: '#ff5555', negrita: true },
+      { texto: 'Raza: ' + this.textosRaza.nombre, y: 122, tam: '24px', color: '#ffe082' },
+      { texto: 'Sobreviviste: ' + this.formatearTiempo(this.tiempoSobrevivido) + '     Nivel alcanzado: ' + this.nivel,
+        y: 156, tam: '22px', color: '#ffffff' },
+      { texto: 'Enemigos derrotados: ' + this.derrotados, y: 196, tam: '22px', color: '#ffffff', negrita: true }
     ];
+
+    // Una línea por cada tipo de enemigo
+    let y = 228;
+    this.listaEnemigos().forEach((e) => {
+      lineas.push({ texto: e.nombre + ': ' + (this.derrotadosPorTipo[e.id] || 0), y, tam: '18px', color: '#cccccc' });
+      y += 24;
+    });
+
+    lineas.push({ texto: 'R: jugar de nuevo con la misma raza', y: 468, tam: '20px', color: '#dddddd' });
+    lineas.push({ texto: 'M: volver al inicio y elegir otra raza', y: 498, tam: '20px', color: '#dddddd' });
+
     lineas.forEach((l) => {
-      this.add.text(cx, cy + l.y, l.texto, {
+      this.add.text(cx, l.y, l.texto, {
         fontFamily: FUENTE, fontSize: l.tam, color: l.color, fontStyle: l.negrita ? 'bold' : 'normal'
       }).setOrigin(0.5).setScrollFactor(0).setDepth(2001);
     });
+  }
+
+  // Tipos de enemigo con nombre (src/enemigos.js) y números (config.js)
+  listaEnemigos() {
+    const conNombre = ENEMIGOS.filter((e) => CONFIG.ENEMIGOS[e.id]);
+    const sinNombre = Object.keys(CONFIG.ENEMIGOS)
+      .filter((id) => !ENEMIGOS.some((e) => e.id === id))
+      .map((id) => ({ id, nombre: id }));
+    return conNombre.concat(sinNombre);
   }
 
   // ---------------- Pantalla (HUD) ----------------
@@ -711,7 +949,7 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.4', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.5', estilo)
       .setScrollFactor(0).setDepth(1000);
 
     this.barraVida = this.add.graphics().setScrollFactor(0).setDepth(1000);
