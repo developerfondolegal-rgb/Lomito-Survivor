@@ -4,7 +4,8 @@
 // src/enemigos.js y src/instintos.js; los objetos, rarezas y fusiones, en src/objetos.js
 // (FUENTE y dibujarPerro vienen de MenuScene.js; los dibujos, de src/sprites.js;
 //  la plaza, la luz y los obstáculos, de src/mapa.js;
-//  el reloj y las fases de la noche, de src/noche.js; el jefe final, de src/jefe.js)
+//  el reloj y las fases de la noche, de src/noche.js; el jefe final, de src/jefe.js;
+//  las zonas especiales, de src/zonas.js; los mini desafíos, de src/desafios.js)
 
 const COLOR_ATURDIDO = 0x9575cd; // morado: enemigo aturdido por la Mandíbula de hierro
 const COLOR_AVISO = 0xb9f6ca;    // verde claro: aviso de embestida del Drogadicto
@@ -150,6 +151,8 @@ class GameScene extends Phaser.Scene {
     this.teclaU = this.input.keyboard.addKey('U'); // modo de prueba: +5 niveles
     this.teclaJ = this.input.keyboard.addKey('J'); // modo de prueba: aparece el jefe
     this.teclaK = this.input.keyboard.addKey('K'); // modo de prueba: el reloj salta 1 minuto
+    this.teclaZ = this.input.keyboard.addKey('Z'); // modo de prueba: una zona de cada tipo
+    this.teclaX = this.input.keyboard.addKey('X'); // modo de prueba: empieza un desafío al azar
     this.teclaP = this.input.keyboard.addKey('P');   // menú de pausa
     this.teclaEsc = this.input.keyboard.addKey('ESC'); // menú de pausa
     this.teclasCartas = [
@@ -159,6 +162,10 @@ class GameScene extends Phaser.Scene {
     ];
 
     this.crearHUD();
+
+    // Zonas especiales (src/zonas.js) y mini desafíos (src/desafios.js)
+    iniciarZonas(this);
+    iniciarDesafios(this);
   }
 
   update(time, delta) {
@@ -230,10 +237,22 @@ class GameScene extends Phaser.Scene {
       this.tiempoSobrevivido += 60000;
       this.textoFlotante('+1 minuto (prueba)', '#b3e5fc');
     }
+    // Modo de prueba: una zona especial de cada tipo cerca del perro
+    if (Phaser.Input.Keyboard.JustDown(this.teclaZ) && !this.amaneciendo) {
+      pruebaZonas(this);
+    }
+    // Modo de prueba: empieza un desafío al azar
+    if (Phaser.Input.Keyboard.JustDown(this.teclaX) && !this.amaneciendo) {
+      pruebaDesafio(this);
+    }
+
+    // Zonas especiales: en cuál está el perro (antes de moverlo, por el barro)
+    actualizarZonas(this);
 
     this.moverPerro();
     this.moverEnemigos();
     if (this.jefeVivo() && !this.amaneciendo) actualizarJefe(this, this.jefe);
+    frenarEnemigosEnBarro(this);
     this.moverHuesos(delta);
     this.aparecerComida(delta);
     this.comer();
@@ -243,6 +262,10 @@ class GameScene extends Phaser.Scene {
     this.actualizarEstampida(delta);
     this.dibujarJaula();
     this.dibujarEscudo();
+
+    // Mini desafíos (src/desafios.js)
+    actualizarDesafios(this, delta);
+    if (this.eligiendo) return; // la recompensa de experiencia puede subir de nivel
 
     // La noche: fases, jefe y amanecer (si ya terminó, no sigue)
     this.actualizarNoche(delta);
@@ -261,15 +284,16 @@ class GameScene extends Phaser.Scene {
       if (!this.amaneciendo) this.aparecerEnemigos();
     }
 
-    // Mordida automática
+    // Mordida automática (no muerde en la Zona de miedo ni en el desafío "Sin morder")
+    const puedeAtacar = this.puedeAtacar();
     this.esperaMordida += delta;
     if (this.esperaMordida >= this.intervaloMordida()) {
-      this.esperaMordida = 0;
-      this.morder();
+      this.esperaMordida = puedeAtacar ? 0 : this.intervaloMordida();
+      if (puedeAtacar) this.morder();
     }
 
-    // Ladrido automático (solo si ya tiene el instinto)
-    if (this.instintos.ladrido > 0) {
+    // Ladrido automático (solo si ya tiene el instinto; tampoco ladra si no puede atacar)
+    if (this.instintos.ladrido > 0 && puedeAtacar) {
       this.esperaLadrido += delta;
       if (this.esperaLadrido >= this.intervaloLadrido()) {
         this.esperaLadrido = 0;
@@ -479,6 +503,11 @@ class GameScene extends Phaser.Scene {
     return this.tiempoSobrevivido < this.atrapadoHasta;
   }
 
+  // No puede atacar dentro de la Zona de miedo ni durante el desafío "Sin morder"
+  puedeAtacar() {
+    return !this.efectoZona.miedo && !desafioSinAtacar(this);
+  }
+
   // ---------------- Movimiento ----------------
 
   moverPerro() {
@@ -505,16 +534,19 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    // En el barro se mueve más lento (src/zonas.js)
+    const barro = this.efectoZona.barro ? factorBarro() : 1;
+
     // Durante el sprint va muy rápido en línea recta
     if (this.enSprint()) {
-      const v = this.base.SPRINT_VELOCIDAD;
+      const v = this.base.SPRINT_VELOCIDAD * barro;
       this.perro.body.setVelocity(this.direccionSprint.x * v, this.direccionSprint.y * v);
       this.dejarEstela();
       return;
     }
 
     // Normalizar para que en diagonal no vaya más rápido
-    const vel = new Phaser.Math.Vector2(dx, dy).normalize().scale(this.velocidadPerro());
+    const vel = new Phaser.Math.Vector2(dx, dy).normalize().scale(this.velocidadPerro() * barro);
     this.perro.body.setVelocity(vel.x, vel.y);
   }
 
@@ -776,6 +808,7 @@ class GameScene extends Phaser.Scene {
     // La fase de la noche hace que salgan más seguido; con el jefe vivo, menos
     let multiplicador = datosFase(faseDeLaNoche(this.tiempoSobrevivido)).APARICION;
     if (this.jefeVivo()) multiplicador *= CONFIG.JEFE.APARICION_MIENTRAS;
+    multiplicador *= multiplicadorAparicionDesafio(this); // desafío "Aguanta": más enemigos
     return Math.max(CONFIG.APARICION_MINIMA_MS, intervalo) * multiplicador;
   }
 
@@ -1120,6 +1153,8 @@ class GameScene extends Phaser.Scene {
   }
 
   moverHuesos(delta) {
+    // En la Zona segura no gana experiencia: los huesos se quedan en el suelo esperando
+    if (this.efectoZona.segura) return;
     const iman = this.radioIman();
     const distanciaRecoger = this.base.RADIO + CONFIG.HUESO_TAMANO;
     const paso = CONFIG.IMAN_VELOCIDAD * (delta / 1000);
@@ -1659,10 +1694,13 @@ class GameScene extends Phaser.Scene {
 
     if (!cfg.DANO || cfg.DANO <= 0) return;
     if (ahora < this.invulnerableHasta) return;
+    if (this.efectoZona.segura) return; // Zona segura: no recibe daño
 
     // Collar viejo: menos daño por nivel. Cuero de calle: la mitad si está activo.
     let dano = cfg.DANO * Math.max(0, 1 - this.nivelObjeto('collar') * CONFIG.OBJETOS.collar.MENOS_DANO);
     if (this.fusiones.cuero && ahora < this.cueroHasta) dano *= CONFIG.FUSIONES.cuero.MULTIPLICADOR;
+    // Zona peligrosa: el doble de daño
+    if (this.efectoZona.peligro) dano *= CONFIG.ZONAS.peligro.DANO_MULTIPLICADOR || 1;
     dano = Math.max(1, Math.round(dano));
 
     this.vida = Math.max(0, this.vida - dano);
@@ -1689,6 +1727,8 @@ class GameScene extends Phaser.Scene {
     this.avisos.clear();
     this.jaula.clear();
     this.escudo.clear();
+    limpiarZonas(this);
+    ocultarDesafio(this);
     this.actualizarHUD();
     // el inventario se oculta: los objetos salen escritos en el Game Over
     this.capaInventario.forEach((obj) => obj.destroy());
@@ -1738,9 +1778,13 @@ class GameScene extends Phaser.Scene {
     y += objetos.length > 3 ? 44 : 28;
     lineas.push({ texto: 'Fusiones: ' + (fusiones.length ? fusiones.join(' · ') : 'ninguna'),
       y, tam: '18px', color: '#ffd54f', negrita: fusiones.length > 0 });
+    y += 26;
+    const completados = this.desafiosCompletados.length;
+    lineas.push({ texto: 'Desafíos completados: ' + completados + (this.desafiosFallidos ? '   (fallidos: ' + this.desafiosFallidos + ')' : ''),
+      y, tam: '18px', color: '#9ccc65', negrita: completados > 0 });
 
-    lineas.push({ texto: 'R: jugar de nuevo con la misma raza', y: 468, tam: '20px', color: '#dddddd' });
-    lineas.push({ texto: 'M: volver al inicio y elegir otra raza', y: 498, tam: '20px', color: '#dddddd' });
+    lineas.push({ texto: 'R: jugar de nuevo con la misma raza', y: 482, tam: '20px', color: '#dddddd' });
+    lineas.push({ texto: 'M: volver al inicio y elegir otra raza', y: 510, tam: '20px', color: '#dddddd' });
 
     lineas.forEach((l) => {
       const estilo = { fontFamily: FUENTE, fontSize: l.tam, color: l.color, fontStyle: l.negrita ? 'bold' : 'normal', align: 'center' };
@@ -1768,7 +1812,7 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.10', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.11', estilo)
       .setScrollFactor(0).setDepth(1000);
     this.add.text(12, this.scale.height - 10, 'P / Esc: pausa', { ...estilo, fontSize: '13px', color: '#9e9e9e' })
       .setOrigin(0, 1).setScrollFactor(0).setDepth(1000);

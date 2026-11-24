@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.10** — menú de pausa con stats, instintos y objetos, fusiones y sinergias.
+Versión actual: **v0.11** — zonas especiales y mini desafíos.
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -32,16 +32,21 @@ Versión actual: **v0.10** — menú de pausa con stats, instintos y objetos, fu
 | Modo de prueba: subir 5 niveles de golpe | **U** |
 | Modo de prueba: aparece el jefe al tiro | **J** |
 | Modo de prueba: el reloj de la noche salta 1 minuto | **K** |
+| Modo de prueba: una zona especial de cada tipo cerca del perro | **Z** |
+| Modo de prueba: empieza un desafío al azar | **X** |
 
 No hay botón para atacar: el perro muerde solo.
 
-### Modo de prueba (teclas T, Y, U, J y K)
+### Modo de prueba (teclas T, Y, U, J, K, Z y X)
 
 - **T**: aparece un enemigo de cada tipo en un círculo alrededor del perro (la Manada aparece como grupo completo). Sirve para ver cómo se mueve cada enemigo sin esperar minutos. Estos enemigos **no sueltan huesos ni objetos ni cuentan** en el Game Over, pero sí hacen daño y atrapan como los normales.
 - **Y**: aparecen **4 objetos** alrededor del perro, uno de cada rareza (blanco, azul, morado y dorado). Cada vez que presionas Y salen objetos distintos, así en pocas veces tienes cada objeto en morado (épico) o dorado (legendario), que lo suben directo al nivel 3.
 - **U**: el perro sube **5 niveles de golpe** y salen 5 rondas de cartas seguidas.
 - **J**: aparece **El Jefe de la Plaza** al tiro (solo si no hay otro jefe vivo). Si lo llamas antes de tiempo, ya no vuelve a aparecer solo a los 9 minutos.
 - **K**: el reloj **salta 1 minuto** hacia adelante (con 10 minutos, son 48 minutos de reloj). Todo avanza junto: la fase, los enemigos que aparecen y la oscuridad. El tiempo saltado también cuenta en "Sobreviviste" de la pantalla final.
+
+- **Z**: aparecen **4 zonas especiales** alrededor del perro, una de cada tipo (miedo, peligrosa, barro y segura). Nunca encima del perro ni de la pileta. Camina a cada una para ver su aviso y su efecto. Duran lo normal (25 segundos).
+- **X**: empieza **un desafío al azar** (Búsqueda, Aguanta, Cacería o Sin morder). Si ya había uno, se cancela sin contar como fallido y empieza otro. Presiona X varias veces hasta que salga el que quieres probar.
 
 **Probar el final rápido:** presiona **J**, derrota al jefe (o quítale vida con U para subir niveles) y luego presiona **K** unas 10 veces hasta las 06:00: amanece y sale "¡Sobreviviste la noche!". Para ver qué pasa si el jefe sigue vivo, presiona **K** 10 veces sin derrotarlo: el reloj se queda en 06:00 hasta que lo derrotes.
 
@@ -175,16 +180,44 @@ Algunas combinaciones dan un **bonus extra** cuando tienes las dos cosas juntas 
 | **Cazador** | Colmillos + Olfato | +10% de daño de mordida |
 | **Veloz** | Patas ligeras + Pelota mordida | +10% de velocidad |
 
+### Zonas especiales
+
+Cada 20 segundos (desde el segundo 30) aparece un **círculo** en la plaza, cerca del perro, con un **borde de color** y un **ícono** al centro. Dura 25 segundos; los últimos 4 segundos parpadea para avisar que se va. Hay como máximo 3 a la vez, y nunca aparecen encima de la pileta ni encima del perro. Al entrar en una, sale un aviso pequeño con su nombre.
+
+| Zona | Color e ícono | Mientras el perro está dentro |
+|---|---|---|
+| **Zona de miedo** | morada, fantasma | No puede atacar (ni morder ni ladrar) |
+| **Zona peligrosa** | roja, triángulo con "!" | Recibe el **doble de daño** |
+| **Barro** | café, gotas de barro | Se mueve **40% más lento**. Los enemigos que pisan el barro también |
+| **Zona segura** (rara) | verde, escudo con cruz | **No recibe daño**, pero tampoco gana experiencia: los huesos se quedan en el suelo hasta que salgas |
+
+Si dos zonas se tocan y estás en ambas, se suman sus efectos.
+
+### Mini desafíos
+
+Al minuto de juego llega el primer desafío, y después uno nuevo cada minuto después de terminar el anterior. Aparece un aviso grande y, arriba al centro, una línea dorada con el **progreso** y la **cuenta regresiva**. No aparecen mientras el jefe está vivo ni al amanecer.
+
+| Desafío | Qué hay que hacer | Tiempo |
+|---|---|---|
+| **Búsqueda** | Encontrar **3 cosas perdidas** (cajitas azules con "?") repartidas en la plaza. Unas **flechas doradas** en el borde de la pantalla apuntan a las que no se ven | 60 s |
+| **Aguanta** | Estar **30 segundos dentro de la zona dorada** marcada (el tiempo solo corre mientras estás dentro). Mientras dura, llegan el **doble de enemigos** | 50 s |
+| **Cacería** | Derrotar a **30 enemigos** | 45 s |
+| **Sin morder** | Sobrevivir **20 segundos** sin atacar: la mordida y el ladrido se apagan solos durante el desafío | 20 s |
+
+- **Si lo cumples**: ganas una recompensa al azar: un **objeto raro o mejor** (entra directo al inventario; si está lleno, sube uno que ya tienes) o **40 de experiencia** de golpe.
+- **Si fallas**: sale un aviso y no pasa nada más.
+
 ### Menú de pausa
 
 Presiona **P** o **Esc** para pausar. Todo se detiene (enemigos, reloj de la noche, poderes) hasta que vuelvas a presionar P o Esc, o el botón **Continuar**. No se puede pausar mientras eliges una carta de nivel.
 
-El panel tiene 4 pestañas (clic o flechas izquierda/derecha):
+El panel tiene 5 pestañas (clic o flechas izquierda/derecha):
 
 - **Stats**: vida, velocidad, daño y frecuencia de mordida, alcance, imán de huesos, reducción de daño, regeneración y experiencia extra. Debajo de cada uno sale el **valor base de tu raza** y cuánto suma cada instinto, objeto, fusión o sinergia. También tu nivel, el tiempo jugado, la hora de la noche y los enemigos derrotados.
 - **Instintos y objetos**: todos, con su ícono, su nivel y lo que hacen (los que no tienes salen en gris).
 - **Fusiones**: las 4 fusiones. Dice si ya la **lograste**, si está **lista** (sale en la próxima subida de nivel) o **qué falta** (por ejemplo "Falta: Mordida rápida 3/5 + Collar viejo 1/3").
 - **Sinergias**: cuáles están **activas** y qué falta para las otras.
+- **Desafíos**: el **desafío actual** con su progreso y el tiempo que queda (o cuándo llega el próximo), los **completados** en esta partida con su minuto y recompensa, y cuántos fallaste. A la derecha, qué hace cada **zona especial** y en cuál estás ahora.
 
 Botones: **Continuar**, **Reiniciar (R)** (misma raza, partida nueva) y **Volver al menú (M)**.
 
@@ -219,11 +252,12 @@ A los **9 minutos** (05:12 en el reloj) llega un perro enorme y oscuro con colla
 - Arriba a la izquierda: barra de **vida**, tu **raza** y su poder. Si el poder tiene espera (Pitbull y Galgo), una barrita muestra cuánto falta; cuando se pone amarilla dice **¡Listo!**
 - Arriba a la derecha: **hora de la noche**, y debajo la fase y el tiempo jugado.
 - Arriba al centro (solo con el jefe vivo): nombre y **barra de vida del jefe**.
+- Arriba al centro, en dorado (solo durante un desafío): el **desafío**, su progreso y los segundos que quedan. Se pone rojo y parpadea los últimos 10 segundos.
 - Abajo al centro: **inventario** de objetos y fusiones logradas.
 
 ### Game Over y victoria
 
-Al llegar a 0 de vida aparece "Game Over". Si sobrevives la noche aparece **"¡Sobreviviste la noche!"**. Las dos pantallas muestran tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados, cuántos de cada tipo, si derrotaste al jefe, los **objetos** que tenías (con su nivel) y las **fusiones** logradas.
+Al llegar a 0 de vida aparece "Game Over". Si sobrevives la noche aparece **"¡Sobreviviste la noche!"**. Las dos pantallas muestran tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados, cuántos de cada tipo, si derrotaste al jefe, los **objetos** que tenías (con su nivel), las **fusiones** logradas y cuántos **desafíos completaste** (y cuántos fallaste).
 - **R**: jugar de nuevo con la misma raza.
 - **M**: volver a la pantalla de inicio para elegir otra raza.
 
@@ -426,6 +460,21 @@ En `src/sinergias.js` está el nombre, la frase y qué pide cada una (`requiere`
 
 El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con el mismo formato que `src/sprites.js`.
 
+### Zonas especiales (`src/config.js`, sección `ZONAS`, y `src/zonas.js`)
+
+- `ZONAS_PRIMERA_MS`, `ZONAS_CADA_MS`: cuándo aparece la primera y cada cuánto una nueva.
+- `ZONAS_MAXIMAS`: máximo de zonas a la vez. `ZONA_DURACION_MS`: cuánto dura cada una. `ZONA_PARPADEO_MS`: cuánto rato parpadea antes de irse.
+- `ZONA_DISTANCIA_MIN` / `ZONA_DISTANCIA_MAX`: qué tan cerca o lejos del perro aparecen. `ZONA_MARGEN`: espacio libre entre la zona y la pileta o el perro.
+- `ZONAS`: cada zona tiene `RADIO` (tamaño) y `PESO` (qué tan seguido sale; la segura tiene 1, es rara). La peligrosa tiene `DANO_MULTIPLICADOR` (2 = doble daño) y el barro `LENTITUD` (0.4 = 40% más lento).
+- En `src/zonas.js` están el nombre, el color, la frase del aviso y el dibujo de 10 x 10 del ícono de cada zona, y los pasos para agregar una zona nueva.
+
+### Mini desafíos (`src/config.js`, sección `DESAFIOS`, y `src/desafios.js`)
+
+- `DESAFIO_PRIMERO_MS`: cuándo llega el primero. `DESAFIO_CADA_MS`: descanso entre uno y otro.
+- `DESAFIO_OBJETO_PROBABILIDAD`: probabilidad de que la recompensa sea un objeto (si no, experiencia). `DESAFIO_RAREZA_MINIMA`: rareza mínima del objeto. `DESAFIO_XP`: experiencia que da.
+- `DESAFIOS`: cada desafío tiene `PESO` (qué tan seguido sale) y `TIEMPO_MS` (la cuenta regresiva), más sus propios números: `OBJETOS` de la Búsqueda, `DENTRO_MS`, `RADIO` y `APARICION` de Aguanta, `ENEMIGOS` de la Cacería.
+- En `src/desafios.js` están los nombres y frases, el dibujo de las cosas perdidas y los pasos para agregar un desafío nuevo.
+
 ### Nombres, dibujos y parejas de fusión (`src/objetos.js`)
 
 - `RAREZAS`: nombre y color de cada rareza, y si destella.
@@ -438,12 +487,14 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 ## Archivos
 
 - `index.html` — la página que abre el juego.
-- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, la noche y el jefe).
+- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, zonas, desafíos, la noche y el jefe).
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
 - `src/instintos.js` — nombres y frases de las cartas de instintos, y sus íconos (12 x 12) para el menú de pausa.
 - `src/sinergias.js` — las sinergias: nombre, frase, qué pide cada una y cómo se calcula su bonus.
-- `src/pausa.js` — el menú de pausa: panel, pestañas y botones.
+- `src/pausa.js` — el menú de pausa: panel, pestañas (incluida la de Desafíos) y botones.
+- `src/zonas.js` — las zonas especiales: nombres, colores, íconos, dónde aparecen y qué hacen.
+- `src/desafios.js` — los mini desafíos: nombres, frases, cómo avanzan, flechas, recompensas y la tecla X.
 - `src/sprites.js` — los dibujos en pixel art de todos los personajes, el hueso y la mordida (y el borde de las élites y objetos).
 - `src/objetos.js` — objetos, rarezas y fusiones: nombres, frases y dibujos.
 - `src/mapa.js` — la plaza: suelo, pileta, bancas, árboles, faroles, basureros, autos, comida, obstáculos y la oscuridad de la noche.
@@ -455,5 +506,5 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js` o `src/sinergias.js`, revisa ese cambio.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js`, `src/sinergias.js`, `src/zonas.js` o `src/desafios.js`, revisa ese cambio.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.

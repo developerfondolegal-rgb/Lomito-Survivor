@@ -30,7 +30,7 @@ class MenuScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5);
 
-    this.add.text(w - 10, this.scale.height - 8, 'Lomito Survivor - v0.10', {
+    this.add.text(w - 10, this.scale.height - 8, 'Lomito Survivor - v0.11', {
       fontFamily: FUENTE, fontSize: '13px', color: '#888888'
     }).setOrigin(1, 1);
 

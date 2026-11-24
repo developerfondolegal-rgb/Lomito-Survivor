@@ -369,6 +369,84 @@ const CONFIG = {
   },
 
   // ---------------------------------------------------------------
+  //  ZONAS ESPECIALES: círculos que aparecen un rato en el mapa, con
+  //  borde de color y un ícono. Sus nombres, colores, íconos y qué
+  //  hacen están en src/zonas.js
+  //  Nunca aparecen encima de la pileta ni encima del perro.
+  // ---------------------------------------------------------------
+  ZONAS_PRIMERA_MS: 30000,      // a qué momento de la partida aparece la primera (30000 = 0:30)
+  ZONAS_CADA_MS: 20000,         // después, cada cuánto aparece una nueva
+  ZONAS_MAXIMAS: 3,             // máximo de zonas en el mapa a la vez
+  ZONA_DURACION_MS: 25000,      // cuánto dura cada zona antes de desaparecer
+  ZONA_PARPADEO_MS: 4000,       // los últimos 4 segundos parpadea para avisar que se va
+  ZONA_DISTANCIA_MIN: 250,      // qué tan cerca del perro puede aparecer (desde el centro de la zona)...
+  ZONA_DISTANCIA_MAX: 650,      // ...y qué tan lejos
+  ZONA_MARGEN: 40,              // espacio libre mínimo entre el borde de la zona y la pileta o el perro
+
+  // Cada zona:
+  //  RADIO: tamaño del círculo
+  //  PESO: qué tan seguido aparece comparada con las demás (1 = rara)
+  ZONAS: {
+    // Zona de miedo (morada): el perro no puede atacar (ni morder ni ladrar)
+    miedo:   { RADIO: 140, PESO: 3 },
+    // Zona peligrosa (roja): el daño que recibe el perro se multiplica por esto
+    peligro: { RADIO: 150, PESO: 3, DANO_MULTIPLICADOR: 2 },
+    // Barro (café): el perro y los enemigos se mueven más lento (0.4 = 40% más lento)
+    barro:   { RADIO: 160, PESO: 3, LENTITUD: 0.4 },
+    // Zona segura (verde, rara): no recibe daño, pero tampoco recoge huesos (no gana experiencia)
+    segura:  { RADIO: 110, PESO: 1 }
+  },
+
+  // ---------------------------------------------------------------
+  //  MINI DESAFÍOS: cada cierto tiempo aparece uno con un aviso arriba
+  //  y una cuenta regresiva. Si lo cumples ganas una recompensa; si
+  //  fallas no pasa nada. Sus nombres y frases están en src/desafios.js
+  //  (no aparecen mientras el jefe está vivo ni al amanecer)
+  // ---------------------------------------------------------------
+  DESAFIO_PRIMERO_MS: 60000,    // a qué momento de la partida llega el primero (60000 = 1:00)
+  DESAFIO_CADA_MS: 60000,       // tiempo de descanso entre que termina uno y empieza el siguiente
+
+  // Recompensa al cumplirlo: un objeto (raro o mejor) o mucha experiencia
+  DESAFIO_OBJETO_PROBABILIDAD: 0.5, // probabilidad de que sea objeto (0.5 = la mitad de las veces; si no, experiencia)
+  DESAFIO_RAREZA_MINIMA: 'raro',    // el objeto es de esta rareza o mejor
+  DESAFIO_XP: 40,                   // experiencia que da (40 huesos de golpe)
+
+  // Cada desafío:
+  //  PESO: qué tan seguido sale comparado con los demás
+  //  TIEMPO_MS: la cuenta regresiva (tiempo para cumplirlo)
+  DESAFIOS: {
+    // Búsqueda: encontrar cosas perdidas repartidas en el mapa (con flechas en el borde de la pantalla)
+    busqueda: {
+      PESO: 1,
+      TIEMPO_MS: 60000,
+      OBJETOS: 3,               // cuántas cosas hay que encontrar
+      DISTANCIA_MIN: 500,       // qué tan lejos del perro aparecen...
+      DISTANCIA_MAX: 1100,      // ...como máximo
+      RECOGER: 30               // qué tan cerca hay que pasar para recogerlas (se suma al RADIO del perro)
+    },
+    // Aguanta: quedarse dentro de una zona marcada mientras llegan más enemigos
+    aguanta: {
+      PESO: 1,
+      TIEMPO_MS: 50000,         // tiempo total para lograrlo
+      DENTRO_MS: 30000,         // tiempo que hay que estar dentro de la zona (se suma solo mientras estás dentro)
+      RADIO: 170,               // tamaño de la zona marcada
+      DISTANCIA: 320,           // a qué distancia del perro aparece la zona
+      APARICION: 0.5            // mientras dura, el tiempo entre enemigos se multiplica por esto (0.5 = el doble de enemigos)
+    },
+    // Cacería: derrotar muchos enemigos rápido
+    caceria: {
+      PESO: 1,
+      TIEMPO_MS: 45000,
+      ENEMIGOS: 30              // cuántos hay que derrotar
+    },
+    // Sin morder: sobrevivir sin atacar (la mordida y el ladrido se apagan solos)
+    sinMorder: {
+      PESO: 1,
+      TIEMPO_MS: 20000
+    }
+  },
+
+  // ---------------------------------------------------------------
   //  LA NOCHE (meta de la partida). El código está en src/noche.js
   //  Ganas si llegas a la HORA_FIN y el Jefe de la Plaza está derrotado.
   // ---------------------------------------------------------------

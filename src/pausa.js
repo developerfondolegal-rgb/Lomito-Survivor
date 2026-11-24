@@ -1,12 +1,12 @@
 // ===============================================================
 //  MENÚ DE PAUSA (teclas P o Esc)
-//  Panel con 4 pestañas: Stats, Instintos y objetos, Fusiones y
-//  Sinergias. Se cambian con clic o con las flechas izquierda/derecha.
+//  Panel con 5 pestañas: Stats, Instintos y objetos, Fusiones,
+//  Sinergias y Desafíos. Se cambian con clic o con las flechas izquierda/derecha.
 //  Mientras está abierto, nada se mueve y el reloj de la noche se detiene.
 //  Lo usa src/scenes/GameScene.js.
 // ===============================================================
 
-const PESTANAS_PAUSA = ['Stats', 'Instintos y objetos', 'Fusiones', 'Sinergias'];
+const PESTANAS_PAUSA = ['Stats', 'Instintos y objetos', 'Fusiones', 'Sinergias', 'Desafíos'];
 
 // Colores del panel (formato 0xRRGGBB)
 const PAUSA_FONDO = 0x1d1b2e;     // fondo del panel
@@ -103,8 +103,8 @@ function dibujarPausa(escena) {
     .setOrigin(1, 0.5));
 
   // Pestañas
-  const anchoP = 200;
-  const sepP = 210;
+  const anchoP = 168;
+  const sepP = 176;
   const inicioP = w / 2 - ((PESTANAS_PAUSA.length - 1) * sepP) / 2;
   PESTANAS_PAUSA.forEach((nombre, i) => {
     const cx = inicioP + i * sepP;
@@ -123,7 +123,8 @@ function dibujarPausa(escena) {
   if (pestana === 0) pestanaStats(escena, capa, area);
   else if (pestana === 1) pestanaInventario(escena, capa, area);
   else if (pestana === 2) pestanaFusiones(escena, capa, area);
-  else pestanaSinergias(escena, capa, area);
+  else if (pestana === 3) pestanaSinergias(escena, capa, area);
+  else pestanaDesafios(escena, capa, area);
 
   // Botones de abajo
   const yb = py + ph - 32;
@@ -443,4 +444,78 @@ function pestanaSinergias(escena, capa, area) {
     capa.push(textoPausa(escena, area.x + area.ancho - 14, y - 6, activa ? 'ACTIVA' : 'Inactiva', 16,
       activa ? '#9ccc65' : '#77778a', activa).setOrigin(1, 0));
   });
+}
+
+// ---------------- Pestaña "Desafíos" ----------------
+// (los desafíos están en src/desafios.js y las zonas en src/zonas.js)
+
+function pestanaDesafios(escena, capa, area) {
+  const e = escena;
+  const anchoCol = area.ancho / 2 - 14;
+  let x = area.x;
+  let y = area.y;
+
+  // Desafío actual
+  capa.push(textoPausa(e, x, y, 'Desafío actual', 16, '#ffe082', true));
+  y += 30;
+  const g = e.add.graphics();
+  capa.push(g);
+  const d = e.desafio;
+  if (d) {
+    g.fillStyle(0x4a3a12, 0.8);
+    g.fillRect(x, y - 6, anchoCol, 112);
+    g.lineStyle(2, PAUSA_DORADO, 1);
+    g.strokeRect(x, y - 6, anchoCol, 112);
+    capa.push(textoPausa(e, x + 12, y, buscarDesafio(d.id).nombre, 20, '#ffd54f', true));
+    capa.push(textoPausa(e, x + 12, y + 28, fraseDesafio(d.id), 13, '#cfd8dc', false, anchoCol - 24));
+    capa.push(textoPausa(e, x + 12, y + 64, 'Progreso: ' + textoProgresoDesafio(e, d), 15, '#ffffff', true, anchoCol - 24));
+    capa.push(textoPausa(e, x + 12, y + 86, 'Quedan ' + segundosRestantes(e, d) + ' segundos', 14, '#ffcc80'));
+  } else {
+    g.fillStyle(0x000000, 0.3);
+    g.fillRect(x, y - 6, anchoCol, 70);
+    let espera;
+    if (e.amaneciendo) espera = 'Ya amanece: no hay más desafíos.';
+    else if (e.jefeVivo()) espera = 'Mientras el jefe está vivo no hay desafíos.';
+    else espera = 'El próximo llega en ' + e.formatearTiempo(Math.max(0, e.proximoDesafio - e.tiempoSobrevivido)) + '.';
+    capa.push(textoPausa(e, x + 12, y, 'Ninguno por ahora', 18, '#cfd8dc', true));
+    capa.push(textoPausa(e, x + 12, y + 28, espera + '  (tecla X: empezar uno de prueba)', 13, '#b0bec5', false, anchoCol - 24));
+  }
+
+  // Completados en esta partida
+  y = area.y + 180;
+  const hechos = e.desafiosCompletados;
+  capa.push(textoPausa(e, x, y, 'Completados en esta partida: ' + hechos.length +
+    (e.desafiosFallidos ? '   (fallidos: ' + e.desafiosFallidos + ')' : ''), 16, '#9ccc65', true));
+  y += 28;
+  if (hechos.length === 0) {
+    capa.push(textoPausa(e, x, y, 'Todavía ninguno.', 14, '#8a8a99'));
+  }
+  const maxFilas = 7;
+  hechos.slice(-maxFilas).forEach((h) => {
+    capa.push(textoPausa(e, x, y, '✔ ' + h.nombre, 14, '#ffffff', true));
+    capa.push(textoPausa(e, x + 120, y, h.minuto + '   ·   ' + h.recompensa, 14, '#b0bec5', false, anchoCol - 120));
+    y += 22;
+  });
+  if (hechos.length > maxFilas) capa.push(textoPausa(e, x, y, '(y ' + (hechos.length - maxFilas) + ' más)', 13, '#8a8a99'));
+
+  // Zonas especiales (a la derecha): qué hace cada una y en cuál estás
+  x = area.x + anchoCol + 28;
+  y = area.y;
+  capa.push(textoPausa(e, x, y, 'Zonas especiales', 16, '#ffe082', true));
+  y += 40;
+  ZONAS.filter((z) => CONFIG.ZONAS[z.id]).forEach((z) => {
+    const aqui = !!(e.efectoZona && e.efectoZona[z.id]);
+    const fondo = e.add.graphics();
+    fondo.fillStyle(aqui ? 0x1f3a1f : 0x000000, aqui ? 0.8 : 0.3);
+    fondo.fillRect(x, y - 24, anchoCol, 56);
+    fondo.lineStyle(2, z.color, aqui ? 1 : 0.6);
+    fondo.strokeRect(x, y - 24, anchoCol, 56);
+    capa.push(fondo);
+    casillaIcono(e, capa, x + 26, y + 4, 'zona_' + z.id, 3, false);
+    capa.push(textoPausa(e, x + 56, y - 16, z.nombre, 15, z.colorTexto, true));
+    capa.push(textoPausa(e, x + 56, y + 4, z.frase, 13, '#cfd8dc', false, anchoCol - 150));
+    if (aqui) capa.push(textoPausa(e, x + anchoCol - 10, y - 16, 'ESTÁS AQUÍ', 13, '#9ccc65', true).setOrigin(1, 0));
+    y += 66;
+  });
+  capa.push(textoPausa(e, x, y - 6, 'Tecla Z: una zona de cada tipo cerca del perro (prueba)', 12, '#8a8a99'));
 }
