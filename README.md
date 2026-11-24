@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.6** — personajes en pixel art.
+Versión actual: **v0.6.1** — personajes en pixel art (con limpieza de ajustes y zonas de choque).
 
 ## Cómo abrir el juego
 
@@ -110,7 +110,7 @@ Cada raza tiene su bloque (`quiltro`, `pitbull`, `galgo`, `beagle`) con:
 
 | Ajuste | Qué hace |
 |---|---|
-| `COLOR` | Ya no cambia el dibujo (eso está en `src/sprites.js`). Solo se usa para pintar una raza nueva que no tenga dibujo |
+| `COLOR` | No cambia el dibujo (eso está en `src/sprites.js`). Solo se usa para pintar una raza nueva que no tenga dibujo |
 | `VIDA` | Vida inicial |
 | `VELOCIDAD` | Qué tan rápido se mueve |
 | `MORDIDA_DANO` | Daño de cada mordida |
@@ -130,7 +130,6 @@ Y los números propios de cada poder:
 | `MANDIBULA_ATURDIR_MS` | Pitbull | Cuánto tiempo queda quieto el enemigo |
 | `SPRINT_VELOCIDAD` / `SPRINT_DURACION_MS` | Galgo | Velocidad / duración del sprint |
 | `RASTREO_FLECHAS_MAX` | Beagle | Máximo de flechas en pantalla |
-| `COLOR_MANCHA` / `COLOR_MANCHA_2` | Beagle | Ya no se usan (las manchas ahora están en el dibujo de `src/sprites.js`) |
 
 ### Textos de las razas (`src/razas.js`)
 
@@ -144,7 +143,6 @@ Cada enemigo tiene su bloque (`rival`, `manada`, `borracho`, `drogadicto`, `perr
 
 | Ajuste | Qué hace |
 |---|---|
-| `FORMA` / `ANCHO` / `ALTO` / `BORDE` | Ya no se usan desde la v0.6 (el dibujo está en `src/sprites.js`) |
 | `COLOR` | Solo se usa para pintar un enemigo nuevo que no tenga dibujo |
 | `RADIO` | Tamaño del choque y de la mordida (no depende del dibujo) |
 | `VIDA` | Vida del enemigo |

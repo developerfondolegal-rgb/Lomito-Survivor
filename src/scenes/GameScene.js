@@ -959,7 +959,7 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.6', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.6.1', estilo)
       .setScrollFactor(0).setDepth(1000);
 
     this.barraVida = this.add.graphics().setScrollFactor(0).setDepth(1000);

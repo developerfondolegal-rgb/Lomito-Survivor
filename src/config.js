@@ -15,12 +15,14 @@ const CONFIG = {
   //  Los números base de cada perro. Los textos de las cartas están
   //  en src/razas.js
   //
-  //  COLOR: color del círculo (formato 0xRRGGBB)
+  //  COLOR: no cambia el dibujo (los dibujos están en src/sprites.js).
+  //         Solo se usa para pintar una raza nueva que no tenga dibujo
+  //         (formato 0xRRGGBB)
   //  VIDA: vida con la que empieza
   //  VELOCIDAD: qué tan rápido se mueve
   //  MORDIDA_DANO: daño de cada mordida
   //  MORDIDA_CADA_MS: cada cuánto muerde (1000 = 1 vez por segundo)
-  //  RADIO: tamaño del círculo (más chico = más fácil esquivar)
+  //  RADIO: tamaño de la zona de choque (más chico = más fácil esquivar)
   //  HUESO_PROBABILIDAD: probabilidad de que un enemigo suelte hueso
   //                      (1 = siempre, 0.75 = 3 de cada 4 veces)
   //  IMAN_EXTRA: alcance extra del imán de huesos
@@ -79,9 +81,7 @@ const CONFIG = {
 
     // Beagle: mordida débil pero gran olfato
     beagle: {
-      COLOR: 0xf5f5f0,          // blanco...
-      COLOR_MANCHA: 0x8b5a2b,   // ...con manchas café...
-      COLOR_MANCHA_2: 0x222222, // ...y negras (tricolor)
+      COLOR: 0xf5f5f0,          // blanco
       VIDA: 90,
       VELOCIDAD: 225,
       MORDIDA_DANO: 7,
@@ -104,11 +104,10 @@ const CONFIG = {
   //  Los números de cada tipo de enemigo. Sus nombres están en
   //  src/enemigos.js
   //
-  //  FORMA: 'circulo', 'rectangulo', 'triangulo' o 'cuadrado'
-  //  COLOR: color de relleno (formato 0xRRGGBB)
-  //  BORDE: color del borde (opcional)
-  //  RADIO: tamaño del enemigo (para choques y mordidas)
-  //  ANCHO / ALTO: solo para 'rectangulo'
+  //  COLOR: no cambia el dibujo (los dibujos están en src/sprites.js).
+  //         Solo se usa para pintar un enemigo nuevo que no tenga
+  //         dibujo (formato 0xRRGGBB)
+  //  RADIO: tamaño de la zona de choque (y para las mordidas)
   //  VIDA: vida del enemigo
   //  VELOCIDAD: qué tan rápido se mueve
   //  DANO: vida que te quita al tocarte (0 = no hace daño)
@@ -124,7 +123,6 @@ const CONFIG = {
   ENEMIGOS: {
     // Perro rival: el enemigo básico
     rival: {
-      FORMA: 'circulo',
       COLOR: 0xd63c3c,          // rojo
       RADIO: 16,
       VIDA: 20,
@@ -138,7 +136,6 @@ const CONFIG = {
 
     // Manada: grupos de perros chicos, rápidos y débiles
     manada: {
-      FORMA: 'circulo',
       COLOR: 0xff6e6e,          // rojo claro
       RADIO: 10,
       VIDA: 8,
@@ -154,11 +151,8 @@ const CONFIG = {
 
     // Borracho: lento, zigzaguea, mucha vida y golpe fuerte
     borracho: {
-      FORMA: 'rectangulo',
       COLOR: 0xff9800,          // naranjo
-      ANCHO: 36,
-      ALTO: 26,
-      RADIO: 15,
+      RADIO: 18,                // zona de choque del tamaño del dibujo (era 15)
       VIDA: 70,
       VELOCIDAD: 65,
       DANO: 15,
@@ -172,9 +166,8 @@ const CONFIG = {
 
     // Drogadicto: se queda quieto, avisa y embiste rápido
     drogadicto: {
-      FORMA: 'triangulo',
       COLOR: 0x66bb6a,          // verde
-      RADIO: 16,
+      RADIO: 18,                // zona de choque del tamaño del dibujo (era 16)
       VIDA: 35,
       VELOCIDAD: 80,            // velocidad cuando se acerca caminando
       DANO: 10,
@@ -191,9 +184,7 @@ const CONFIG = {
 
     // Perrera: no hace daño, pero te atrapa
     perrera: {
-      FORMA: 'cuadrado',
       COLOR: 0x1e63c8,          // azul
-      BORDE: 0xffffff,          // con borde blanco
       RADIO: 17,
       VIDA: 90,
       VELOCIDAD: 95,
