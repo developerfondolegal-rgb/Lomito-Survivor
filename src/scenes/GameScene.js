@@ -495,11 +495,14 @@ class GameScene extends Phaser.Scene {
   crearGrupo(tipo, x, y, ignorarLimite) {
     const cfg = CONFIG.ENEMIGOS[tipo];
     const cantidad = cfg.GRUPO_MIN ? Phaser.Math.Between(cfg.GRUPO_MIN, cfg.GRUPO_MAX || cfg.GRUPO_MIN) : 1;
+    const creados = [];
     for (let i = 0; i < cantidad; i++) {
       const ox = cantidad > 1 ? Phaser.Math.Between(-40, 40) : 0;
       const oy = cantidad > 1 ? Phaser.Math.Between(-40, 40) : 0;
-      this.crearEnemigo(tipo, x + ox, y + oy, ignorarLimite);
+      const enemigo = this.crearEnemigo(tipo, x + ox, y + oy, ignorarLimite);
+      if (enemigo) creados.push(enemigo);
     }
+    return creados;
   }
 
   crearEnemigo(tipo, x, y, ignorarLimite) {
@@ -536,17 +539,19 @@ class GameScene extends Phaser.Scene {
     enemigo.estadoHasta = 0;
     enemigo.anguloEmbestida = 0;
     enemigo.fase = Math.random() * Math.PI * 2; // para que los borrachos no zigzagueen todos igual
+    enemigo.dePrueba = false;
     return enemigo;
   }
 
-  // Modo de prueba (tecla T): un enemigo de cada tipo alrededor del perro
+  // Modo de prueba (tecla T): un enemigo de cada tipo alrededor del perro.
+  // Estos enemigos no sueltan huesos ni cuentan en el Game Over.
   modoPrueba() {
     const tipos = Object.keys(CONFIG.ENEMIGOS);
     tipos.forEach((tipo, i) => {
       const angulo = (i / tipos.length) * Math.PI * 2;
       const x = Phaser.Math.Clamp(this.perro.x + Math.cos(angulo) * 220, 20, CONFIG.MAPA_ANCHO - 20);
       const y = Phaser.Math.Clamp(this.perro.y + Math.sin(angulo) * 220, 20, CONFIG.MAPA_ALTO - 20);
-      this.crearGrupo(tipo, x, y, true);
+      this.crearGrupo(tipo, x, y, true).forEach((enemigo) => { enemigo.dePrueba = true; });
     });
   }
 
@@ -589,6 +594,12 @@ class GameScene extends Phaser.Scene {
     enemigo.vida -= dano;
 
     if (enemigo.vida <= 0) {
+      // Los enemigos del modo de prueba (tecla T) no dan huesos ni cuentan
+      if (enemigo.dePrueba) {
+        enemigo.destroy();
+        return;
+      }
+
       const probabilidad = this.base.HUESO_PROBABILIDAD === undefined ? 1 : this.base.HUESO_PROBABILIDAD;
       const cantidad = enemigo.cfg.HUESOS === undefined ? 1 : enemigo.cfg.HUESOS;
       for (let i = 0; i < cantidad; i++) {

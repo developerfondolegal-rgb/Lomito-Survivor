@@ -146,10 +146,10 @@ const CONFIG = {
       DANO: 3,
       HUESOS: 1,
       DESDE_SEGUNDOS: 45,
-      PESO: 3,
+      PESO: 1.5,                // la mitad de seguido que el borracho o el drogadicto
       COMPORTAMIENTO: 'perseguir',
-      GRUPO_MIN: 4,             // llegan de a 4...
-      GRUPO_MAX: 6              // ...hasta 6 juntos
+      GRUPO_MIN: 3,             // llegan de a 3...
+      GRUPO_MAX: 4              // ...hasta 4 juntos
     },
 
     // Borracho: lento, zigzaguea, mucha vida y golpe fuerte

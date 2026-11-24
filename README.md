@@ -28,7 +28,7 @@ No hay botón para atacar: el perro muerde solo.
 
 ### Modo de prueba (tecla T)
 
-Durante la partida, presiona **T** y aparecerá un enemigo de cada tipo en un círculo alrededor del perro (la Manada aparece como grupo completo). Sirve para ver cómo se mueve cada enemigo sin esperar minutos. Puedes presionarla varias veces. Estos enemigos cuentan igual que los normales (dan huesos y salen en el Game Over).
+Durante la partida, presiona **T** y aparecerá un enemigo de cada tipo en un círculo alrededor del perro (la Manada aparece como grupo completo). Sirve para ver cómo se mueve cada enemigo sin esperar minutos. Puedes presionarla varias veces. Estos enemigos **no sueltan huesos ni cuentan** en el Game Over, pero sí hacen daño y atrapan como los normales.
 
 ## Razas
 
@@ -56,7 +56,7 @@ Al inicio solo hay perros rivales. Los demás se van sumando con el tiempo:
 | Enemigo | Cómo se ve | Qué hace | Aparece desde | Huesos |
 |---|---|---|---|---|
 | **Perro rival** | círculo rojo | Te persigue | 0:00 | 1 |
-| **Manada** | círculos rojo claro pequeños | Llegan en grupos de 4 a 6, rápidos y con poca vida | 0:45 | 1 cada uno |
+| **Manada** | círculos rojo claro pequeños | Llegan en grupos de 3 a 4, rápidos y con poca vida. Aparecen menos seguido que el borracho o el drogadicto | 0:45 | 1 cada uno |
 | **Borracho** | rectángulo naranjo | Lento, camina zigzagueando, mucha vida y golpe fuerte | 1:30 | 3 |
 | **Drogadicto** | triángulo verde | Se acerca, se queda quieto parpadeando con una **línea verde** que avisa hacia dónde va, y embiste muy rápido en línea recta. ¡Sal de la línea! | 2:30 | 3 |
 | **Perrera** | cuadrado azul con borde blanco | No hace daño, pero si te toca te deja **atrapado 1,5 segundos** (aparece una jaula azul). Después se ve transparente un rato y no puede volver a atraparte. Aparece poco (máximo 2 a la vez) | 3:30 | 5 |
