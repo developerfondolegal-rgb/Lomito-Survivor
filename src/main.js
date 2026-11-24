@@ -1,0 +1,19 @@
+// Configuración principal del juego.
+const config = {
+  type: Phaser.AUTO,
+  parent: 'game',
+  width: 960,
+  height: 540,
+  backgroundColor: '#333333', // gris oscuro
+  physics: {
+    default: 'arcade',
+    arcade: { debug: false }
+  },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  scene: [GameScene]
+};
+
+const game = new Phaser.Game(config);
