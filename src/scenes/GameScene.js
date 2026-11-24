@@ -43,6 +43,9 @@ class GameScene extends Phaser.Scene {
     this.ultimaDireccion = new Phaser.Math.Vector2(1, 0);
     this.gameOver = false;
     this.eligiendo = false;       // true mientras se muestran las cartas de instintos
+    this.pausado = false;         // true mientras está abierto el menú de pausa (src/pausa.js)
+    this.pestanaPausa = 0;        // pestaña del menú de pausa que se muestra
+    this.sinergiasActivas = {};   // sinergias ya avisadas (src/sinergias.js)
     this.nivel = 1;
     this.xp = 0;
     this.nivelesPendientes = 0;
@@ -90,6 +93,7 @@ class GameScene extends Phaser.Scene {
     crearSprites(this);
     crearTexturasObjetos(this);
     this.anims.resumeAll();
+    this.tweens.resumeAll();      // por si venimos del menú de pausa
 
     // Mapa y cámara
     this.physics.world.setBounds(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
@@ -146,6 +150,8 @@ class GameScene extends Phaser.Scene {
     this.teclaU = this.input.keyboard.addKey('U'); // modo de prueba: +5 niveles
     this.teclaJ = this.input.keyboard.addKey('J'); // modo de prueba: aparece el jefe
     this.teclaK = this.input.keyboard.addKey('K'); // modo de prueba: el reloj salta 1 minuto
+    this.teclaP = this.input.keyboard.addKey('P');   // menú de pausa
+    this.teclaEsc = this.input.keyboard.addKey('ESC'); // menú de pausa
     this.teclasCartas = [
       this.input.keyboard.addKey('ONE'),
       this.input.keyboard.addKey('TWO'),
@@ -162,6 +168,19 @@ class GameScene extends Phaser.Scene {
       } else if (Phaser.Input.Keyboard.JustDown(this.teclaM)) {
         this.scene.start('MenuScene');             // volver al inicio
       }
+      return;
+    }
+
+    // Menú de pausa (src/pausa.js): P o Esc lo abren y lo cierran.
+    // Se leen las dos teclas siempre, para que no queden "guardadas" mientras salen las cartas.
+    const teclaPausa = Phaser.Input.Keyboard.JustDown(this.teclaP);
+    const teclaEscPausa = Phaser.Input.Keyboard.JustDown(this.teclaEsc);
+    if (this.pausado) {
+      actualizarPausa(this, teclaPausa || teclaEscPausa);
+      return;
+    }
+    if ((teclaPausa || teclaEscPausa) && !this.eligiendo) {
+      abrirPausa(this);
       return;
     }
 
@@ -261,7 +280,7 @@ class GameScene extends Phaser.Scene {
     // Poder "Calle" (Quiltro): se cura un poco con el tiempo
     if (this.poder === 'calle') {
       this.esperaCura += delta;
-      if (this.esperaCura >= this.base.CALLE_CURA_CADA_MS) {
+      if (this.esperaCura >= this.base.CALLE_CURA_CADA_MS / this.multiplicadorRegeneracion()) {
         this.esperaCura = 0;
         this.vida = Math.min(this.vidaMax, this.vida + this.base.CALLE_CURA);
       }
@@ -398,9 +417,16 @@ class GameScene extends Phaser.Scene {
 
   // ---------------- Valores que dependen de la raza y los instintos ----------------
 
+  // (bonusSinergias viene de src/sinergias.js: suma el bonus de las sinergias activas)
   velocidadPerro() {
-    return this.base.VELOCIDAD + this.instintos.patasLigeras * CONFIG.PATAS_VELOCIDAD +
+    const suma = this.base.VELOCIDAD + this.instintos.patasLigeras * CONFIG.PATAS_VELOCIDAD +
       this.nivelObjeto('pelota') * CONFIG.OBJETOS.pelota.VELOCIDAD;
+    return suma * (1 + bonusSinergias(this, 'VELOCIDAD'));
+  }
+
+  // Regeneración (poder Calle y Hueso de caracú): 1.2 = se cura 20% más rápido
+  multiplicadorRegeneracion() {
+    return 1 + bonusSinergias(this, 'REGENERACION');
   }
 
   intervaloMordida() {
@@ -415,7 +441,8 @@ class GameScene extends Phaser.Scene {
   }
 
   danoMordida() {
-    return this.base.MORDIDA_DANO + this.instintos.colmillos * CONFIG.COLMILLOS_DANO;
+    const suma = this.base.MORDIDA_DANO + this.instintos.colmillos * CONFIG.COLMILLOS_DANO;
+    return suma * (1 + bonusSinergias(this, 'DANO'));
   }
 
   radioIman() {
@@ -1348,6 +1375,7 @@ class GameScene extends Phaser.Scene {
     if (cfgRareza.CURA_TODO) this.curar(this.vidaMax - this.vida, '#ffd54f');
 
     this.actualizarInventario();
+    this.revisarSinergias();
     return true;
   }
 
@@ -1371,7 +1399,7 @@ class GameScene extends Phaser.Scene {
     const caracu = this.nivelObjeto('caracu');
     if (caracu > 0) {
       this.esperaCaracu += delta;
-      if (this.esperaCaracu >= CONFIG.OBJETOS.caracu.CADA_MS) {
+      if (this.esperaCaracu >= CONFIG.OBJETOS.caracu.CADA_MS / this.multiplicadorRegeneracion()) {
         this.esperaCaracu = 0;
         this.vida = Math.min(this.vidaMax, this.vida + caracu * CONFIG.OBJETOS.caracu.CURA);
       }
@@ -1597,12 +1625,25 @@ class GameScene extends Phaser.Scene {
     if (id === 'ladrido' && this.instintos.ladrido === 1) {
       this.esperaLadrido = 0;
     }
+    this.revisarSinergias();
+  }
+
+  // ---------------- Sinergias (src/sinergias.js) ----------------
+
+  // Avisa cuando se activa una sinergia nueva. El bonus en sí se aplica
+  // solo (en velocidadPerro, danoMordida y multiplicadorRegeneracion).
+  revisarSinergias() {
+    SINERGIAS.forEach((s) => {
+      if (this.sinergiasActivas[s.id] || !sinergiaActiva(this, s)) return;
+      this.sinergiasActivas[s.id] = true;
+      this.mostrarAviso('¡Sinergia: ' + s.nombre + '! ' + textoBonusSinergia(s), '#9ccc65');
+    });
   }
 
   // ---------------- Vida ----------------
 
   recibirGolpe(perro, enemigo) {
-    if (this.gameOver || this.eligiendo || this.amaneciendo) return; // al amanecer ya nadie ataca
+    if (this.gameOver || this.eligiendo || this.pausado || this.amaneciendo) return; // al amanecer ya nadie ataca
     if (this.enSprint()) return; // el Galgo no recibe daño ni lo atrapan durante el sprint
 
     const cfg = enemigo.cfg;
@@ -1727,8 +1768,10 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.9', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.10', estilo)
       .setScrollFactor(0).setDepth(1000);
+    this.add.text(12, this.scale.height - 10, 'P / Esc: pausa', { ...estilo, fontSize: '13px', color: '#9e9e9e' })
+      .setOrigin(0, 1).setScrollFactor(0).setDepth(1000);
 
     this.barraVida = this.add.graphics().setScrollFactor(0).setDepth(1000);
     this.textoVida = this.add.text(12 + 100, 57, '', { ...estilo, fontSize: '14px' })

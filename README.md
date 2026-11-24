@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.9** — noche completa con reloj y fases, jefe final y amanecer.
+Versión actual: **v0.10** — menú de pausa con stats, instintos y objetos, fusiones y sinergias.
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -21,6 +21,9 @@ Versión actual: **v0.9** — noche completa con reloj y fases, jefe final y ama
 | Elegir raza (pantalla de inicio) | **clic**, o teclas **1**, **2**, **3**, **4** |
 | Mover al perro | **W A S D** o **flechas** |
 | Sprint (solo Galgo) | **Espacio** |
+| Pausa (abrir y cerrar el menú) | **P** o **Esc** |
+| Cambiar pestaña del menú de pausa | **clic**, o **flechas izquierda / derecha** |
+| Reiniciar / volver al menú desde la pausa | **R** / **M** (o los botones) |
 | Elegir carta al subir de nivel | **clic**, o teclas **1**, **2**, **3** |
 | Jugar de nuevo con la misma raza (en Game Over) | **R** |
 | Volver a la pantalla de inicio (en Game Over) | **M** |
@@ -161,6 +164,29 @@ Si tienes un **instinto en nivel 5** y su **objeto pareja en nivel 3**, al subir
 | **Cuero de calle** | Pellejo duro + Frazada | Después de cada golpe, recibes **la mitad de daño durante 3 segundos** (se ve un anillo café alrededor del perro) |
 
 Las fusiones logradas salen escritas encima del inventario.
+
+### Sinergias
+
+Algunas combinaciones dan un **bonus extra** cuando tienes las dos cosas juntas (basta con tenerlas en nivel 1). Se activan solas y arriba sale el aviso "¡Sinergia: ...!".
+
+| Sinergia | Necesitas | Bonus |
+|---|---|---|
+| **Callejero veterano** | Pellejo duro + Hueso de caracú | +20% de regeneración (el poder Calle y el Hueso de caracú curan más seguido) |
+| **Cazador** | Colmillos + Olfato | +10% de daño de mordida |
+| **Veloz** | Patas ligeras + Pelota mordida | +10% de velocidad |
+
+### Menú de pausa
+
+Presiona **P** o **Esc** para pausar. Todo se detiene (enemigos, reloj de la noche, poderes) hasta que vuelvas a presionar P o Esc, o el botón **Continuar**. No se puede pausar mientras eliges una carta de nivel.
+
+El panel tiene 4 pestañas (clic o flechas izquierda/derecha):
+
+- **Stats**: vida, velocidad, daño y frecuencia de mordida, alcance, imán de huesos, reducción de daño, regeneración y experiencia extra. Debajo de cada uno sale el **valor base de tu raza** y cuánto suma cada instinto, objeto, fusión o sinergia. También tu nivel, el tiempo jugado, la hora de la noche y los enemigos derrotados.
+- **Instintos y objetos**: todos, con su ícono, su nivel y lo que hacen (los que no tienes salen en gris).
+- **Fusiones**: las 4 fusiones. Dice si ya la **lograste**, si está **lista** (sale en la próxima subida de nivel) o **qué falta** (por ejemplo "Falta: Mordida rápida 3/5 + Collar viejo 1/3").
+- **Sinergias**: cuáles están **activas** y qué falta para las otras.
+
+Botones: **Continuar**, **Reiniciar (R)** (misma raza, partida nueva) y **Volver al menú (M)**.
 
 ### La noche
 
@@ -389,6 +415,15 @@ Los dibujos de la plaza (bancas, basureros, faroles, autos y comida) y el tamañ
 | `JEFE.EMBESTIDA_...` | Aviso, velocidad, duración, daño y descanso de la embestida |
 | `JEFE.AULLIDO_...` / `FURIA_AULLIDO_MANADA` | Aviso del aullido, cuántos perritos llegan (normal / en furia) y a qué distancia |
 
+### Sinergias (`src/config.js`, sección `SINERGIAS`, y `src/sinergias.js`)
+
+| Ajuste | Qué hace |
+|---|---|
+| `SINERGIA_NIVEL_MINIMO` | Nivel que necesita cada cosa para que la sinergia cuente (1 = basta con tenerla) |
+| `SINERGIAS` | El bonus de cada sinergia: `VELOCIDAD`, `DANO` (de mordida) o `REGENERACION` (0.1 = 10% más) |
+
+En `src/sinergias.js` está el nombre, la frase y qué pide cada una (`requiere`). **Agregar una sinergia nueva:** copia un bloque en `src/sinergias.js` y otro en `src/config.js` (sección `SINERGIAS`) con el mismo `id` nuevo. Si usa un bonus que ya existe (`VELOCIDAD`, `DANO` o `REGENERACION`), funciona sola y aparece en el menú de pausa. Las instrucciones están al principio de `src/sinergias.js`.
+
 El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con el mismo formato que `src/sprites.js`.
 
 ### Nombres, dibujos y parejas de fusión (`src/objetos.js`)
@@ -406,7 +441,9 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, la noche y el jefe).
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
-- `src/instintos.js` — nombres y frases de las cartas de instintos.
+- `src/instintos.js` — nombres y frases de las cartas de instintos, y sus íconos (12 x 12) para el menú de pausa.
+- `src/sinergias.js` — las sinergias: nombre, frase, qué pide cada una y cómo se calcula su bonus.
+- `src/pausa.js` — el menú de pausa: panel, pestañas y botones.
 - `src/sprites.js` — los dibujos en pixel art de todos los personajes, el hueso y la mordida (y el borde de las élites y objetos).
 - `src/objetos.js` — objetos, rarezas y fusiones: nombres, frases y dibujos.
 - `src/mapa.js` — la plaza: suelo, pileta, bancas, árboles, faroles, basureros, autos, comida, obstáculos y la oscuridad de la noche.
@@ -418,5 +455,5 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js` o `src/jefe.js`, revisa ese cambio.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js` o `src/sinergias.js`, revisa ese cambio.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.

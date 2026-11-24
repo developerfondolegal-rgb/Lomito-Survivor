@@ -351,6 +351,24 @@ const CONFIG = {
   ELITE_RAREZA_MINIMA: 'raro',  // siempre suelta un objeto de esta rareza o mejor
 
   // ---------------------------------------------------------------
+  //  SINERGIAS: bonus extra por tener dos cosas juntas.
+  //  Qué cosas pide cada una (y sus nombres) está en src/sinergias.js
+  //  Cada número es el bonus: 0.1 = 10% más, 0.2 = 20% más.
+  //  Bonus que existen: VELOCIDAD, DANO (de mordida), REGENERACION
+  //  (la regeneración es la curación con el tiempo: el poder Calle del
+  //  Quiltro y el Hueso de caracú; la comida y la pileta no cambian)
+  // ---------------------------------------------------------------
+  SINERGIA_NIVEL_MINIMO: 1,     // nivel que necesita cada cosa para que cuente (1 = basta con tenerla)
+  SINERGIAS: {
+    // Callejero veterano (Pellejo duro + Hueso de caracú)
+    callejero: { REGENERACION: 0.2 },  // te curas 20% más rápido
+    // Cazador (Colmillos + Olfato)
+    cazador:   { DANO: 0.1 },          // 10% más daño de mordida
+    // Veloz (Patas ligeras + Pelota mordida)
+    veloz:     { VELOCIDAD: 0.1 }      // 10% más rápido
+  },
+
+  // ---------------------------------------------------------------
   //  LA NOCHE (meta de la partida). El código está en src/noche.js
   //  Ganas si llegas a la HORA_FIN y el Jefe de la Plaza está derrotado.
   // ---------------------------------------------------------------
