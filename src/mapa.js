@@ -517,8 +517,10 @@ function crearOscuridad(escena) {
   return { capa, luzFarol: luz(CONFIG.LUZ_FAROL_RADIO), luzPerro: luz(CONFIG.LUZ_PERRO_RADIO) };
 }
 
-// Se llama en cada cuadro: oscurece todo y "abre" las luces visibles
-function actualizarOscuridad(escena, oscuridad, plaza, perro) {
+// Se llama en cada cuadro: oscurece todo y "abre" las luces visibles.
+// "alfa" (opcional): qué tan oscuro (si no se da, usa OSCURIDAD de config.js).
+// "luces" (opcional): otros puntos con luz, por ejemplo el jefe ({ x, y }).
+function actualizarOscuridad(escena, oscuridad, plaza, perro, alfa, luces) {
   if (!oscuridad) return;
   const cam = escena.cameras.main;
   const w = escena.scale.width;
@@ -527,7 +529,10 @@ function actualizarOscuridad(escena, oscuridad, plaza, perro) {
   const capa = oscuridad.capa;
 
   capa.clear();
-  capa.fill(0x05081a, CONFIG.OSCURIDAD);
+  const nivel = alfa === undefined ? CONFIG.OSCURIDAD : alfa;
+  if (nivel <= 0) return; // de día: sin oscuridad
+  capa.fill(0x05081a, nivel);
+  (luces || []).forEach((l) => capa.erase(oscuridad.luzPerro, l.x - cam.scrollX, l.y - cam.scrollY));
   plaza.faroles.forEach((f) => {
     const sx = f.x - cam.scrollX;
     const sy = f.y - cam.scrollY;

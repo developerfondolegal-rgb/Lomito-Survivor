@@ -3,7 +3,8 @@
 // Los textos de razas, enemigos e instintos están en src/razas.js,
 // src/enemigos.js y src/instintos.js; los objetos, rarezas y fusiones, en src/objetos.js
 // (FUENTE y dibujarPerro vienen de MenuScene.js; los dibujos, de src/sprites.js;
-//  la plaza, la luz y los obstáculos, de src/mapa.js)
+//  la plaza, la luz y los obstáculos, de src/mapa.js;
+//  el reloj y las fases de la noche, de src/noche.js; el jefe final, de src/jefe.js)
 
 const COLOR_ATURDIDO = 0x9575cd; // morado: enemigo aturdido por la Mandíbula de hierro
 const COLOR_AVISO = 0xb9f6ca;    // verde claro: aviso de embestida del Drogadicto
@@ -73,6 +74,17 @@ class GameScene extends Phaser.Scene {
     this.esperaGolpeRastro = 0;
     this.rondaPrueba = 0;         // para que la tecla Y saque objetos distintos cada vez
 
+    // La noche (src/noche.js) y el jefe final (src/jefe.js)
+    this.faseActual = -1;         // -1 = todavía no se anuncia la primera fase
+    this.jefe = null;
+    this.jefeAparecido = false;
+    this.jefeAparecidoEn = 0;
+    this.jefeDerrotado = false;
+    this.avisoHoraFin = false;    // ya se avisó que son las 06:00 pero falta el jefe
+    this.amaneciendo = false;
+    this.amanecerMs = 0;          // cuánto lleva el amanecer
+    this.oscuridadAlAmanecer = 0; // qué tan oscuro estaba cuando empezó a amanecer
+
     // Por si venimos de un Game Over (la física y las animaciones quedaron en pausa)
     this.physics.resume();
     crearSprites(this);
@@ -117,6 +129,11 @@ class GameScene extends Phaser.Scene {
     this.avisos = this.add.graphics().setDepth(4);
     this.jaula = this.add.graphics().setDepth(12);
     this.escudo = this.add.graphics().setDepth(11); // anillo del "Cuero de calle"
+    // Avisos de ataque del jefe (encima de la oscuridad para que se vean siempre)
+    this.avisosJefe = this.add.graphics().setDepth(801);
+    // Luz anaranjada del amanecer (empieza invisible)
+    this.luzAmanecer = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xffb74d, 0)
+      .setOrigin(0).setScrollFactor(0).setDepth(802);
 
     // Controles
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -127,6 +144,8 @@ class GameScene extends Phaser.Scene {
     this.teclaT = this.input.keyboard.addKey('T'); // modo de prueba: enemigos
     this.teclaY = this.input.keyboard.addKey('Y'); // modo de prueba: objetos
     this.teclaU = this.input.keyboard.addKey('U'); // modo de prueba: +5 niveles
+    this.teclaJ = this.input.keyboard.addKey('J'); // modo de prueba: aparece el jefe
+    this.teclaK = this.input.keyboard.addKey('K'); // modo de prueba: el reloj salta 1 minuto
     this.teclasCartas = [
       this.input.keyboard.addKey('ONE'),
       this.input.keyboard.addKey('TWO'),
@@ -183,9 +202,19 @@ class GameScene extends Phaser.Scene {
       this.mostrarCartas();
       if (this.eligiendo) return;
     }
+    // Modo de prueba: el jefe aparece al tiro (si no hay uno vivo)
+    if (Phaser.Input.Keyboard.JustDown(this.teclaJ) && !this.jefeVivo() && !this.amaneciendo) {
+      this.aparecerJefe();
+    }
+    // Modo de prueba: el reloj de la noche salta 1 minuto
+    if (Phaser.Input.Keyboard.JustDown(this.teclaK) && !this.amaneciendo) {
+      this.tiempoSobrevivido += 60000;
+      this.textoFlotante('+1 minuto (prueba)', '#b3e5fc');
+    }
 
     this.moverPerro();
     this.moverEnemigos();
+    if (this.jefeVivo() && !this.amaneciendo) actualizarJefe(this, this.jefe);
     this.moverHuesos(delta);
     this.aparecerComida(delta);
     this.comer();
@@ -196,17 +225,21 @@ class GameScene extends Phaser.Scene {
     this.dibujarJaula();
     this.dibujarEscudo();
 
-    // Enemigo élite cada cierto tiempo
+    // La noche: fases, jefe y amanecer (si ya terminó, no sigue)
+    this.actualizarNoche(delta);
+    if (this.gameOver) return;
+
+    // Enemigo élite cada cierto tiempo (al amanecer ya no llegan más)
     if (this.tiempoSobrevivido >= this.proximoElite) {
       this.proximoElite += CONFIG.ELITE_CADA_SEGUNDOS * 1000;
-      this.aparecerElite();
+      if (!this.amaneciendo) this.aparecerElite();
     }
 
     // Aparición de enemigos
     this.esperaAparicion += delta;
     if (this.esperaAparicion >= this.intervaloAparicion()) {
       this.esperaAparicion = 0;
-      this.aparecerEnemigos();
+      if (!this.amaneciendo) this.aparecerEnemigos();
     }
 
     // Mordida automática
@@ -243,8 +276,124 @@ class GameScene extends Phaser.Scene {
     const invulnerable = this.tiempoSobrevivido < this.invulnerableHasta;
     this.perro.setAlpha(invulnerable ? 0.5 : 1);
 
-    actualizarOscuridad(this, this.oscuridad, this.plaza, this.perro);
+    // La oscuridad baja al acercarse el amanecer; el jefe lleva su propia luz
+    const luces = this.jefeVivo() ? [this.jefe] : [];
+    actualizarOscuridad(this, this.oscuridad, this.plaza, this.perro, this.nivelOscuridad(), luces);
     this.actualizarHUD();
+  }
+
+  // ---------------- La noche (src/noche.js) ----------------
+
+  actualizarNoche(delta) {
+    const ahora = this.tiempoSobrevivido;
+
+    // Fases: aviso grande cada vez que empieza una nueva
+    const fase = faseDeLaNoche(ahora);
+    if (fase > this.faseActual) {
+      const primera = this.faseActual < 0;
+      this.faseActual = fase;
+      const nombre = datosFase(fase).NOMBRE;
+      if (primera) {
+        this.mostrarAvisoGrande(nombre, 'Sobrevive hasta las ' + horaDeLaNoche(duracionNocheMs()), '#b3e5fc');
+      } else if (nombre) {
+        this.mostrarAvisoGrande(nombre, '¡La noche se pone más peligrosa!', '#ffcc80');
+      }
+    }
+
+    // El jefe llega a su minuto (o al final, si su minuto es después)
+    const minutoJefe = Math.min(CONFIG.JEFE.MINUTO * 60000, duracionNocheMs());
+    if (!this.jefeAparecido && ahora >= minutoJefe) this.aparecerJefe();
+
+    // Barra de vida del jefe
+    dibujarBarraJefe(this, this.jefe);
+
+    // Llegó la hora del amanecer
+    if (!this.amaneciendo && ahora >= duracionNocheMs()) {
+      if (this.jefeDerrotado) {
+        this.iniciarAmanecer();
+      } else if (!this.avisoHoraFin && ahora >= this.jefeAparecidoEn + 3000) { // sin tapar el aviso del jefe
+        this.avisoHoraFin = true;
+        this.mostrarAvisoGrande('¡Son las ' + horaDeLaNoche(ahora) + '!', 'Derrota al Jefe para que amanezca', '#ffd54f');
+      }
+    }
+
+    if (this.amaneciendo) this.actualizarAmanecer(delta);
+  }
+
+  // Qué tan oscura está la plaza ahora
+  nivelOscuridad() {
+    if (!this.amaneciendo) return oscuridadDeLaNoche(this.tiempoSobrevivido);
+    const t = Math.min(1, this.amanecerMs / CONFIG.NOCHE.AMANECER_MS);
+    return this.oscuridadAlAmanecer * (1 - t);
+  }
+
+  jefeVivo() {
+    return !!(this.jefe && this.jefe.active);
+  }
+
+  aparecerJefe() {
+    this.jefeAparecido = true;
+    this.jefeDerrotado = false;   // si aparece otro con la tecla J, hay que derrotarlo también
+    this.jefeAparecidoEn = this.tiempoSobrevivido;
+    this.jefe = crearJefe(this);
+    this.mostrarAvisoGrande('¡' + NOMBRE_JEFE + '!', 'Un perro enorme llegó a la plaza', '#ff5252');
+    this.cameras.main.shake(400, 0.008);
+  }
+
+  // Ganaste la noche: el cielo se aclara y los enemigos huyen
+  iniciarAmanecer() {
+    this.amaneciendo = true;
+    this.amanecerMs = 0;
+    this.oscuridadAlAmanecer = oscuridadDeLaNoche(this.tiempoSobrevivido);
+    this.avisosJefe.clear();
+    this.mostrarAvisoGrande('¡Amanece!', 'Los enemigos huyen de la luz', '#ffe082');
+    this.enemigos.getChildren().forEach((e) => this.espantarEnemigo(e));
+  }
+
+  // Un enemigo huye del perro y se desvanece
+  espantarEnemigo(enemigo) {
+    if (enemigo.espantado) return;
+    enemigo.espantado = true;
+    enemigo.huyendoHasta = Infinity;
+    enemigo.aturdidoHasta = 0;
+    this.tweens.add({
+      targets: enemigo, alpha: 0, delay: Phaser.Math.Between(300, 1500), duration: 1200,
+      onComplete: () => enemigo.destroy()
+    });
+  }
+
+  actualizarAmanecer(delta) {
+    this.amanecerMs += delta;
+    const t = Math.min(1, this.amanecerMs / CONFIG.NOCHE.AMANECER_MS);
+    this.luzAmanecer.setAlpha(CONFIG.NOCHE.AMANECER_LUZ * t);
+    // por si quedó alguno (por ejemplo, la manada del último aullido)
+    this.enemigos.getChildren().forEach((e) => this.espantarEnemigo(e));
+    if (t >= 1) {
+      actualizarOscuridad(this, this.oscuridad, this.plaza, this.perro, 0);
+      this.terminarJuego(true);
+    }
+  }
+
+  // Texto muy grande al centro de la pantalla (fases, jefe, amanecer)
+  mostrarAvisoGrande(titulo, subtitulo, color) {
+    if (this.capaAvisoGrande) this.capaAvisoGrande.forEach((t) => { this.tweens.killTweensOf(t); t.destroy(); });
+    const cx = this.scale.width / 2;
+    const cy = this.scale.height / 2 - 90;
+    const grande = this.add.text(cx, cy, titulo, {
+      fontFamily: FUENTE, fontSize: '54px', color, fontStyle: 'bold', stroke: '#000000', strokeThickness: 6
+    }).setOrigin(0.5);
+    const chico = this.add.text(cx, cy + 46, subtitulo || '', {
+      fontFamily: FUENTE, fontSize: '22px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5);
+    const capa = [grande, chico];
+    capa.forEach((t) => t.setScrollFactor(0).setDepth(1600));
+    this.capaAvisoGrande = capa;
+    grande.setScale(0.6);
+    this.tweens.add({ targets: grande, scale: 1, duration: 300, ease: 'Back.easeOut' });
+    this.tweens.add({
+      targets: capa, alpha: 0, delay: 2200, duration: 700,
+      onComplete: () => capa.forEach((t) => t.destroy())
+    });
   }
 
   // ---------------- Valores que dependen de la raza y los instintos ----------------
@@ -350,6 +499,9 @@ class GameScene extends Phaser.Scene {
       const cfg = enemigo.cfg;
       let avisando = false;
 
+      // El jefe se mueve solo (src/jefe.js), salvo al amanecer, que huye como todos
+      if (enemigo.esJefe && !this.amaneciendo) return;
+
       if (ahora < enemigo.empujadoHasta) {
         // Lo empujó un ladrido: lo dejamos volar un momento
         enemigo.estado = 'acercarse';
@@ -359,7 +511,7 @@ class GameScene extends Phaser.Scene {
       } else if (ahora < enemigo.huyendoHasta) {
         // Lo asustó el Aullido: corre alejándose del perro
         const angulo = Phaser.Math.Angle.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y);
-        enemigo.body.setVelocity(Math.cos(angulo) * cfg.VELOCIDAD, Math.sin(angulo) * cfg.VELOCIDAD);
+        enemigo.body.setVelocity(Math.cos(angulo) * enemigo.velocidad, Math.sin(angulo) * enemigo.velocidad);
         enemigo.estado = 'acercarse';
       } else if (cfg.COMPORTAMIENTO === 'zigzag') {
         this.moverZigzag(enemigo, ahora);
@@ -367,7 +519,7 @@ class GameScene extends Phaser.Scene {
         avisando = this.moverEmbestida(enemigo, ahora);
       } else {
         // 'perseguir' y 'atrapar': van hacia el perro (rodeando obstáculos)
-        this.moverHaciaPerro(enemigo, cfg.VELOCIDAD, ahora);
+        this.moverHaciaPerro(enemigo, enemigo.velocidad, ahora);
       }
 
       // Caminar y mirar hacia donde va (si lo empujó un ladrido, sigue mirando igual)
@@ -392,7 +544,7 @@ class GameScene extends Phaser.Scene {
       }
 
       // La Perrera se ve transparente mientras no puede atraparte
-      if (cfg.COMPORTAMIENTO === 'atrapar') {
+      if (cfg.COMPORTAMIENTO === 'atrapar' && !enemigo.espantado) {
         enemigo.setAlpha(ahora < enemigo.recargaHasta ? 0.45 : 1);
       }
 
@@ -413,7 +565,7 @@ class GameScene extends Phaser.Scene {
     // mientras rodea un obstáculo no zigzaguea
     const vaiven = ahora < enemigo.rodeandoHasta ? 0 : Math.sin((ahora / cfg.ZIGZAG_CADA_MS) * Math.PI * 2 + enemigo.fase);
     const angulo = haciaPerro + Phaser.Math.DegToRad(cfg.ZIGZAG_GRADOS) * vaiven;
-    enemigo.body.setVelocity(Math.cos(angulo) * cfg.VELOCIDAD, Math.sin(angulo) * cfg.VELOCIDAD);
+    enemigo.body.setVelocity(Math.cos(angulo) * enemigo.velocidad, Math.sin(angulo) * enemigo.velocidad);
   }
 
   // Hacia dónde camina un enemigo: directo al perro, o de lado si está
@@ -471,7 +623,7 @@ class GameScene extends Phaser.Scene {
         enemigo.estadoHasta = ahora + cfg.AVISO_MS;
         enemigo.body.setVelocity(0, 0);
       } else {
-        this.moverHaciaPerro(enemigo, cfg.VELOCIDAD, ahora);
+        this.moverHaciaPerro(enemigo, enemigo.velocidad, ahora);
       }
     }
 
@@ -532,14 +684,19 @@ class GameScene extends Phaser.Scene {
 
   // Sombras que quedan atrás durante el sprint
   dejarEstela() {
-    const sombra = this.add.image(this.perro.x, this.perro.y, this.perro.texture.key, this.perro.frame.name)
-      .setScale(ESCALA_PIXEL).setFlipX(this.perro.flipX).setAlpha(0.4);
-    if (this.perro.isTinted) sombra.setTint(this.perro.tintTopLeft);
-    sombra.setDepth(9);
+    this.dejarSombra(this.perro);
+  }
+
+  // Sombra que se desvanece donde estaba un personaje (sprint del Galgo, embestida del jefe)
+  dejarSombra(quien) {
+    const sombra = this.add.image(quien.x, quien.y, quien.texture.key, quien.frame.name)
+      .setScale(quien.scaleX).setFlipX(quien.flipX).setAlpha(0.4);
+    if (quien.isTinted) sombra.setTint(quien.tintTopLeft);
+    sombra.setDepth(quien.depth - 1);
     this.tweens.add({
       targets: sombra,
       alpha: 0,
-      scale: ESCALA_PIXEL * 0.6,
+      scale: quien.scaleX * 0.6,
       duration: 250,
       onComplete: () => sombra.destroy()
     });
@@ -589,7 +746,10 @@ class GameScene extends Phaser.Scene {
   intervaloAparicion() {
     const segundos = this.tiempoSobrevivido / 1000;
     const intervalo = CONFIG.APARICION_INICIAL_MS - segundos * CONFIG.APARICION_ACELERA_MS;
-    return Math.max(CONFIG.APARICION_MINIMA_MS, intervalo);
+    // La fase de la noche hace que salgan más seguido; con el jefe vivo, menos
+    let multiplicador = datosFase(faseDeLaNoche(this.tiempoSobrevivido)).APARICION;
+    if (this.jefeVivo()) multiplicador *= CONFIG.JEFE.APARICION_MIENTRAS;
+    return Math.max(CONFIG.APARICION_MINIMA_MS, intervalo) * multiplicador;
   }
 
   // Cuántos enemigos de un tipo hay ahora en el mapa
@@ -670,7 +830,10 @@ class GameScene extends Phaser.Scene {
     enemigo.tipo = tipo;
     enemigo.cfg = cfg;
     enemigo.radio = r;
-    enemigo.vida = cfg.VIDA * (elite ? CONFIG.ELITE_VIDA : 1);
+    // La fase de la noche les da más vida y velocidad
+    const fase = datosFase(faseDeLaNoche(this.tiempoSobrevivido));
+    enemigo.vida = cfg.VIDA * (elite ? CONFIG.ELITE_VIDA : 1) * fase.VIDA;
+    enemigo.velocidad = cfg.VELOCIDAD * fase.VELOCIDAD;
     enemigo.huyendoHasta = 0;     // huyendo del Aullido hasta este momento
     enemigo.empujadoHasta = 0;
     enemigo.aturdidoHasta = 0;
@@ -799,6 +962,7 @@ class GameScene extends Phaser.Scene {
       const probabilidad = this.base.HUESO_PROBABILIDAD === undefined ? 1 : this.base.HUESO_PROBABILIDAD;
       let cantidad = enemigo.cfg.HUESOS === undefined ? 1 : enemigo.cfg.HUESOS;
       if (enemigo.elite) cantidad *= CONFIG.ELITE_HUESOS;
+      if (enemigo.esJefe) this.derrotarJefe(enemigo);
       for (let i = 0; i < cantidad; i++) {
         if (Math.random() < probabilidad) {
           const ox = cantidad > 1 ? Phaser.Math.Between(-14, 14) : 0;
@@ -810,7 +974,9 @@ class GameScene extends Phaser.Scene {
       }
 
       // A veces suelta un objeto con rareza (el élite, siempre uno raro o mejor)
-      if (enemigo.elite) {
+      if (enemigo.esJefe) {
+        this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza(CONFIG.JEFE.OBJETO_RAREZA));
+      } else if (enemigo.elite) {
         this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza(CONFIG.ELITE_RAREZA_MINIMA));
       } else if (Math.random() < CONFIG.OBJETO_PROBABILIDAD) {
         this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza());
@@ -822,6 +988,15 @@ class GameScene extends Phaser.Scene {
     }
 
     enemigo.destelloHasta = this.tiempoSobrevivido + 80; // destello blanco breve
+  }
+
+  // El jefe murió: aviso (los huesos y el objeto los suelta danarEnemigo)
+  derrotarJefe(jefe) {
+    this.jefeDerrotado = true;
+    this.avisosJefe.clear();
+    this.cameras.main.shake(500, 0.012);
+    const falta = this.tiempoSobrevivido < duracionNocheMs();
+    this.mostrarAvisoGrande('¡Derrotaste al Jefe!', falta ? 'Aguanta hasta las ' + horaDeLaNoche(duracionNocheMs()) : '', '#ffd54f');
   }
 
   // ---------------- Mordida ----------------
@@ -1427,7 +1602,7 @@ class GameScene extends Phaser.Scene {
   // ---------------- Vida ----------------
 
   recibirGolpe(perro, enemigo) {
-    if (this.gameOver || this.eligiendo) return;
+    if (this.gameOver || this.eligiendo || this.amaneciendo) return; // al amanecer ya nadie ataca
     if (this.enSprint()) return; // el Galgo no recibe daño ni lo atrapan durante el sprint
 
     const cfg = enemigo.cfg;
@@ -1459,8 +1634,13 @@ class GameScene extends Phaser.Scene {
     }
   }
 
-  terminarJuego() {
+  // victoria = true: sobreviviste la noche; si no, Game Over
+  terminarJuego(victoria) {
     this.gameOver = true;
+    this.avisosJefe.clear();
+    dibujarBarraJefe(this, null);
+    if (this.capaAvisoGrande) this.capaAvisoGrande.forEach((t) => { this.tweens.killTweensOf(t); t.destroy(); });
+    this.capaAvisoGrande = null;
     this.physics.pause();
     this.anims.pauseAll();
     this.perro.setAlpha(1);
@@ -1484,7 +1664,9 @@ class GameScene extends Phaser.Scene {
       .setScrollFactor(0).setDepth(2000);
 
     const lineas = [
-      { texto: 'Game Over', y: 62, tam: '60px', color: '#ff5555', negrita: true },
+      victoria
+        ? { texto: '¡Sobreviviste la noche!', y: 62, tam: '50px', color: '#ffd54f', negrita: true }
+        : { texto: 'Game Over', y: 62, tam: '60px', color: '#ff5555', negrita: true },
       { texto: 'Raza: ' + this.textosRaza.nombre, y: 122, tam: '24px', color: '#ffe082' },
       { texto: 'Sobreviviste: ' + this.formatearTiempo(this.tiempoSobrevivido) + '     Nivel alcanzado: ' + this.nivel,
         y: 156, tam: '22px', color: '#ffffff' },
@@ -1497,6 +1679,11 @@ class GameScene extends Phaser.Scene {
       lineas.push({ texto: e.nombre + ': ' + (this.derrotadosPorTipo[e.id] || 0), y, tam: '18px', color: '#cccccc' });
       y += 24;
     });
+    if (this.jefeAparecido) {
+      lineas.push({ texto: NOMBRE_JEFE + ': ' + (this.jefeDerrotado ? 'derrotado' : 'sigue vivo'),
+        y, tam: '18px', color: this.jefeDerrotado ? '#ffd54f' : '#ff8a80', negrita: this.jefeDerrotado });
+      y += 24;
+    }
 
     // Objetos que tenías y fusiones logradas
     const objetos = this.inventario.map((id) => {
@@ -1540,7 +1727,7 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.8', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.9', estilo)
       .setScrollFactor(0).setDepth(1000);
 
     this.barraVida = this.add.graphics().setScrollFactor(0).setDepth(1000);
@@ -1558,8 +1745,19 @@ class GameScene extends Phaser.Scene {
     this.textoPoder = this.add.text(160, 96, '', { ...estilo, fontSize: '14px' })
       .setOrigin(0, 0.5).setScrollFactor(0).setDepth(1000);
 
-    this.textoTiempo = this.add.text(this.scale.width - 12, 20, '', { ...estilo, fontSize: '22px' })
-      .setOrigin(1, 0).setScrollFactor(0).setDepth(1000);
+    // Reloj de la noche (hora grande) y debajo la fase y el tiempo jugado
+    this.textoTiempo = this.add.text(this.scale.width - 12, 18, '', {
+      ...estilo, fontSize: '30px', color: '#ffe082', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(1000);
+    this.textoFase = this.add.text(this.scale.width - 12, 56, '', {
+      ...estilo, fontSize: '14px', color: '#cfd8dc', stroke: '#000000', strokeThickness: 3
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(1000);
+
+    // Barra de vida del jefe (src/jefe.js), arriba al centro
+    this.barraJefe = this.add.graphics().setScrollFactor(0).setDepth(1000);
+    this.textoJefe = this.add.text(this.scale.width / 2, 42, '', {
+      ...estilo, fontSize: '17px', color: '#ffd54f', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(1001).setVisible(false);
 
     // Inventario: fila de casillas abajo al centro
     this.capaInventario = [];
@@ -1656,7 +1854,9 @@ class GameScene extends Phaser.Scene {
       }
     }
 
-    this.textoTiempo.setText(this.formatearTiempo(this.tiempoSobrevivido));
+    this.textoTiempo.setText(horaDeLaNoche(this.tiempoSobrevivido));
+    const fase = datosFase(Math.max(0, this.faseActual)).NOMBRE;
+    this.textoFase.setText((fase ? fase + ' · ' : '') + this.formatearTiempo(this.tiempoSobrevivido));
   }
 
   formatearTiempo(ms) {

@@ -348,5 +348,71 @@ const CONFIG = {
   ELITE_TAMANO: 1.7,            // cuánto más grande es (dibujo y choque)
   ELITE_VIDA: 10,               // su vida es la del enemigo normal por este número
   ELITE_HUESOS: 3,              // suelta los huesos del enemigo normal por este número
-  ELITE_RAREZA_MINIMA: 'raro'   // siempre suelta un objeto de esta rareza o mejor
+  ELITE_RAREZA_MINIMA: 'raro',  // siempre suelta un objeto de esta rareza o mejor
+
+  // ---------------------------------------------------------------
+  //  LA NOCHE (meta de la partida). El código está en src/noche.js
+  //  Ganas si llegas a la HORA_FIN y el Jefe de la Plaza está derrotado.
+  // ---------------------------------------------------------------
+  NOCHE: {
+    DURACION_MINUTOS: 10,       // cuánto dura la noche de verdad (10 = 10 minutos jugando)
+    HORA_INICIO: 22,            // hora que marca el reloj al empezar (22 = 22:00)
+    HORA_FIN: 6,                // hora del amanecer (6 = 06:00)
+
+    // La oscuridad baja poco a poco al acercarse el amanecer
+    ACLARA_DESDE: 0.5,          // desde qué parte de la noche empieza a aclarar (0.5 = desde la mitad)
+    OSCURIDAD_AL_FINAL: 0.35,   // qué tan oscuro queda justo antes del amanecer (OSCURIDAD normal es 0.7)
+
+    // Amanecer: cuando ganas, el cielo se aclara y los enemigos huyen
+    AMANECER_MS: 5000,          // cuánto dura el amanecer antes de la pantalla de victoria
+    AMANECER_LUZ: 0.2,          // cuánta luz anaranjada se ve al amanecer (0 = nada, 1 = todo naranjo)
+
+    // Fases: al llegar cada HORA aparece un aviso grande y la dificultad sube.
+    // (las horas se reparten solas en la duración: con 10 minutos, cada 2 horas = 2,5 minutos)
+    //  APARICION: el tiempo entre enemigos se multiplica por esto (0.7 = salen más seguido)
+    //  VIDA: la vida de los enemigos nuevos se multiplica por esto (1.5 = 50% más vida)
+    //  VELOCIDAD: la velocidad de los enemigos nuevos se multiplica por esto
+    FASES: [
+      { HORA: 22, NOMBRE: 'Anochecer',      APARICION: 1,    VIDA: 1,    VELOCIDAD: 1 },
+      { HORA: 0,  NOMBRE: 'Medianoche',     APARICION: 0.85, VIDA: 1.25, VELOCIDAD: 1.05 },
+      { HORA: 2,  NOMBRE: 'Madrugada',      APARICION: 0.7,  VIDA: 1.5,  VELOCIDAD: 1.1 },
+      { HORA: 4,  NOMBRE: 'Antes del alba', APARICION: 0.6,  VIDA: 1.8,  VELOCIDAD: 1.15 }
+    ]
+  },
+
+  // ---------------------------------------------------------------
+  //  JEFE FINAL: "El Jefe de la Plaza". Su dibujo y ataques están en src/jefe.js
+  // ---------------------------------------------------------------
+  JEFE: {
+    MINUTO: 9,                  // a qué minuto de la noche aparece
+    VIDA: 3000,                 // vida total (la barra grande de arriba)
+    RADIO: 42,                  // tamaño de su zona de choque
+    TAMANO: 2,                  // cuánto más grande se dibuja que un perro normal
+    VELOCIDAD: 90,              // velocidad caminando
+    DANO: 20,                   // daño al tocarte
+    HUESOS: 40,                 // huesos que suelta al morir
+    OBJETO_RAREZA: 'epico',     // suelta un objeto de esta rareza o mejor
+    APARICION_MIENTRAS: 1.5,    // mientras está vivo, el tiempo entre enemigos normales se multiplica por esto (1.5 = salen menos)
+    ATAQUE_CADA_MS: 4000,       // tiempo caminando entre un ataque y el siguiente
+
+    // Furia: al bajar a esta parte de su vida se pone más rápido
+    FURIA_EN: 0.5,              // 0.5 = a la mitad de la vida
+    FURIA_VELOCIDAD: 140,       // velocidad caminando en furia
+    FURIA_ATAQUE_CADA_MS: 2500, // tiempo entre ataques en furia
+
+    // Ataque 1: embestida en línea recta (antes avisa con una franja roja)
+    EMBESTIDA_AVISO_MS: 1000,   // tiempo quieto avisando antes de embestir
+    EMBESTIDA_VELOCIDAD: 650,   // velocidad de la embestida
+    EMBESTIDA_MS: 700,          // cuánto dura la embestida
+    EMBESTIDA_DANO: 30,         // daño si te alcanza embistiendo
+    EMBESTIDA_DESCANSO_MS: 900, // tiempo quieto (cansado) después de embestir
+
+    // Ataque 2: aullido que llama a una manada (antes avisa con anillos)
+    AULLIDO_AVISO_MS: 1200,     // tiempo quieto avisando antes de aullar
+    AULLIDO_MANADA: 6,          // cuántos perritos de manada llegan
+    FURIA_AULLIDO_MANADA: 9,    // cuántos llegan en furia
+    AULLIDO_DISTANCIA: 180,     // a qué distancia del jefe aparecen
+
+    FURIA_AVISO: 0.7            // en furia, los avisos duran esto (0.7 = 70% del tiempo normal)
+  }
 };

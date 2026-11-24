@@ -2,7 +2,9 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.8** — objetos con rareza, enemigos élite y fusiones.
+Versión actual: **v0.9** — noche completa con reloj y fases, jefe final y amanecer.
+
+**Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
 ## Cómo abrir el juego
 
@@ -25,14 +27,20 @@ Versión actual: **v0.8** — objetos con rareza, enemigos élite y fusiones.
 | Modo de prueba: un enemigo de cada tipo cerca del perro | **T** |
 | Modo de prueba: un objeto de cada rareza cerca del perro | **Y** |
 | Modo de prueba: subir 5 niveles de golpe | **U** |
+| Modo de prueba: aparece el jefe al tiro | **J** |
+| Modo de prueba: el reloj de la noche salta 1 minuto | **K** |
 
 No hay botón para atacar: el perro muerde solo.
 
-### Modo de prueba (teclas T, Y y U)
+### Modo de prueba (teclas T, Y, U, J y K)
 
 - **T**: aparece un enemigo de cada tipo en un círculo alrededor del perro (la Manada aparece como grupo completo). Sirve para ver cómo se mueve cada enemigo sin esperar minutos. Estos enemigos **no sueltan huesos ni objetos ni cuentan** en el Game Over, pero sí hacen daño y atrapan como los normales.
 - **Y**: aparecen **4 objetos** alrededor del perro, uno de cada rareza (blanco, azul, morado y dorado). Cada vez que presionas Y salen objetos distintos, así en pocas veces tienes cada objeto en morado (épico) o dorado (legendario), que lo suben directo al nivel 3.
 - **U**: el perro sube **5 niveles de golpe** y salen 5 rondas de cartas seguidas.
+- **J**: aparece **El Jefe de la Plaza** al tiro (solo si no hay otro jefe vivo). Si lo llamas antes de tiempo, ya no vuelve a aparecer solo a los 9 minutos.
+- **K**: el reloj **salta 1 minuto** hacia adelante (con 10 minutos, son 48 minutos de reloj). Todo avanza junto: la fase, los enemigos que aparecen y la oscuridad. El tiempo saltado también cuenta en "Sobreviviste" de la pantalla final.
+
+**Probar el final rápido:** presiona **J**, derrota al jefe (o quítale vida con U para subir niveles) y luego presiona **K** unas 10 veces hasta las 06:00: amanece y sale "¡Sobreviviste la noche!". Para ver qué pasa si el jefe sigue vivo, presiona **K** 10 veces sin derrotarlo: el reloj se queda en 06:00 hasta que lo derrotes.
 
 **Cómo forzar una fusión rápido** (por ejemplo *Frenesí*):
 1. Presiona **U** y en cada ronda elige **Mordida rápida** cuando aparezca. Repite U hasta que llegue a nivel 5 (deja de aparecer en las cartas).
@@ -154,16 +162,42 @@ Si tienes un **instinto en nivel 5** y su **objeto pareja en nivel 3**, al subir
 
 Las fusiones logradas salen escritas encima del inventario.
 
+### La noche
+
+- **Reloj**: arriba a la derecha está la **hora de la noche** (empieza a las 22:00 y llega a las 06:00 en 10 minutos). Debajo sale la fase y el tiempo que llevas jugando.
+- **Fases**: cada 2 horas de reloj (2 minutos y medio) aparece un aviso grande y la noche se pone más difícil: los enemigos nuevos llegan más seguido, con más vida y un poco más rápidos.
+
+| Hora | Fase | Minuto |
+|---|---|---|
+| 22:00 | Anochecer | 0:00 |
+| 00:00 | Medianoche | 2:30 |
+| 02:00 | Madrugada | 5:00 |
+| 04:00 | Antes del alba | 7:30 |
+
+- **Oscuridad**: desde la mitad de la noche la plaza se va aclarando poco a poco.
+- **Amanecer**: si llegas a las 06:00 **y el jefe está derrotado**, el cielo se aclara, se ve una luz anaranjada, los enemigos huyen y ya no te hacen daño. Luego sale **"¡Sobreviviste la noche!"**. Si llegan las 06:00 y el jefe sigue vivo, el reloj se queda en 06:00 hasta que lo derrotes.
+
+### El Jefe de la Plaza
+
+A los **9 minutos** (05:12 en el reloj) llega un perro enorme y oscuro con collar de púas y ojos rojos. Arriba al centro aparece su **barra de vida** grande (la rayita blanca marca la mitad). Mientras está vivo llegan menos enemigos normales, y lleva su propia luz para que siempre lo veas.
+
+- **Embestida**: se queda quieto, parpadea en rojo y marca una **franja roja**; luego corre muy rápido por esa franja. ¡Sal de la franja! Después queda cansado un momento.
+- **Aullido**: se queda quieto, parpadea en naranjo y unos **anillos naranjos** se cierran sobre él; luego aúlla y llega una **manada** de perritos a su alrededor.
+- **Furia**: al bajar a la **mitad de su vida** se pone rojizo, camina más rápido, ataca más seguido, avisa menos tiempo y llama a más perritos.
+- El Ladrido y la Mandíbula le hacen daño, pero no lo empujan ni lo aturden.
+- Al morir suelta muchos huesos y un objeto **épico o legendario**.
+
 ### Pantalla
 
 - Arriba de todo: barra de experiencia y tu **nivel**.
 - Arriba a la izquierda: barra de **vida**, tu **raza** y su poder. Si el poder tiene espera (Pitbull y Galgo), una barrita muestra cuánto falta; cuando se pone amarilla dice **¡Listo!**
-- Arriba a la derecha: **tiempo** sobrevivido.
+- Arriba a la derecha: **hora de la noche**, y debajo la fase y el tiempo jugado.
+- Arriba al centro (solo con el jefe vivo): nombre y **barra de vida del jefe**.
 - Abajo al centro: **inventario** de objetos y fusiones logradas.
 
-### Game Over
+### Game Over y victoria
 
-Al llegar a 0 de vida aparece "Game Over" con tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados, cuántos de cada tipo, los **objetos** que tenías (con su nivel) y las **fusiones** logradas.
+Al llegar a 0 de vida aparece "Game Over". Si sobrevives la noche aparece **"¡Sobreviviste la noche!"**. Las dos pantallas muestran tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados, cuántos de cada tipo, si derrotaste al jefe, los **objetos** que tenías (con su nivel) y las **fusiones** logradas.
 - **R**: jugar de nuevo con la misma raza.
 - **M**: volver a la pantalla de inicio para elegir otra raza.
 
@@ -336,6 +370,27 @@ Los dibujos de la plaza (bancas, basureros, faroles, autos y comida) y el tamañ
 | `ELITE_TAMANO` / `ELITE_VIDA` / `ELITE_HUESOS` | Cuánto más grande es, cuánta vida y cuántos huesos (multiplicando los del enemigo normal) |
 | `ELITE_RAREZA_MINIMA` | Rareza mínima del objeto que suelta (`'raro'`) |
 
+### La noche y el jefe (`src/config.js`, secciones `NOCHE` y `JEFE`)
+
+| Ajuste | Qué hace |
+|---|---|
+| `NOCHE.DURACION_MINUTOS` | Cuánto dura la noche (10 = 10 minutos) |
+| `NOCHE.HORA_INICIO` / `NOCHE.HORA_FIN` | Hora del reloj al empezar (22) y del amanecer (6) |
+| `NOCHE.ACLARA_DESDE` / `NOCHE.OSCURIDAD_AL_FINAL` | Desde qué parte de la noche se aclara (0.5 = la mitad) y qué tan oscuro queda al final |
+| `NOCHE.AMANECER_MS` / `NOCHE.AMANECER_LUZ` | Cuánto dura el amanecer y cuánta luz anaranjada se ve |
+| `NOCHE.FASES` | Cada fase: `HORA` en que empieza, `NOMBRE` del aviso y cuánto cambian los enemigos nuevos (`APARICION`: tiempo entre enemigos, `VIDA`, `VELOCIDAD`; 1 = igual que siempre) |
+| `JEFE.MINUTO` | A qué minuto aparece el jefe (9) |
+| `JEFE.VIDA` / `JEFE.RADIO` / `JEFE.TAMANO` | Vida, tamaño del choque y tamaño del dibujo |
+| `JEFE.VELOCIDAD` / `JEFE.DANO` | Velocidad caminando y daño al tocarte |
+| `JEFE.HUESOS` / `JEFE.OBJETO_RAREZA` | Huesos que suelta y rareza mínima del objeto |
+| `JEFE.APARICION_MIENTRAS` | Con el jefe vivo, el tiempo entre enemigos normales se multiplica por esto |
+| `JEFE.ATAQUE_CADA_MS` | Tiempo caminando entre ataques |
+| `JEFE.FURIA_EN` / `FURIA_VELOCIDAD` / `FURIA_ATAQUE_CADA_MS` / `FURIA_AVISO` | Cuándo se enfurece (0.5 = mitad de vida) y cómo cambia |
+| `JEFE.EMBESTIDA_...` | Aviso, velocidad, duración, daño y descanso de la embestida |
+| `JEFE.AULLIDO_...` / `FURIA_AULLIDO_MANADA` | Aviso del aullido, cuántos perritos llegan (normal / en furia) y a qué distancia |
+
+El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con el mismo formato que `src/sprites.js`.
+
 ### Nombres, dibujos y parejas de fusión (`src/objetos.js`)
 
 - `RAREZAS`: nombre y color de cada rareza, y si destella.
@@ -348,18 +403,20 @@ Los dibujos de la plaza (bancas, basureros, faroles, autos y comida) y el tamañ
 ## Archivos
 
 - `index.html` — la página que abre el juego.
-- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones y élites).
+- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, la noche y el jefe).
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
 - `src/instintos.js` — nombres y frases de las cartas de instintos.
 - `src/sprites.js` — los dibujos en pixel art de todos los personajes, el hueso y la mordida (y el borde de las élites y objetos).
 - `src/objetos.js` — objetos, rarezas y fusiones: nombres, frases y dibujos.
 - `src/mapa.js` — la plaza: suelo, pileta, bancas, árboles, faroles, basureros, autos, comida, obstáculos y la oscuridad de la noche.
+- `src/noche.js` — el reloj de la noche, las fases y cuánto se aclara la oscuridad.
+- `src/jefe.js` — El Jefe de la Plaza: su dibujo, sus ataques y su barra de vida.
 - `src/main.js` — configuración del motor del juego.
 - `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza.
-- `src/scenes/GameScene.js` — la partida: perro, enemigos (y cómo rodean obstáculos), ataques, poderes, comida, agua, experiencia, objetos, élites, fusiones, cartas y Game Over.
+- `src/scenes/GameScene.js` — la partida: perro, enemigos (y cómo rodean obstáculos), ataques, poderes, comida, agua, experiencia, objetos, élites, fusiones, cartas, fases de la noche, amanecer, Game Over y victoria.
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js` u `src/objetos.js`, revisa ese cambio.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js` o `src/jefe.js`, revisa ese cambio.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.
