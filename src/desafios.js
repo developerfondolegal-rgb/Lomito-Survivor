@@ -297,7 +297,10 @@ function completarDesafio(escena) {
   const d = escena.desafio;
   const nombre = buscarDesafio(d.id).nombre;
   terminarDesafio(escena);
-  const recompensa = darRecompensaDesafio(escena);
+  let recompensa = darRecompensaDesafio(escena);
+  // Algunos desafíos (CONFIG.ULTRA_DESAFIOS) además dan siempre un ultra raro (src/coleccionables.js)
+  const ultra = ultraPorDesafio(escena, d.id);
+  if (ultra) recompensa += ' + ' + ultra;
   escena.desafiosCompletados.push({ id: d.id, nombre, minuto: escena.formatearTiempo(escena.tiempoSobrevivido), recompensa });
   escena.mostrarAviso('¡Desafío cumplido: ' + nombre + '!', '#9ccc65');
   escena.mostrarAviso('Recompensa: ' + recompensa, '#ffe082');

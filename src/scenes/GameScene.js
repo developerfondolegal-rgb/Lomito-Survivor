@@ -5,7 +5,8 @@
 // (FUENTE y dibujarPerro vienen de MenuScene.js; los dibujos, de src/sprites.js;
 //  la plaza, la luz y los obstáculos, de src/mapa.js;
 //  el reloj y las fases de la noche, de src/noche.js; el jefe final, de src/jefe.js;
-//  las zonas especiales, de src/zonas.js; los mini desafíos, de src/desafios.js)
+//  las zonas especiales, de src/zonas.js; los mini desafíos, de src/desafios.js;
+//  los ultra raros coleccionables, de src/coleccionables.js)
 
 const COLOR_ATURDIDO = 0x9575cd; // morado: enemigo aturdido por la Mandíbula de hierro
 const COLOR_AVISO = 0xb9f6ca;    // verde claro: aviso de embestida del Drogadicto
@@ -35,7 +36,9 @@ class GameScene extends Phaser.Scene {
     this.poderCarga = this.poderEsperaTotal; // el poder empieza listo
 
     // Estado de la partida
-    this.vidaMax = this.base.VIDA;
+    // (Sweater tejido a mano: los coleccionables guardados se aplican desde el inicio)
+    this.mapaId = 'plaza';        // mapa actual (los coleccionables dicen a qué mapa pertenecen)
+    this.vidaMax = this.base.VIDA + bonusColeccion('sweater', 'VIDA');
     this.vida = this.vidaMax;
     this.tiempoSobrevivido = 0;   // reloj del juego en ms (se detiene en pausa)
     this.invulnerableHasta = 0;
@@ -153,6 +156,7 @@ class GameScene extends Phaser.Scene {
     this.teclaK = this.input.keyboard.addKey('K'); // modo de prueba: el reloj salta 1 minuto
     this.teclaZ = this.input.keyboard.addKey('Z'); // modo de prueba: una zona de cada tipo
     this.teclaX = this.input.keyboard.addKey('X'); // modo de prueba: empieza un desafío al azar
+    this.teclaC = this.input.keyboard.addKey('C'); // modo de prueba: un ultra raro coleccionable
     this.teclaP = this.input.keyboard.addKey('P');   // menú de pausa
     this.teclaEsc = this.input.keyboard.addKey('ESC'); // menú de pausa
     this.teclasCartas = [
@@ -166,6 +170,9 @@ class GameScene extends Phaser.Scene {
     // Zonas especiales (src/zonas.js) y mini desafíos (src/desafios.js)
     iniciarZonas(this);
     iniciarDesafios(this);
+
+    // Ultra raros coleccionables (src/coleccionables.js): peluche, etc.
+    iniciarColeccionables(this);
   }
 
   update(time, delta) {
@@ -203,8 +210,10 @@ class GameScene extends Phaser.Scene {
     this.tiempoSobrevivido += delta;
 
     // Cargar el poder (si tiene espera). No carga mientras está en sprint.
+    // Capa de superhéroe: se recarga más rápido
     if (this.poderEsperaTotal > 0 && !this.enSprint()) {
-      this.poderCarga = Math.min(this.poderEsperaTotal, this.poderCarga + delta);
+      const rapidez = 1 + bonusColeccion('capa', 'RECARGA');
+      this.poderCarga = Math.min(this.poderEsperaTotal, this.poderCarga + delta * rapidez);
     }
 
     // Sprint del Galgo (no se puede si la Perrera lo atrapó)
@@ -245,6 +254,10 @@ class GameScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.teclaX) && !this.amaneciendo) {
       pruebaDesafio(this);
     }
+    // Modo de prueba: un ultra raro coleccionable al azar cerca del perro
+    if (Phaser.Input.Keyboard.JustDown(this.teclaC)) {
+      pruebaUltra(this);
+    }
 
     // Zonas especiales: en cuál está el perro (antes de moverlo, por el barro)
     actualizarZonas(this);
@@ -259,6 +272,7 @@ class GameScene extends Phaser.Scene {
     this.beberAgua(delta);
     this.recogerObjetos();
     this.efectosObjetos(delta);
+    actualizarColeccionables(this, delta); // ultra raros en el suelo, peluche, sweater y mantita
     this.actualizarEstampida(delta);
     this.dibujarJaula();
     this.dibujarEscudo();
@@ -442,10 +456,11 @@ class GameScene extends Phaser.Scene {
   // ---------------- Valores que dependen de la raza y los instintos ----------------
 
   // (bonusSinergias viene de src/sinergias.js: suma el bonus de las sinergias activas)
+  // (bonusColeccion viene de src/coleccionables.js: bonus de los ultra raros guardados)
   velocidadPerro() {
     const suma = this.base.VELOCIDAD + this.instintos.patasLigeras * CONFIG.PATAS_VELOCIDAD +
       this.nivelObjeto('pelota') * CONFIG.OBJETOS.pelota.VELOCIDAD;
-    return suma * (1 + bonusSinergias(this, 'VELOCIDAD'));
+    return suma * (1 + bonusSinergias(this, 'VELOCIDAD') + bonusColeccion('capa', 'VELOCIDAD'));
   }
 
   // Regeneración (poder Calle y Hueso de caracú): 1.2 = se cura 20% más rápido
@@ -470,7 +485,19 @@ class GameScene extends Phaser.Scene {
   }
 
   radioIman() {
-    return CONFIG.IMAN_RADIO + (this.base.IMAN_EXTRA || 0) + this.instintos.olfato * CONFIG.OLFATO_IMAN;
+    return CONFIG.IMAN_RADIO + (this.base.IMAN_EXTRA || 0) + this.instintos.olfato * CONFIG.OLFATO_IMAN +
+      bonusColeccion('lentes', 'IMAN');
+  }
+
+  // Alcance de la mordida (Lentes: más alcance)
+  alcanceMordida() {
+    return CONFIG.MORDIDA_ALCANCE + bonusColeccion('lentes', 'ALCANCE');
+  }
+
+  // Experiencia que da cada hueso (Placa de identificación y Cascabel)
+  xpPorHueso() {
+    return CONFIG.HUESO_XP * (1 + this.nivelObjeto('placa') * CONFIG.OBJETOS.placa.XP_EXTRA +
+      bonusColeccion('cascabel', 'XP_EXTRA'));
   }
 
   intervaloLadrido() {
@@ -534,8 +561,8 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    // En el barro se mueve más lento (src/zonas.js)
-    const barro = this.efectoZona.barro ? factorBarro() : 1;
+    // En el barro se mueve más lento (src/zonas.js). Gorro de lana: menos lento
+    const barro = this.efectoZona.barro ? this.factorBarroPerro() : 1;
 
     // Durante el sprint va muy rápido en línea recta
     if (this.enSprint()) {
@@ -548,6 +575,14 @@ class GameScene extends Phaser.Scene {
     // Normalizar para que en diagonal no vaya más rápido
     const vel = new Phaser.Math.Vector2(dx, dy).normalize().scale(this.velocidadPerro() * barro);
     this.perro.body.setVelocity(vel.x, vel.y);
+  }
+
+  // Cuánto se multiplica la velocidad del perro en el barro (Gorro de lana: frena menos)
+  factorBarroPerro() {
+    const b = CONFIG.ZONAS.barro;
+    if (!b) return 1;
+    const lentitud = (b.LENTITUD || 0) * Math.max(0, 1 - bonusColeccion('gorro', 'MENOS_LENTITUD'));
+    return Math.max(0, 1 - lentitud);
   }
 
   moverEnemigos() {
@@ -976,7 +1011,7 @@ class GameScene extends Phaser.Scene {
   // Busca un punto justo fuera de lo que se ve en pantalla, pero dentro del mapa
   posicionFueraDePantalla() {
     const vista = this.cameras.main.worldView;
-    const margen = 50;
+    const margen = 50 + bonusColeccion('chalequito', 'APARECE_LEJOS'); // Chalequito: aparecen más lejos
 
     for (let intento = 0; intento < 10; intento++) {
       let x;
@@ -1041,6 +1076,8 @@ class GameScene extends Phaser.Scene {
       } else if (Math.random() < CONFIG.OBJETO_PROBABILIDAD) {
         this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza());
       }
+      // Muy de vez en cuando, un ultra raro coleccionable (src/coleccionables.js)
+      sorteoUltraAlDerrotar(this, enemigo);
       this.derrotados++;
       this.derrotadosPorTipo[enemigo.tipo] = (this.derrotadosPorTipo[enemigo.tipo] || 0) + 1;
       enemigo.destroy();
@@ -1067,7 +1104,7 @@ class GameScene extends Phaser.Scene {
     const cuantos = this.fusiones.frenesi ? CONFIG.FUSIONES.frenesi.OBJETIVOS : 1;
     const objetivos = this.enemigos.getChildren()
       .map((enemigo) => ({ enemigo, d: Phaser.Math.Distance.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y) - enemigo.radio }))
-      .filter((o) => o.d <= CONFIG.MORDIDA_ALCANCE)
+      .filter((o) => o.d <= this.alcanceMordida())
       .sort((a, b) => a.d - b.d)
       .slice(0, cuantos)
       .map((o) => o.enemigo);
@@ -1085,18 +1122,23 @@ class GameScene extends Phaser.Scene {
         fuerte = true;
       }
 
-      this.mostrarMordida(objetivo, fuerte);
+      // Pañuelo rojo: a veces la mordida es crítica (doble daño)
+      const critico = Math.random() < bonusColeccion('panuelo', 'CRITICO');
+      if (critico) dano *= 2;
+
+      this.mostrarMordida(objetivo, fuerte, critico);
       this.danarEnemigo(objetivo, dano);
     });
   }
 
   // Dientes de pixel art sobre el enemigo que se desvanecen
-  // (amarillos y más grandes si es la Mandíbula de hierro)
-  mostrarMordida(objetivo, fuerte) {
-    const escala = fuerte ? ESCALA_PIXEL + 1 : ESCALA_PIXEL;
+  // (amarillos y más grandes si es la Mandíbula de hierro; rojos si es crítica)
+  mostrarMordida(objetivo, fuerte, critico) {
+    const escala = fuerte || critico ? ESCALA_PIXEL + 1 : ESCALA_PIXEL;
     const dientes = this.add.image(objetivo.x, objetivo.y, 'mordida', 0).setScale(escala);
     dientes.setDepth(20);
     if (fuerte) dientes.setTint(COLOR_HUESO);
+    else if (critico) dientes.setTint(0xff5252);
 
     this.tweens.add({
       targets: dientes,
@@ -1164,8 +1206,8 @@ class GameScene extends Phaser.Scene {
 
       if (d <= distanciaRecoger) {
         hueso.destroy();
-        // Placa de identificación: más experiencia por hueso
-        this.ganarXP(CONFIG.HUESO_XP * (1 + this.nivelObjeto('placa') * CONFIG.OBJETOS.placa.XP_EXTRA));
+        // Placa de identificación y Cascabel: más experiencia por hueso
+        this.ganarXP(this.xpPorHueso());
         return;
       }
 
@@ -1261,7 +1303,7 @@ class GameScene extends Phaser.Scene {
       if (this.vida >= this.vidaMax) return;
       if (Phaser.Math.Distance.Between(this.perro.x, this.perro.y, comida.x, comida.y) <= alcance) {
         comida.destroy();
-        this.curar(CONFIG.COMIDA_CURA, '#9ccc65');
+        this.curar(CONFIG.COMIDA_CURA + bonusColeccion('zapatilla', 'COMIDA_CURA'), '#9ccc65'); // Zapatilla perdida: cura más
       }
     });
   }
@@ -1275,7 +1317,8 @@ class GameScene extends Phaser.Scene {
       return;
     }
     this.esperaAgua += delta;
-    if (this.esperaAgua >= CONFIG.AGUA_CURA_CADA_MS) {
+    // Mantita cuadrillé: la pileta cura más rápido
+    if (this.esperaAgua >= CONFIG.AGUA_CURA_CADA_MS / (1 + bonusColeccion('mantita', 'PILETA_RAPIDEZ'))) {
       this.esperaAgua = 0;
       this.curar(CONFIG.AGUA_CURA, '#81d4fa');
     }
@@ -1687,7 +1730,8 @@ class GameScene extends Phaser.Scene {
     // La Perrera no hace daño: te deja quieto un momento
     if (cfg.COMPORTAMIENTO === 'atrapar') {
       if (ahora < enemigo.recargaHasta || ahora < enemigo.aturdidoHasta) return;
-      this.atrapadoHasta = ahora + cfg.ATRAPA_MS;
+      // Gorro de lana: te deja atrapado menos rato
+      this.atrapadoHasta = ahora + cfg.ATRAPA_MS * Math.max(0, 1 - bonusColeccion('gorro', 'MENOS_LENTITUD'));
       enemigo.recargaHasta = ahora + cfg.RECARGA_MS;
       return;
     }
@@ -1696,11 +1740,25 @@ class GameScene extends Phaser.Scene {
     if (ahora < this.invulnerableHasta) return;
     if (this.efectoZona.segura) return; // Zona segura: no recibe daño
 
+    // Antifaz: a veces esquiva el golpe
+    if (Math.random() < bonusColeccion('antifaz', 'ESQUIVAR')) {
+      this.invulnerableHasta = ahora + CONFIG.PERRO_INVULNERABLE_MS;
+      this.textoFlotante('¡Esquivado!', '#e1bee7');
+      return;
+    }
+
     // Collar viejo: menos daño por nivel. Cuero de calle: la mitad si está activo.
     let dano = cfg.DANO * Math.max(0, 1 - this.nivelObjeto('collar') * CONFIG.OBJETOS.collar.MENOS_DANO);
     if (this.fusiones.cuero && ahora < this.cueroHasta) dano *= CONFIG.FUSIONES.cuero.MULTIPLICADOR;
     // Zona peligrosa: el doble de daño
     if (this.efectoZona.peligro) dano *= CONFIG.ZONAS.peligro.DANO_MULTIPLICADOR || 1;
+    // Chalequito reflectante: menos daño de las embestidas (Drogadicto y Jefe)
+    if (enemigo.estado === 'embestir') dano *= Math.max(0, 1 - bonusColeccion('chalequito', 'MENOS_DANO_EMBESTIDA'));
+    // Collar antipulgas: menos daño de la manada y de los perros rivales
+    const antipulgas = CONFIG.COLECCIONABLES.antipulgas;
+    if (antipulgas && (antipulgas.TIPOS || []).includes(enemigo.tipo)) {
+      dano *= Math.max(0, 1 - bonusColeccion('antipulgas', 'MENOS_DANO'));
+    }
     dano = Math.max(1, Math.round(dano));
 
     this.vida = Math.max(0, this.vida - dano);
@@ -1780,8 +1838,10 @@ class GameScene extends Phaser.Scene {
       y, tam: '18px', color: '#ffd54f', negrita: fusiones.length > 0 });
     y += 26;
     const completados = this.desafiosCompletados.length;
-    lineas.push({ texto: 'Desafíos completados: ' + completados + (this.desafiosFallidos ? '   (fallidos: ' + this.desafiosFallidos + ')' : ''),
-      y, tam: '18px', color: '#9ccc65', negrita: completados > 0 });
+    const ultras = this.ultrasPartida.length;
+    lineas.push({ texto: 'Desafíos completados: ' + completados + (this.desafiosFallidos ? '   (fallidos: ' + this.desafiosFallidos + ')' : '') +
+      (ultras ? '     ·     Ultra raros: ' + ultras : ''),
+      y, tam: '18px', color: '#9ccc65', negrita: completados > 0 || ultras > 0 });
 
     lineas.push({ texto: 'R: jugar de nuevo con la misma raza', y: 482, tam: '20px', color: '#dddddd' });
     lineas.push({ texto: 'M: volver al inicio y elegir otra raza', y: 510, tam: '20px', color: '#dddddd' });
@@ -1812,7 +1872,7 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.11', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.12', estilo)
       .setScrollFactor(0).setDepth(1000);
     this.add.text(12, this.scale.height - 10, 'P / Esc: pausa', { ...estilo, fontSize: '13px', color: '#9e9e9e' })
       .setOrigin(0, 1).setScrollFactor(0).setDepth(1000);

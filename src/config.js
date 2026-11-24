@@ -447,6 +447,60 @@ const CONFIG = {
   },
 
   // ---------------------------------------------------------------
+  //  ULTRA RAROS: la rareza más difícil (brillo arcoíris). No son
+  //  objetos del inventario: son COLECCIONABLES que se guardan en el
+  //  navegador para siempre y dan un bonus permanente en todas las
+  //  partidas, con cualquier raza. Sus nombres, frases y dibujos están
+  //  en src/coleccionables.js
+  // ---------------------------------------------------------------
+  ULTRA_PROBABILIDAD_ENEMIGO: 0.0005, // enemigo normal: 5 de cada 10.000 sueltan uno
+  ULTRA_PROBABILIDAD_ELITE: 0.04,     // élite: 4 de cada 100
+  ULTRA_PROBABILIDAD_JEFE: 0.35,      // Jefe de la Plaza: 35 de cada 100
+  ULTRA_DESAFIOS: ['aguanta', 'caceria'], // estos desafíos SIEMPRE dan un ultra raro al cumplirlos
+                                          // (además de su recompensa normal). Ids de DESAFIOS
+  ULTRA_RECOGER: 24,                  // qué tan cerca tienes que pasar para recogerlo (se suma al RADIO del perro)
+
+  // Copias que pide cada nivel del coleccionable (del 1 al 5):
+  // 1 copia para el nivel 1, 2 más para el 2, 3 más para el 3, 5 más para el 4 y 8 más para el 5.
+  // Si agregas o quitas números, cambia la cantidad de niveles.
+  COLECCION_COPIAS: [1, 2, 3, 5, 8],
+  COLECCION_GUARDADO: 'lomitoSurvivor_coleccion', // nombre del guardado en el navegador (no lo cambies o se "pierde" el progreso)
+
+  // Qué da cada coleccionable POR CADA NIVEL (nivel 3 = 3 veces esto).
+  // 0.1 = 10%
+  COLECCIONABLES: {
+    // Chalequito reflectante: los enemigos aparecen más lejos (px) y las embestidas
+    // (Drogadicto y Jefe) te hacen menos daño
+    chalequito: { APARECE_LEJOS: 40, MENOS_DANO_EMBESTIDA: 0.1 },
+    // Sweater tejido a mano: vida máxima extra, y recupera 1 de vida cada
+    // (CURA_CADA_MS / nivel): nivel 1 = cada 6 s, nivel 5 = cada 1,2 s
+    sweater: { VIDA: 10, CURA_CADA_MS: 6000 },
+    // Peluche de zombie: compañero que da vueltas alrededor del perro.
+    //  DANO: daño por nivel al tocar a un enemigo   GOLPE_CADA_MS: cada cuánto puede golpear al mismo enemigo
+    //  ORBITA_RADIO: qué tan lejos del perro gira   VUELTA_MS: cuánto demora una vuelta   RADIO: su tamaño de choque
+    peluche: { DANO: 4, GOLPE_CADA_MS: 500, ORBITA_RADIO: 70, VUELTA_MS: 2200, RADIO: 14 },
+    // Mantita cuadrillé: la Zona segura cura 1 de vida cada (SEGURA_CURA_CADA_MS / nivel)
+    // y la pileta cura más rápido (0.2 = 20% más rápido por nivel)
+    mantita: { SEGURA_CURA_CADA_MS: 1500, PILETA_RAPIDEZ: 0.2 },
+    // Capa de superhéroe: más velocidad y el poder (Sprint o Mandíbula) se recarga más rápido
+    capa: { VELOCIDAD: 0.03, RECARGA: 0.08 },
+    // Antifaz: probabilidad de esquivar un golpe (0.03 = 3 de cada 100)
+    antifaz: { ESQUIVAR: 0.03 },
+    // Collar antipulgas: menos daño de estos enemigos (ids de ENEMIGOS)
+    antipulgas: { MENOS_DANO: 0.08, TIPOS: ['manada', 'rival'] },
+    // Lentes: más alcance de mordida y del imán de huesos (px)
+    lentes: { ALCANCE: 6, IMAN: 15 },
+    // Zapatilla perdida: la comida cura esta vida extra
+    zapatilla: { COMIDA_CURA: 3 },
+    // Pañuelo rojo: probabilidad de mordida crítica (hace el doble de daño)
+    panuelo: { CRITICO: 0.04 },
+    // Cascabel: más experiencia por hueso
+    cascabel: { XP_EXTRA: 0.06 },
+    // Gorro de lana: el barro te frena menos y la Perrera te deja atrapado menos rato
+    gorro: { MENOS_LENTITUD: 0.15 }
+  },
+
+  // ---------------------------------------------------------------
   //  LA NOCHE (meta de la partida). El código está en src/noche.js
   //  Ganas si llegas a la HORA_FIN y el Jefe de la Plaza está derrotado.
   // ---------------------------------------------------------------

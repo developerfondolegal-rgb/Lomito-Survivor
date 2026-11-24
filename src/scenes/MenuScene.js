@@ -1,4 +1,4 @@
-// Pantalla de inicio: elegir la raza del perro.
+// Pantalla de inicio: elegir la raza del perro (y abrir el Álbum de coleccionables).
 
 const FUENTE = 'Arial, sans-serif';
 
@@ -30,20 +30,45 @@ class MenuScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5);
 
-    this.add.text(w - 10, this.scale.height - 8, 'Lomito Survivor - v0.11', {
+    this.add.text(w - 10, this.scale.height - 8, 'Lomito Survivor - v0.12', {
       fontFamily: FUENTE, fontSize: '13px', color: '#888888'
     }).setOrigin(1, 1);
 
     this.crearCartas();
+    this.crearBotonAlbum();
 
     const nombresTeclas = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
     this.teclas = this.razas.map((_, i) => this.input.keyboard.addKey(nombresTeclas[i]));
+    this.teclaAlbum = this.input.keyboard.addKey('A');
   }
 
   update() {
     this.teclas.forEach((tecla, i) => {
       if (Phaser.Input.Keyboard.JustDown(tecla)) this.elegir(i);
     });
+    if (Phaser.Input.Keyboard.JustDown(this.teclaAlbum)) this.scene.start('AlbumScene');
+  }
+
+  // Botón "Álbum" abajo al centro (src/scenes/AlbumScene.js)
+  crearBotonAlbum() {
+    const cx = this.scale.width / 2;
+    const cy = this.scale.height - 26;
+    const ancho = 260;
+    const alto = 34;
+    const encontrados = cuantosEncontrados('plaza') + ' / ' + listaColeccionables('plaza').length;
+    const g = this.add.graphics();
+    const pintar = (encima) => {
+      g.clear();
+      marcoPixel(g, cx - ancho / 2, cy - alto / 2, ancho, alto, encima ? 0xffffff : 0xce93d8, encima ? 0x4a3560 : 0x2a1f3a);
+    };
+    pintar(false);
+    this.add.text(cx, cy, 'Álbum (A)   ✦ ' + encontrados, {
+      fontFamily: FUENTE, fontSize: '16px', color: '#f3e5f5', fontStyle: 'bold'
+    }).setOrigin(0.5);
+    const zona = this.add.zone(cx, cy, ancho, alto).setInteractive({ useHandCursor: true });
+    zona.on('pointerover', () => pintar(true));
+    zona.on('pointerout', () => pintar(false));
+    zona.on('pointerdown', () => this.scene.start('AlbumScene'));
   }
 
   // Solo las razas que tienen textos (razas.js) y números (config.js)

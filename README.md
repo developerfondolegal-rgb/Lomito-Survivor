@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.11** — zonas especiales y mini desafíos.
+Versión actual: **v0.12** — ultra raros coleccionables y álbum.
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -19,6 +19,8 @@ Versión actual: **v0.11** — zonas especiales y mini desafíos.
 | Acción | Teclas |
 |---|---|
 | Elegir raza (pantalla de inicio) | **clic**, o teclas **1**, **2**, **3**, **4** |
+| Abrir el Álbum de coleccionables (pantalla de inicio) | botón **Álbum** o tecla **A** |
+| Volver del Álbum a la pantalla de inicio | **Esc** o **A** (o el botón Volver) |
 | Mover al perro | **W A S D** o **flechas** |
 | Sprint (solo Galgo) | **Espacio** |
 | Pausa (abrir y cerrar el menú) | **P** o **Esc** |
@@ -34,10 +36,11 @@ Versión actual: **v0.11** — zonas especiales y mini desafíos.
 | Modo de prueba: el reloj de la noche salta 1 minuto | **K** |
 | Modo de prueba: una zona especial de cada tipo cerca del perro | **Z** |
 | Modo de prueba: empieza un desafío al azar | **X** |
+| Modo de prueba: un ultra raro coleccionable al azar cerca del perro | **C** |
 
 No hay botón para atacar: el perro muerde solo.
 
-### Modo de prueba (teclas T, Y, U, J, K, Z y X)
+### Modo de prueba (teclas T, Y, U, J, K, Z, X y C)
 
 - **T**: aparece un enemigo de cada tipo en un círculo alrededor del perro (la Manada aparece como grupo completo). Sirve para ver cómo se mueve cada enemigo sin esperar minutos. Estos enemigos **no sueltan huesos ni objetos ni cuentan** en el Game Over, pero sí hacen daño y atrapan como los normales.
 - **Y**: aparecen **4 objetos** alrededor del perro, uno de cada rareza (blanco, azul, morado y dorado). Cada vez que presionas Y salen objetos distintos, así en pocas veces tienes cada objeto en morado (épico) o dorado (legendario), que lo suben directo al nivel 3.
@@ -47,6 +50,7 @@ No hay botón para atacar: el perro muerde solo.
 
 - **Z**: aparecen **4 zonas especiales** alrededor del perro, una de cada tipo (miedo, peligrosa, barro y segura). Nunca encima del perro ni de la pileta. Camina a cada una para ver su aviso y su efecto. Duran lo normal (25 segundos).
 - **X**: empieza **un desafío al azar** (Búsqueda, Aguanta, Cacería o Sin morder). Si ya había uno, se cancela sin contar como fallido y empieza otro. Presiona X varias veces hasta que salga el que quieres probar.
+- **C**: aparece **un ultra raro coleccionable al azar** cerca del perro, con brillo arcoíris. Pasa encima para recogerlo: sale el aviso grande y **se guarda de verdad** en tu colección (cuenta como una copia más). Si quieres volver a empezar tu colección, usa **Borrar progreso** en el Álbum.
 
 **Probar el final rápido:** presiona **J**, derrota al jefe (o quítale vida con U para subir niveles) y luego presiona **K** unas 10 veces hasta las 06:00: amanece y sale "¡Sobreviviste la noche!". Para ver qué pasa si el jefe sigue vivo, presiona **K** 10 veces sin derrotarlo: el reloj se queda en 06:00 hasta que lo derrotes.
 
@@ -207,17 +211,60 @@ Al minuto de juego llega el primer desafío, y después uno nuevo cada minuto de
 - **Si lo cumples**: ganas una recompensa al azar: un **objeto raro o mejor** (entra directo al inventario; si está lleno, sube uno que ya tienes) o **40 de experiencia** de golpe.
 - **Si fallas**: sale un aviso y no pasa nada más.
 
+### Ultra raros coleccionables
+
+Una rareza nueva por encima de Legendario: **Ultra raro**, con **brillo arcoíris** que cambia de color y chispitas. No son objetos del inventario: son **coleccionables** que se guardan en tu navegador para siempre y dan un **bonus permanente** en todas tus partidas, **con cualquier raza**, desde el primer segundo.
+
+**Cómo se consiguen** (muy difícil):
+- Cualquier enemigo: muy rara vez (5 de cada 10.000).
+- Enemigos **élite**: 4 de cada 100.
+- **El Jefe de la Plaza**: 35 de cada 100.
+- Al cumplir los desafíos **Aguanta** o **Cacería**: **siempre** uno (además de la recompensa normal). Ese va directo a tu colección.
+
+Cuando cae uno sale el aviso "¡Cayó un ULTRA RARO!". Al recogerlo aparece un **aviso grande especial** con brillo arcoíris, su dibujo, su nombre, su frase y **"¡Nuevo!"** o **"Copia X/Y"** (cuántas copias llevas para el siguiente nivel). El bonus se aplica al tiro.
+
+**Niveles:** cada coleccionable sube del **nivel 1 al 5** juntando copias: 1 copia para el nivel 1, **2 más** para el 2, **3 más** para el 3, **5 más** para el 4 y **8 más** para el 5 (19 en total). Cada nivel aumenta su bonus.
+
+Los 12 coleccionables de la plaza (bonus por cada nivel):
+
+| Coleccionable | Bonus por nivel |
+|---|---|
+| **Chalequito reflectante** | Los enemigos aparecen 40 px más lejos y las embestidas (Drogadicto y Jefe) te hacen 10% menos daño |
+| **Sweater tejido a mano** | +10 de vida máxima y recuperas 1 de vida cada 6 s (nivel 2: cada 3 s; nivel 5: cada 1,2 s) |
+| **Peluche de zombie** | Un zombie de peluche gira a tu alrededor y hace 4 de daño a los enemigos que toca |
+| **Mantita cuadrillé** | La Zona segura te cura (1 de vida cada 1,5 s en nivel 1) y la pileta cura 20% más rápido |
+| **Capa de superhéroe** | +3% de velocidad y el poder (Sprint o Mandíbula) se recarga 8% más rápido |
+| **Antifaz** | 3% de probabilidad de esquivar un golpe (sale "¡Esquivado!") |
+| **Collar antipulgas** | 8% menos daño de la Manada y de los Perros rivales |
+| **Lentes** | +6 de alcance de mordida y +15 de imán de huesos |
+| **Zapatilla perdida** | La comida cura +3 de vida |
+| **Pañuelo rojo** | 4% de probabilidad de mordida crítica (doble daño, dientes rojos) |
+| **Cascabel** | +6% de experiencia por hueso |
+| **Gorro de lana** | El barro te frena 15% menos y la Perrera te deja atrapado 15% menos rato |
+
+El Peluche no ataca en la Zona de miedo ni durante el desafío "Sin morder" (se ve transparente).
+
+### Álbum
+
+En la pantalla de inicio, el botón **Álbum** (o la tecla **A**) muestra los 12 coleccionables en una cuadrícula:
+- Los **no encontrados** salen como **silueta negra** con "???".
+- Los **encontrados** muestran su dibujo con brillo arcoíris, su nombre, su frase, su **nivel** (estrellas), cuántas **copias** faltan para el siguiente nivel y su **bonus actual**. Los que están en nivel máximo tienen borde dorado.
+- **Borrar progreso**: borra toda tu colección. Antes pregunta **"¿Borrar todo tu progreso?"** con los botones **Sí, borrar** y **Cancelar** (o Esc). No se puede deshacer.
+
+**Dónde se guarda:** en el almacenamiento del navegador (localStorage). Se mantiene al cerrar el juego, pero es **de ese navegador**: si abres el juego en otro navegador o en una ventana privada/incógnito, la colección empieza vacía. Si borras los datos de navegación, también se borra.
+
 ### Menú de pausa
 
 Presiona **P** o **Esc** para pausar. Todo se detiene (enemigos, reloj de la noche, poderes) hasta que vuelvas a presionar P o Esc, o el botón **Continuar**. No se puede pausar mientras eliges una carta de nivel.
 
-El panel tiene 5 pestañas (clic o flechas izquierda/derecha):
+El panel tiene 6 pestañas (clic o flechas izquierda/derecha):
 
 - **Stats**: vida, velocidad, daño y frecuencia de mordida, alcance, imán de huesos, reducción de daño, regeneración y experiencia extra. Debajo de cada uno sale el **valor base de tu raza** y cuánto suma cada instinto, objeto, fusión o sinergia. También tu nivel, el tiempo jugado, la hora de la noche y los enemigos derrotados.
 - **Instintos y objetos**: todos, con su ícono, su nivel y lo que hacen (los que no tienes salen en gris).
 - **Fusiones**: las 4 fusiones. Dice si ya la **lograste**, si está **lista** (sale en la próxima subida de nivel) o **qué falta** (por ejemplo "Falta: Mordida rápida 3/5 + Collar viejo 1/3").
 - **Sinergias**: cuáles están **activas** y qué falta para las otras.
 - **Desafíos**: el **desafío actual** con su progreso y el tiempo que queda (o cuándo llega el próximo), los **completados** en esta partida con su minuto y recompensa, y cuántos fallaste. A la derecha, qué hace cada **zona especial** y en cuál estás ahora.
+- **Colección**: los 12 ultra raros con su nivel, sus copias y el **bonus activo** de cada uno (los que no tienes salen como silueta). En **Stats** también aparece lo que suma cada coleccionable.
 
 Botones: **Continuar**, **Reiniciar (R)** (misma raza, partida nueva) y **Volver al menú (M)**.
 
@@ -257,7 +304,7 @@ A los **9 minutos** (05:12 en el reloj) llega un perro enorme y oscuro con colla
 
 ### Game Over y victoria
 
-Al llegar a 0 de vida aparece "Game Over". Si sobrevives la noche aparece **"¡Sobreviviste la noche!"**. Las dos pantallas muestran tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados, cuántos de cada tipo, si derrotaste al jefe, los **objetos** que tenías (con su nivel), las **fusiones** logradas y cuántos **desafíos completaste** (y cuántos fallaste).
+Al llegar a 0 de vida aparece "Game Over". Si sobrevives la noche aparece **"¡Sobreviviste la noche!"**. Las dos pantallas muestran tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados, cuántos de cada tipo, si derrotaste al jefe, los **objetos** que tenías (con su nivel), las **fusiones** logradas y cuántos **desafíos completaste** (y cuántos fallaste). Si recogiste ultra raros, también dice cuántos.
 - **R**: jugar de nuevo con la misma raza.
 - **M**: volver a la pantalla de inicio para elegir otra raza.
 
@@ -475,6 +522,16 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `DESAFIOS`: cada desafío tiene `PESO` (qué tan seguido sale) y `TIEMPO_MS` (la cuenta regresiva), más sus propios números: `OBJETOS` de la Búsqueda, `DENTRO_MS`, `RADIO` y `APARICION` de Aguanta, `ENEMIGOS` de la Cacería.
 - En `src/desafios.js` están los nombres y frases, el dibujo de las cosas perdidas y los pasos para agregar un desafío nuevo.
 
+### Ultra raros y coleccionables (`src/config.js`, sección `ULTRA RAROS`, y `src/coleccionables.js`)
+
+- `ULTRA_PROBABILIDAD_ENEMIGO`, `ULTRA_PROBABILIDAD_ELITE`, `ULTRA_PROBABILIDAD_JEFE`: probabilidad de que suelten un ultra raro (0.04 = 4 de cada 100).
+- `ULTRA_DESAFIOS`: qué desafíos dan **siempre** un ultra raro (por ahora `'aguanta'` y `'caceria'`).
+- `ULTRA_RECOGER`: qué tan cerca hay que pasar para recogerlo.
+- `COLECCION_COPIAS`: copias que pide cada nivel (`[1, 2, 3, 5, 8]`). Si agregas un número, hay un nivel más.
+- `COLECCIONABLES`: lo que da cada coleccionable **por cada nivel** (por ejemplo `sweater: { VIDA: 10, ... }` = +10 de vida por nivel).
+- `COLECCION_GUARDADO`: el nombre del guardado en el navegador. Si lo cambias, el juego empieza una colección nueva (la vieja queda escondida).
+- En `src/coleccionables.js` están los nombres, las frases, los dibujos de 16 x 16 y a qué **mapa** pertenece cada uno (por ahora todos `'plaza'`). Al principio del archivo están los pasos para agregar uno nuevo (o de otro mapa).
+
 ### Nombres, dibujos y parejas de fusión (`src/objetos.js`)
 
 - `RAREZAS`: nombre y color de cada rareza, y si destella.
@@ -487,12 +544,13 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 ## Archivos
 
 - `index.html` — la página que abre el juego.
-- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, zonas, desafíos, la noche y el jefe).
+- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, zonas, desafíos, ultra raros, la noche y el jefe).
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
 - `src/instintos.js` — nombres y frases de las cartas de instintos, y sus íconos (12 x 12) para el menú de pausa.
 - `src/sinergias.js` — las sinergias: nombre, frase, qué pide cada una y cómo se calcula su bonus.
-- `src/pausa.js` — el menú de pausa: panel, pestañas (incluida la de Desafíos) y botones.
+- `src/pausa.js` — el menú de pausa: panel, pestañas (incluidas Desafíos y Colección) y botones.
+- `src/coleccionables.js` — los ultra raros coleccionables: nombres, frases, dibujos, a qué mapa pertenecen, guardado en el navegador, peluche, aviso grande y la tecla C.
 - `src/zonas.js` — las zonas especiales: nombres, colores, íconos, dónde aparecen y qué hacen.
 - `src/desafios.js` — los mini desafíos: nombres, frases, cómo avanzan, flechas, recompensas y la tecla X.
 - `src/sprites.js` — los dibujos en pixel art de todos los personajes, el hueso y la mordida (y el borde de las élites y objetos).
@@ -501,10 +559,12 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/noche.js` — el reloj de la noche, las fases y cuánto se aclara la oscuridad.
 - `src/jefe.js` — El Jefe de la Plaza: su dibujo, sus ataques y su barra de vida.
 - `src/main.js` — configuración del motor del juego.
-- `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza.
+- `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza (y el botón Álbum).
+- `src/scenes/AlbumScene.js` — el Álbum de coleccionables y el botón Borrar progreso.
 - `src/scenes/GameScene.js` — la partida: perro, enemigos (y cómo rodean obstáculos), ataques, poderes, comida, agua, experiencia, objetos, élites, fusiones, cartas, fases de la noche, amanecer, Game Over y victoria.
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js`, `src/sinergias.js`, `src/zonas.js` o `src/desafios.js`, revisa ese cambio.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js`, `src/sinergias.js`, `src/zonas.js`, `src/desafios.js` o `src/coleccionables.js`, revisa ese cambio.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.
+- La colección no se guarda: revisa que no estés en una ventana privada/incógnito. Cada navegador guarda su propia colección.

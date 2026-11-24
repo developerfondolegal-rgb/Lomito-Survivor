@@ -1,12 +1,13 @@
 // ===============================================================
 //  MENÚ DE PAUSA (teclas P o Esc)
-//  Panel con 5 pestañas: Stats, Instintos y objetos, Fusiones,
-//  Sinergias y Desafíos. Se cambian con clic o con las flechas izquierda/derecha.
+//  Panel con 6 pestañas: Stats, Instintos y objetos, Fusiones,
+//  Sinergias, Desafíos y Colección (ultra raros). Se cambian con clic
+//  o con las flechas izquierda/derecha.
 //  Mientras está abierto, nada se mueve y el reloj de la noche se detiene.
 //  Lo usa src/scenes/GameScene.js.
 // ===============================================================
 
-const PESTANAS_PAUSA = ['Stats', 'Instintos y objetos', 'Fusiones', 'Sinergias', 'Desafíos'];
+const PESTANAS_PAUSA = ['Stats', 'Instintos y objetos', 'Fusiones', 'Sinergias', 'Desafíos', 'Colección'];
 
 // Colores del panel (formato 0xRRGGBB)
 const PAUSA_FONDO = 0x1d1b2e;     // fondo del panel
@@ -103,8 +104,8 @@ function dibujarPausa(escena) {
     .setOrigin(1, 0.5));
 
   // Pestañas
-  const anchoP = 168;
-  const sepP = 176;
+  const anchoP = 140;
+  const sepP = 146;
   const inicioP = w / 2 - ((PESTANAS_PAUSA.length - 1) * sepP) / 2;
   PESTANAS_PAUSA.forEach((nombre, i) => {
     const cx = inicioP + i * sepP;
@@ -112,7 +113,7 @@ function dibujarPausa(escena) {
     const g = escena.add.graphics();
     marcoPixel(g, cx - anchoP / 2, py + 46, anchoP, 30, elegida ? PAUSA_DORADO : 0x6d6a8a, elegida ? 0x4a3a12 : 0x2b2940);
     capa.push(g);
-    capa.push(textoPausa(escena, cx, py + 61, nombre, 15, elegida ? '#ffe082' : '#cfd8dc', elegida).setOrigin(0.5));
+    capa.push(textoPausa(escena, cx, py + 61, nombre, 14, elegida ? '#ffe082' : '#cfd8dc', elegida).setOrigin(0.5));
     const zona = escena.add.zone(cx, py + 61, anchoP, 30).setInteractive({ useHandCursor: true });
     zona.on('pointerdown', () => { if (i !== escena.pestanaPausa) cambiarPestana(escena, i - (escena.pestanaPausa || 0)); });
     capa.push(zona);
@@ -124,7 +125,8 @@ function dibujarPausa(escena) {
   else if (pestana === 1) pestanaInventario(escena, capa, area);
   else if (pestana === 2) pestanaFusiones(escena, capa, area);
   else if (pestana === 3) pestanaSinergias(escena, capa, area);
-  else pestanaDesafios(escena, capa, area);
+  else if (pestana === 4) pestanaDesafios(escena, capa, area);
+  else pestanaColeccion(escena, capa, area);
 
   // Botones de abajo
   const yb = py + ph - 32;
@@ -213,6 +215,9 @@ function calcularStats(escena) {
   const obj = (id) => e.nivelObjeto(id);
   const nvI = (id) => ' (Nv ' + inst(id) + ')';
   const nvO = (id) => ' (Nv ' + obj(id) + ')';
+  // Coleccionables ultra raros (src/coleccionables.js): nivel y nombre
+  const col = (id) => nivelColeccionable(id);
+  const nombreCol = (id) => buscarColeccionable(id).nombre + ' (Nv ' + col(id) + ')';
   // Partes que vienen de sinergias activas con ese bonus
   const deSinergias = (bonus) => SINERGIAS
     .filter((s) => sinergiaActiva(e, s) && numerosSinergia(s)[bonus])
@@ -224,19 +229,22 @@ function calcularStats(escena) {
   const vida = [raza + ' ' + base.VIDA];
   if (inst('pellejoDuro')) vida.push(nombreInstinto('pellejoDuro') + nvI('pellejoDuro') + ' +' + inst('pellejoDuro') * CONFIG.PELLEJO_VIDA);
   if (obj('frazada')) vida.push(buscarObjeto('frazada').nombre + nvO('frazada') + ' +' + obj('frazada') * CONFIG.OBJETOS.frazada.VIDA);
+  if (col('sweater')) vida.push(nombreCol('sweater') + ' +' + Math.round(bonusColeccion('sweater', 'VIDA')));
   stats.push({ nombre: 'Vida', valor: Math.round(e.vida) + ' / ' + e.vidaMax, partes: vida });
 
   // Velocidad
   const vel = [raza + ' ' + base.VELOCIDAD];
   if (inst('patasLigeras')) vel.push(nombreInstinto('patasLigeras') + nvI('patasLigeras') + ' +' + inst('patasLigeras') * CONFIG.PATAS_VELOCIDAD);
   if (obj('pelota')) vel.push(buscarObjeto('pelota').nombre + nvO('pelota') + ' +' + obj('pelota') * CONFIG.OBJETOS.pelota.VELOCIDAD);
-  stats.push({ nombre: 'Velocidad', valor: numeroPausa(e.velocidadPerro()), partes: vel.concat(deSinergias('VELOCIDAD')) });
+  const velCol = col('capa') ? [nombreCol('capa') + ' +' + Math.round(bonusColeccion('capa', 'VELOCIDAD') * 100) + '%'] : [];
+  stats.push({ nombre: 'Velocidad', valor: numeroPausa(e.velocidadPerro()), partes: vel.concat(deSinergias('VELOCIDAD'), velCol) });
 
   // Daño de mordida
   const dano = [raza + ' ' + base.MORDIDA_DANO];
   if (inst('colmillos')) dano.push(nombreInstinto('colmillos') + nvI('colmillos') + ' +' + inst('colmillos') * CONFIG.COLMILLOS_DANO);
   const danoExtra = deSinergias('DANO');
   if (e.poder === 'mandibula') danoExtra.push('Mandíbula de hierro +' + base.MANDIBULA_DANO_EXTRA + ' cada ' + numeroPausa(base.PODER_ESPERA_MS / 1000) + ' s');
+  if (col('panuelo')) danoExtra.push(nombreCol('panuelo') + ' ' + Math.round(bonusColeccion('panuelo', 'CRITICO') * 100) + '% de crítico (×2)');
   stats.push({ nombre: 'Daño de mordida', valor: numeroPausa(e.danoMordida()), partes: dano.concat(danoExtra) });
 
   // Frecuencia de mordida
@@ -250,12 +258,15 @@ function calcularStats(escena) {
   stats.push({ nombre: 'Frecuencia de mordida', valor: 'cada ' + numeroPausa(ms / 1000, 2) + ' s (' + numeroPausa(1000 / ms) + ' por seg.)', partes: frec });
 
   // Alcance de la mordida
-  stats.push({ nombre: 'Alcance de mordida', valor: String(CONFIG.MORDIDA_ALCANCE), partes: ['Base ' + CONFIG.MORDIDA_ALCANCE + ' (igual para todas las razas)'] });
+  const alcance = ['Base ' + CONFIG.MORDIDA_ALCANCE + ' (igual para todas las razas)'];
+  if (col('lentes')) alcance.push(nombreCol('lentes') + ' +' + Math.round(bonusColeccion('lentes', 'ALCANCE')));
+  stats.push({ nombre: 'Alcance de mordida', valor: String(e.alcanceMordida()), partes: alcance });
 
   // Imán de huesos
   const iman = ['Base ' + CONFIG.IMAN_RADIO];
   if (base.IMAN_EXTRA) iman.push(e.textosRaza.nombre + (e.poder === 'rastreo' ? ' (Rastreo)' : '') + ' +' + base.IMAN_EXTRA);
   if (inst('olfato')) iman.push(nombreInstinto('olfato') + nvI('olfato') + ' +' + inst('olfato') * CONFIG.OLFATO_IMAN);
+  if (col('lentes')) iman.push(nombreCol('lentes') + ' +' + Math.round(bonusColeccion('lentes', 'IMAN')));
   stats.push({ nombre: 'Imán de huesos', valor: String(e.radioIman()), partes: iman });
 
   // Reducción de daño
@@ -266,6 +277,9 @@ function calcularStats(escena) {
     const c = CONFIG.FUSIONES.cuero;
     red.push('Cuero de calle: −' + Math.round((1 - c.MULTIPLICADOR) * 100) + '% por ' + numeroPausa(c.DURACION_MS / 1000) + ' s tras cada golpe');
   }
+  if (col('antifaz')) red.push(nombreCol('antifaz') + ' ' + Math.round(bonusColeccion('antifaz', 'ESQUIVAR') * 100) + '% de esquivar');
+  if (col('antipulgas')) red.push(nombreCol('antipulgas') + ' −' + Math.round(bonusColeccion('antipulgas', 'MENOS_DANO') * 100) + '% de manada y rivales');
+  if (col('chalequito')) red.push(nombreCol('chalequito') + ' −' + Math.round(bonusColeccion('chalequito', 'MENOS_DANO_EMBESTIDA') * 100) + '% de embestidas');
   stats.push({ nombre: 'Reducción de daño', valor: Math.round(collar * 100) + '%', partes: red });
 
   // Regeneración (curación con el tiempo)
@@ -284,12 +298,20 @@ function calcularStats(escena) {
     porSeg += caracu * mult;
     regen.push(buscarObjeto('caracu').nombre + nvO('caracu') + ' +' + numeroPausa(caracu, 2) + '/s');
   }
+  if (col('sweater')) {
+    const sweater = col('sweater') / (CONFIG.COLECCIONABLES.sweater.CURA_CADA_MS / 1000);
+    porSeg += sweater * mult;
+    regen.push(nombreCol('sweater') + ' +' + numeroPausa(sweater, 2) + '/s');
+  }
   stats.push({ nombre: 'Regeneración', valor: numeroPausa(porSeg, 2) + ' de vida por seg.', partes: regen.concat(deSinergias('REGENERACION')) });
 
   // Experiencia extra
-  const xpExtra = obj('placa') * CONFIG.OBJETOS.placa.XP_EXTRA;
+  const xpPlaca = obj('placa') * CONFIG.OBJETOS.placa.XP_EXTRA;
+  const xpCascabel = bonusColeccion('cascabel', 'XP_EXTRA');
+  const xpExtra = xpPlaca + xpCascabel;
   const xp = [raza + ' 0%'];
-  if (obj('placa')) xp.push(buscarObjeto('placa').nombre + nvO('placa') + ' +' + Math.round(xpExtra * 100) + '%');
+  if (obj('placa')) xp.push(buscarObjeto('placa').nombre + nvO('placa') + ' +' + Math.round(xpPlaca * 100) + '%');
+  if (col('cascabel')) xp.push(nombreCol('cascabel') + ' +' + Math.round(xpCascabel * 100) + '%');
   stats.push({ nombre: 'Experiencia extra', valor: '+' + Math.round(xpExtra * 100) + '%', partes: xp });
 
   return stats;
@@ -518,4 +540,49 @@ function pestanaDesafios(escena, capa, area) {
     y += 66;
   });
   capa.push(textoPausa(e, x, y - 6, 'Tecla Z: una zona de cada tipo cerca del perro (prueba)', 12, '#8a8a99'));
+}
+
+// ---------------- Pestaña "Colección" ----------------
+// (los coleccionables ultra raros están en src/coleccionables.js)
+
+function pestanaColeccion(escena, capa, area) {
+  const e = escena;
+  const lista = listaColeccionables(e.mapaId);
+  const max = nivelMaximoColeccion();
+  capa.push(textoPausa(e, area.x, area.y, 'Bonus permanentes de tus ultra raros (se guardan entre partidas y sirven con cualquier raza)   ·   ' +
+    'Encontrados: ' + cuantosEncontrados(e.mapaId) + ' / ' + lista.length, 14, '#cfd8dc'));
+
+  const anchoCol = area.ancho / 2 - 14;
+  const paso = 56;
+  const porColumna = Math.ceil(lista.length / 2);
+  lista.forEach((c, i) => {
+    const col = i < porColumna ? 0 : 1;
+    const fila = i < porColumna ? i : i - porColumna;
+    const x = area.x + col * (anchoCol + 28);
+    const y = area.y + 64 + fila * paso;
+    const info = infoColeccionable(c.id);
+    const tiene = info.nivel > 0;
+
+    const g = e.add.graphics();
+    g.fillStyle(tiene ? 0x2e1f3a : 0x000000, tiene ? 0.8 : 0.3);
+    g.fillRect(x, y - 24, anchoCol, paso - 8);
+    if (tiene) { g.lineStyle(2, info.max ? PAUSA_DORADO : 0xce93d8, 1); g.strokeRect(x, y - 24, anchoCol, paso - 8); }
+    capa.push(g);
+
+    // Ícono (silueta negra si todavía no lo encuentras)
+    capa.push(e.add.rectangle(x + 26, y, 40, 40, 0x000000, 0.6).setStrokeStyle(2, tiene ? 0xce93d8 : 0x555566));
+    const icono = e.add.image(x + 26, y, claveColeccionable(c.id), 0).setScale(2);
+    if (!tiene) icono.setTintFill(0x000000).setAlpha(0.7);
+    capa.push(icono);
+
+    capa.push(textoPausa(e, x + 56, y - 20, tiene ? c.nombre : '???', 15, tiene ? '#ffffff' : '#8a8a99', true));
+    const nivel = !tiene ? 'No encontrado' : info.max ? 'Nv ' + max + ' MAX' : 'Nv ' + info.nivel + ' / ' + max +
+      '  (' + info.progreso + '/' + info.necesita + ' copias)';
+    capa.push(textoPausa(e, x + anchoCol - 10, y - 20, nivel, 13, !tiene ? '#77778a' : info.max ? '#ffd54f' : '#ce93d8', tiene)
+      .setOrigin(1, 0));
+    capa.push(textoPausa(e, x + 56, y, tiene ? textoBonusColeccionable(c.id, info.nivel) : 'Búscalo en la plaza: cae muy poco de los enemigos.',
+      12, tiene ? '#c5e1a5' : '#6d6d80', false, anchoCol - 66));
+  });
+  capa.push(textoPausa(e, area.x, area.y + 20,
+    'Tecla C: aparece un ultra raro de prueba cerca del perro   ·   El álbum completo está en la pantalla de inicio (botón Álbum o tecla A)', 12, '#8a8a99'));
 }
