@@ -2,7 +2,8 @@
 // Los números para ajustar el juego están en src/config.js
 // Los textos de razas, enemigos e instintos están en src/razas.js,
 // src/enemigos.js y src/instintos.js
-// (FUENTE y dibujarPerro vienen de MenuScene.js; los dibujos, de src/sprites.js)
+// (FUENTE y dibujarPerro vienen de MenuScene.js; los dibujos, de src/sprites.js;
+//  la plaza, la luz y los obstáculos, de src/mapa.js)
 
 const COLOR_ATURDIDO = 0x9575cd; // morado: enemigo aturdido por la Mandíbula de hierro
 const COLOR_AVISO = 0xb9f6ca;    // verde claro: aviso de embestida del Drogadicto
@@ -52,6 +53,9 @@ class GameScene extends Phaser.Scene {
     this.esperaAparicion = 0;
     this.esperaCura = 0;
     this.cartas = [];
+    this.esperaComida = 0;
+    this.esperaBasurero = 0;
+    this.esperaAgua = 0;
 
     // Nivel de cada instinto (0 = no lo tiene)
     this.instintos = {};
@@ -65,10 +69,11 @@ class GameScene extends Phaser.Scene {
     // Mapa y cámara
     this.physics.world.setBounds(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
     this.cameras.main.setBounds(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
-    this.dibujarSuelo();
+    this.plaza = crearPlaza(this); // suelo, pileta, bancas, árboles, autos... (src/mapa.js)
 
     // El perro (dibujo de su raza; el choque usa el RADIO de config.js)
-    this.perro = dibujarPerro(this, CONFIG.MAPA_ANCHO / 2, CONFIG.MAPA_ALTO / 2, this.razaId);
+    const inicio = this.plaza.buscarLibre(this.plaza.inicio.x, this.plaza.inicio.y, this.base.RADIO + 10);
+    this.perro = dibujarPerro(this, inicio.x, inicio.y, this.razaId);
     this.physics.add.existing(this.perro);
     ponerChoqueCircular(this.perro, this.base.RADIO);
     this.perro.body.setCollideWorldBounds(true);
@@ -80,8 +85,16 @@ class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.enemigos, this.enemigos); // que no se amontonen en uno solo
     this.physics.add.overlap(this.perro, this.enemigos, this.recibirGolpe, null, this);
 
-    // Huesos
+    // Los obstáculos (bancas, árboles, pileta, basureros, autos) no se pueden atravesar
+    this.physics.add.collider(this.perro, this.plaza.obstaculos);
+    this.physics.add.collider(this.enemigos, this.plaza.obstaculos, this.chocarObstaculo, null, this);
+
+    // Huesos y comida
     this.huesos = this.add.group();
+    this.comidas = this.add.group();
+
+    // Noche: todo oscuro menos cerca de los faroles y del perro
+    this.oscuridad = crearOscuridad(this);
 
     // Flechas del Rastreo (Beagle)
     this.flechas = this.add.graphics().setScrollFactor(0).setDepth(900);
@@ -146,6 +159,9 @@ class GameScene extends Phaser.Scene {
     this.moverPerro();
     this.moverEnemigos();
     this.moverHuesos(delta);
+    this.aparecerComida(delta);
+    this.comer();
+    this.beberAgua(delta);
     this.dibujarJaula();
 
     // Aparición de enemigos
@@ -189,6 +205,7 @@ class GameScene extends Phaser.Scene {
     const invulnerable = this.tiempoSobrevivido < this.invulnerableHasta;
     this.perro.setAlpha(invulnerable ? 0.5 : 1);
 
+    actualizarOscuridad(this, this.oscuridad, this.plaza, this.perro);
     this.actualizarHUD();
   }
 
@@ -297,8 +314,8 @@ class GameScene extends Phaser.Scene {
       } else if (cfg.COMPORTAMIENTO === 'embestida') {
         avisando = this.moverEmbestida(enemigo, ahora);
       } else {
-        // 'perseguir' y 'atrapar': van directo hacia el perro
-        this.physics.moveToObject(enemigo, this.perro, cfg.VELOCIDAD);
+        // 'perseguir' y 'atrapar': van hacia el perro (rodeando obstáculos)
+        this.moverHaciaPerro(enemigo, cfg.VELOCIDAD, ahora);
       }
 
       // Caminar y mirar hacia donde va (si lo empujó un ladrido, sigue mirando igual)
@@ -332,10 +349,52 @@ class GameScene extends Phaser.Scene {
   // Borracho: camina hacia el perro, pero desviándose de lado a lado
   moverZigzag(enemigo, ahora) {
     const cfg = enemigo.cfg;
-    const haciaPerro = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, this.perro.x, this.perro.y);
-    const vaiven = Math.sin((ahora / cfg.ZIGZAG_CADA_MS) * Math.PI * 2 + enemigo.fase);
+    const haciaPerro = this.anguloHaciaPerro(enemigo, ahora);
+    // mientras rodea un obstáculo no zigzaguea
+    const vaiven = ahora < enemigo.rodeandoHasta ? 0 : Math.sin((ahora / cfg.ZIGZAG_CADA_MS) * Math.PI * 2 + enemigo.fase);
     const angulo = haciaPerro + Phaser.Math.DegToRad(cfg.ZIGZAG_GRADOS) * vaiven;
     enemigo.body.setVelocity(Math.cos(angulo) * cfg.VELOCIDAD, Math.sin(angulo) * cfg.VELOCIDAD);
+  }
+
+  // Hacia dónde camina un enemigo: directo al perro, o de lado si está
+  // rodeando un obstáculo que chocó hace poco
+  anguloHaciaPerro(enemigo, ahora) {
+    const directo = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, this.perro.x, this.perro.y);
+    if (ahora >= enemigo.rodeandoHasta || !enemigo.rodeoObstaculo) return directo;
+    const o = enemigo.rodeoObstaculo;
+    return Phaser.Math.Angle.Between(o.x, o.y, enemigo.x, enemigo.y) + enemigo.rodeoLado * Math.PI / 2;
+  }
+
+  moverHaciaPerro(enemigo, velocidad, ahora) {
+    const angulo = this.anguloHaciaPerro(enemigo, ahora);
+    enemigo.body.setVelocity(Math.cos(angulo) * velocidad, Math.sin(angulo) * velocidad);
+  }
+
+  // Un enemigo chocó con un obstáculo: camina de lado para rodearlo.
+  // Elige el lado que lo deja más cerca del perro; si se queda pegado, prueba el otro.
+  chocarObstaculo(a, b) {
+    const enemigo = a.cfg ? a : b;
+    const zona = a.cfg ? b : a;
+    const ahora = this.tiempoSobrevivido;
+
+    if (ahora >= enemigo.rodeandoHasta || enemigo.rodeoObstaculo !== zona) {
+      const desde = Phaser.Math.Angle.Between(zona.x, zona.y, enemigo.x, enemigo.y);
+      const directo = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, this.perro.x, this.perro.y);
+      enemigo.rodeoLado = Math.cos(desde + Math.PI / 2 - directo) >= Math.cos(desde - Math.PI / 2 - directo) ? 1 : -1;
+      enemigo.rodeoInicio = ahora;
+      enemigo.rodeoX = enemigo.x;
+      enemigo.rodeoY = enemigo.y;
+    } else if (ahora - enemigo.rodeoInicio > 1000) {
+      // Cada segundo revisa si avanzó; si casi no se movió, prueba por el otro lado
+      if (Phaser.Math.Distance.Between(enemigo.x, enemigo.y, enemigo.rodeoX, enemigo.rodeoY) < 25) {
+        enemigo.rodeoLado *= -1;
+      }
+      enemigo.rodeoInicio = ahora;
+      enemigo.rodeoX = enemigo.x;
+      enemigo.rodeoY = enemigo.y;
+    }
+    enemigo.rodeoObstaculo = zona;
+    enemigo.rodeandoHasta = ahora + CONFIG.RODEO_MS;
   }
 
   // Drogadicto: se acerca, se detiene avisando, embiste en línea recta y descansa.
@@ -352,7 +411,7 @@ class GameScene extends Phaser.Scene {
         enemigo.estadoHasta = ahora + cfg.AVISO_MS;
         enemigo.body.setVelocity(0, 0);
       } else {
-        this.physics.moveToObject(enemigo, this.perro, cfg.VELOCIDAD);
+        this.moverHaciaPerro(enemigo, cfg.VELOCIDAD, ahora);
       }
     }
 
@@ -520,6 +579,10 @@ class GameScene extends Phaser.Scene {
 
     const cfg = CONFIG.ENEMIGOS[tipo];
     const r = cfg.RADIO;
+    // Nunca dentro de un obstáculo: si el lugar está ocupado, busca el más cercano libre
+    const lugar = this.plaza.buscarLibre(x, y, r + 4);
+    x = lugar.x;
+    y = lugar.y;
     // Dibujo en pixel art (src/sprites.js). Si no tiene dibujo propio,
     // usa el del perro rival pintado con su COLOR.
     const clave = claveSprite(tipo, SPRITE_ENEMIGO_POR_DEFECTO);
@@ -546,6 +609,10 @@ class GameScene extends Phaser.Scene {
     enemigo.anguloEmbestida = 0;
     enemigo.fase = Math.random() * Math.PI * 2; // para que los borrachos no zigzagueen todos igual
     enemigo.dePrueba = false;
+    enemigo.rodeandoHasta = 0;    // rodeando un obstáculo hasta este momento
+    enemigo.rodeoObstaculo = null;
+    enemigo.rodeoLado = 1;
+    enemigo.rodeoInicio = 0;
     return enemigo;
   }
 
@@ -584,14 +651,15 @@ class GameScene extends Phaser.Scene {
         y = Phaser.Math.Between(vista.top, vista.bottom);
       }
       const dentroDelMapa = x > 0 && x < CONFIG.MAPA_ANCHO && y > 0 && y < CONFIG.MAPA_ALTO;
-      if (dentroDelMapa) return { x, y };
+      if (dentroDelMapa && this.plaza.libre(x, y, 30)) return { x, y }; // nunca dentro de un obstáculo
     }
 
-    // Si no encontró lugar (raro), aparece en una esquina del mapa
-    return {
-      x: Phaser.Math.RND.pick([30, CONFIG.MAPA_ANCHO - 30]),
-      y: Phaser.Math.RND.pick([30, CONFIG.MAPA_ALTO - 30])
-    };
+    // Si no encontró lugar (raro), aparece cerca de una esquina del mapa
+    return this.plaza.buscarLibre(
+      Phaser.Math.RND.pick([30, CONFIG.MAPA_ANCHO - 30]),
+      Phaser.Math.RND.pick([30, CONFIG.MAPA_ALTO - 30]),
+      30
+    );
   }
 
   // Quita vida a un enemigo; si muere, suelta huesos (más duro = más huesos)
@@ -612,7 +680,9 @@ class GameScene extends Phaser.Scene {
         if (Math.random() < probabilidad) {
           const ox = cantidad > 1 ? Phaser.Math.Between(-14, 14) : 0;
           const oy = cantidad > 1 ? Phaser.Math.Between(-14, 14) : 0;
-          this.soltarHueso(enemigo.x + ox, enemigo.y + oy);
+          // si el hueso caería dentro de un obstáculo, cae justo donde estaba el enemigo
+          const libre = this.plaza.libre(enemigo.x + ox, enemigo.y + oy, 4);
+          this.soltarHueso(libre ? enemigo.x + ox : enemigo.x, libre ? enemigo.y + oy : enemigo.y);
         }
       }
       this.derrotados++;
@@ -747,6 +817,114 @@ class GameScene extends Phaser.Scene {
     if (this.nivelesPendientes > 0 && !this.eligiendo) {
       this.mostrarCartas();
     }
+  }
+
+  // ---------------- Comida y agua ----------------
+
+  soltarComida(x, y) {
+    // Si ya hay demasiada, se quita la que está más lejos del perro
+    const lista = this.comidas.getChildren();
+    if (lista.length >= CONFIG.COMIDA_MAXIMA) {
+      let lejana = null;
+      let dMax = -1;
+      lista.forEach((c) => {
+        const d = Phaser.Math.Distance.Between(this.perro.x, this.perro.y, c.x, c.y);
+        if (d > dMax) { dMax = d; lejana = c; }
+      });
+      if (lejana) lejana.destroy();
+    }
+    const comida = agregarSprite(this, x, y, Phaser.Math.RND.pick(['sopaipilla', 'pan']));
+    comida.setDepth(3);
+    this.comidas.add(comida);
+  }
+
+  aparecerComida(delta) {
+    // De vez en cuando, en algún lugar libre cerca del perro
+    this.esperaComida += delta;
+    if (this.esperaComida >= CONFIG.COMIDA_CADA_MS) {
+      this.esperaComida = 0;
+      for (let intento = 0; intento < 15; intento++) {
+        const ang = Math.random() * Math.PI * 2;
+        const d = Phaser.Math.Between(150, Math.max(150, CONFIG.COMIDA_DISTANCIA));
+        const x = this.perro.x + Math.cos(ang) * d;
+        const y = this.perro.y + Math.sin(ang) * d;
+        if (this.plaza.libre(x, y, 20)) {
+          this.soltarComida(x, y);
+          break;
+        }
+      }
+    }
+
+    // Más seguido junto al basurero más cercano (si no tiene comida al lado)
+    this.esperaBasurero += delta;
+    if (this.esperaBasurero >= CONFIG.BASURERO_COMIDA_CADA_MS) {
+      this.esperaBasurero = 0;
+      let basurero = null;
+      let dMin = Infinity;
+      this.plaza.basureros.forEach((b) => {
+        const d = Phaser.Math.Distance.Between(this.perro.x, this.perro.y, b.x, b.y);
+        if (d < dMin) { dMin = d; basurero = b; }
+      });
+      if (!basurero || dMin > CONFIG.BASURERO_DISTANCIA) return;
+      const yaHay = this.comidas.getChildren().some((c) =>
+        Phaser.Math.Distance.Between(c.x, c.y, basurero.x, basurero.y) < 90);
+      if (yaHay) return;
+      for (let intento = 0; intento < 10; intento++) {
+        const ang = Math.random() * Math.PI * 2;
+        const d = Phaser.Math.Between(35, 60);
+        const x = basurero.x + Math.cos(ang) * d;
+        const y = basurero.y + Math.sin(ang) * d;
+        if (this.plaza.libre(x, y, 10)) {
+          this.soltarComida(x, y);
+          break;
+        }
+      }
+    }
+  }
+
+  // Comer: solo si le falta vida (si no, la comida queda en el suelo)
+  comer() {
+    const alcance = this.base.RADIO + 14;
+    this.comidas.getChildren().slice().forEach((comida) => {
+      if (this.vida >= this.vidaMax) return;
+      if (Phaser.Math.Distance.Between(this.perro.x, this.perro.y, comida.x, comida.y) <= alcance) {
+        comida.destroy();
+        this.curar(CONFIG.COMIDA_CURA, '#9ccc65');
+      }
+    });
+  }
+
+  // Tomar agua: cura de a poco mientras el perro está pegado a la pileta
+  beberAgua(delta) {
+    const c = this.plaza.centro;
+    const d = Phaser.Math.Distance.Between(this.perro.x, this.perro.y, c.x, c.y);
+    if (d > CONFIG.PILETA_RADIO + this.base.RADIO + CONFIG.AGUA_DISTANCIA || this.vida >= this.vidaMax) {
+      this.esperaAgua = 0;
+      return;
+    }
+    this.esperaAgua += delta;
+    if (this.esperaAgua >= CONFIG.AGUA_CURA_CADA_MS) {
+      this.esperaAgua = 0;
+      this.curar(CONFIG.AGUA_CURA, '#81d4fa');
+    }
+  }
+
+  // Sube la vida y muestra "+N" flotando sobre el perro
+  curar(cantidad, color) {
+    const antes = this.vida;
+    this.vida = Math.min(this.vidaMax, this.vida + cantidad);
+    const ganado = this.vida - antes;
+    if (ganado <= 0) return;
+    const texto = this.add.text(this.perro.x, this.perro.y - 32, '+' + ganado, {
+      fontFamily: FUENTE, fontSize: '16px', color, fontStyle: 'bold'
+    }).setOrigin(0.5).setDepth(950);
+    this.tweens.add({
+      targets: texto,
+      y: texto.y - 25,
+      alpha: 0,
+      duration: 700,
+      onComplete: () => texto.destroy()
+    });
   }
 
   // ---------------- Cartas de instintos ----------------
@@ -959,7 +1137,7 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.6.1', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.7', estilo)
       .setScrollFactor(0).setDepth(1000);
 
     this.barraVida = this.add.graphics().setScrollFactor(0).setDepth(1000);
@@ -1039,16 +1217,5 @@ class GameScene extends Phaser.Scene {
     const min = Math.floor(totalSeg / 60);
     const seg = totalSeg % 60;
     return String(min).padStart(2, '0') + ':' + String(seg).padStart(2, '0');
-  }
-
-  // ---------------- Suelo ----------------
-
-  dibujarSuelo() {
-    const g = this.add.graphics();
-    g.lineStyle(1, 0x3d3d3d, 1);
-    for (let x = 0; x <= CONFIG.MAPA_ANCHO; x += 100) g.lineBetween(x, 0, x, CONFIG.MAPA_ALTO);
-    for (let y = 0; y <= CONFIG.MAPA_ALTO; y += 100) g.lineBetween(0, y, CONFIG.MAPA_ANCHO, y);
-    g.lineStyle(4, 0x555555, 1);
-    g.strokeRect(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
   }
 }

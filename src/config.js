@@ -11,6 +11,43 @@ const CONFIG = {
   MAPA_ALTO: 3000,
 
   // ---------------------------------------------------------------
+  //  PLAZA (el mapa). El dibujo y la ubicación están en src/mapa.js
+  // ---------------------------------------------------------------
+  MAPA_SEMILLA: 'lomito',       // cambia este texto para que las cosas salgan en otros lugares
+  CALLE_ANCHO: 160,             // ancho de la calle con autos en los 4 bordes
+  PASILLO_ANCHO: 400,           // ancho de los caminos de baldosas en cruz
+  PILETA_RADIO: 108,            // tamaño de la pileta del centro
+  SENDEROS_POR_PRADO: 1,        // senderos de tierra en cada uno de los 4 prados
+
+  // Cuántas cosas hay (si no caben todas, se ponen las que quepan)
+  ARBOLES: 40,
+  BANCAS: 16,
+  BASUREROS: 8,                 // van al lado de las bancas
+  FAROLES: 16,                  // 4 alrededor de la pileta y el resto en los caminos
+  AUTOS: 14,
+
+  // Luz y oscuridad
+  OSCURIDAD: 0.7,               // qué tan oscura es la noche (0 = de día, 1 = negro total)
+  LUZ_FAROL_RADIO: 220,         // tamaño del círculo de luz de cada farol
+  LUZ_PERRO_RADIO: 150,         // pequeña luz alrededor del perro para no perderlo de vista
+
+  // Comida (cura un poco de vida; solo se come si te falta vida)
+  COMIDA_CURA: 15,              // vida que recupera cada comida
+  COMIDA_CADA_MS: 12000,        // cada cuánto aparece comida en algún lugar cerca del perro
+  COMIDA_DISTANCIA: 550,        // qué tan lejos del perro puede aparecer
+  COMIDA_MAXIMA: 8,             // máximo de comida en el suelo a la vez
+  BASURERO_COMIDA_CADA_MS: 6000, // cada cuánto aparece comida junto al basurero más cercano
+  BASURERO_DISTANCIA: 700,      // el basurero tiene que estar a esta distancia del perro o menos
+
+  // Agua de la pileta (cura si el perro está pegado a ella)
+  AGUA_CURA: 1,                 // vida que recupera...
+  AGUA_CURA_CADA_MS: 500,       // ...cada este tiempo
+  AGUA_DISTANCIA: 15,           // qué tan pegado a la pileta tiene que estar
+
+  // Enemigos rodeando obstáculos
+  RODEO_MS: 600,                // al chocar un obstáculo, cuánto rato caminan de lado para rodearlo
+
+  // ---------------------------------------------------------------
   //  RAZAS
   //  Los números base de cada perro. Los textos de las cartas están
   //  en src/razas.js

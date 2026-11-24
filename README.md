@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.6.1** — personajes en pixel art (con limpieza de ajustes y zonas de choque).
+Versión actual: **v0.7** — mapa de la plaza de noche.
 
 ## Cómo abrir el juego
 
@@ -50,6 +50,25 @@ Con las otras razas (no Quiltro), los enemigos sueltan hueso 3 de cada 4 veces.
 - **Enemigos**: aparecen desde fuera de la pantalla y con el tiempo llegan cada vez más seguido (ver tabla abajo).
 - **Mordida automática**: tu perro muerde solo al enemigo más cercano si está cerca. Lo verás como unos dientes blancos sobre el enemigo (amarillos y más grandes si es la Mandíbula de hierro).
 - **Daño**: si un enemigo te toca, pierdes vida y la pantalla tiembla. Después de cada golpe tienes medio segundo de invulnerabilidad (el perro se ve semitransparente).
+
+### La plaza
+
+El mapa es una plaza de noche dibujada en pixel art:
+
+- **Calle con autos estacionados** en los 4 bordes.
+- **Caminos de baldosas** en forma de cruz, con **bancas**, **basureros** y **faroles**.
+- **4 prados de pasto** con **árboles** y senderos de tierra.
+- Una **pileta** en el centro. Empiezas justo al sur de ella.
+
+**Obstáculos:** las bancas, los árboles, la pileta, los basureros y los autos no se pueden atravesar, ni por ti ni por los enemigos. Los enemigos los rodean para llegar a ti. Puedes usarlos para que te alcancen más lento. Los faroles no bloquean el paso.
+
+**Noche:** todo se ve oscuro menos los círculos de luz de los faroles y una luz chica alrededor de tu perro.
+
+**Comida:** de vez en cuando aparecen restos de **sopaipilla** o un **pan** en el suelo cerca de ti. Si te falta vida, pasa encima y te cura (verás un **+15** verde). Si tienes la vida llena, la comida queda en el suelo para después. Cerca de los **basureros** aparece comida mucho más seguido.
+
+**Agua:** quédate **pegado a la pileta** y te curas de a poco (verás **+1** celeste).
+
+Los enemigos siguen apareciendo fuera de la pantalla, pero nunca dentro de un obstáculo.
 
 ### Enemigos
 
@@ -196,6 +215,29 @@ También están ahí el **hueso** y los **dientes de la mordida**. La onda del L
 
 **Raza o enemigo nuevo:** copia el bloque de otro dibujo, ponle el mismo `id` que usaste en `src/config.js` y edítalo.
 
+### Números de la plaza (`src/config.js`, sección `PLAZA`)
+
+| Ajuste | Qué hace |
+|---|---|
+| `MAPA_SEMILLA` | Un texto cualquiera. Cambiarlo pone los árboles, bancas, autos, etc. en otros lugares. Con el mismo texto la plaza sale siempre igual |
+| `CALLE_ANCHO` | Ancho de la calle de los bordes |
+| `PASILLO_ANCHO` | Ancho de los caminos de baldosas en cruz |
+| `PILETA_RADIO` | Tamaño de la pileta |
+| `SENDEROS_POR_PRADO` | Senderos de tierra en cada prado |
+| `ARBOLES` / `BANCAS` / `BASUREROS` / `FAROLES` / `AUTOS` | Cuántos hay de cada cosa (si no caben todos, se ponen los que quepan) |
+| `OSCURIDAD` | Qué tan oscura es la noche (0 = de día, 1 = negro total) |
+| `LUZ_FAROL_RADIO` | Tamaño de la luz de cada farol |
+| `LUZ_PERRO_RADIO` | Tamaño de la luz alrededor del perro |
+| `COMIDA_CURA` | Vida que recupera cada comida |
+| `COMIDA_CADA_MS` / `COMIDA_DISTANCIA` | Cada cuánto aparece comida cerca del perro / a qué distancia máxima |
+| `COMIDA_MAXIMA` | Máximo de comida en el suelo a la vez |
+| `BASURERO_COMIDA_CADA_MS` / `BASURERO_DISTANCIA` | Cada cuánto aparece comida junto al basurero más cercano / qué tan cerca debe estar ese basurero |
+| `AGUA_CURA` / `AGUA_CURA_CADA_MS` | Vida que recupera la pileta / cada cuánto |
+| `AGUA_DISTANCIA` | Qué tan pegado a la pileta tienes que estar |
+| `RODEO_MS` | Al chocar un obstáculo, cuánto rato caminan de lado los enemigos para rodearlo |
+
+Los dibujos de la plaza (bancas, basureros, faroles, autos y comida) y el tamaño de choque de cada obstáculo están en `src/mapa.js`.
+
 ### Otros números (`src/config.js`)
 
 | Ajuste | Qué hace |
@@ -230,16 +272,17 @@ También están ahí el **hueso** y los **dientes de la mordida**. La onda del L
 ## Archivos
 
 - `index.html` — la página que abre el juego.
-- `src/config.js` — los números para ajustar el juego (razas, enemigos, niveles, instintos).
+- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos).
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
 - `src/instintos.js` — nombres y frases de las cartas de instintos.
 - `src/sprites.js` — los dibujos en pixel art de todos los personajes, el hueso y la mordida.
+- `src/mapa.js` — la plaza: suelo, pileta, bancas, árboles, faroles, basureros, autos, comida, obstáculos y la oscuridad de la noche.
 - `src/main.js` — configuración del motor del juego.
 - `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza.
-- `src/scenes/GameScene.js` — la partida: perro, enemigos, ataques, poderes, experiencia, cartas y Game Over.
+- `src/scenes/GameScene.js` — la partida: perro, enemigos (y cómo rodean obstáculos), ataques, poderes, comida, agua, experiencia, cartas y Game Over.
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js` o `src/sprites.js`, revisa ese cambio.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js` o `src/mapa.js`, revisa ese cambio.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.
