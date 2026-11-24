@@ -27,16 +27,26 @@ class MenuScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '48px', color: '#ffe082', fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    this.add.text(w / 2, 95, 'Elige tu raza (clic o teclas 1 a ' + this.listaRazas().length + ')', {
+    const como = modoTactil() ? 'toca una carta para empezar' : 'clic o teclas 1 a ' + this.listaRazas().length;
+    this.add.text(w / 2, 95, 'Elige tu raza (' + como + ')', {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5);
 
-    this.add.text(w - 10, this.scale.height - 8, 'Lomito Survivor - v0.13', {
+    this.add.text(w - 10, this.scale.height - 8, 'Lomito Survivor - v0.14', {
       fontFamily: FUENTE, fontSize: '13px', color: '#888888'
     }).setOrigin(1, 1);
 
     this.crearCartas();
     this.crearBotonAlbum();
+
+    // Rincón de apuestas con los huesitos guardados (src/scenes/ApuestasScene.js)
+    botonPantalla(this, w / 2 + 140, this.scale.height - 26, 260, 34, 'Rincón de apuestas' + (modoTactil() ? '' : ' (B)'),
+      0xf2d64b, () => this.scene.start('ApuestasScene', { modo: 'fin' }));
+
+    // Celular: botón de pantalla completa (src/tactil.js), si el navegador lo permite
+    if (modoTactil() && puedePantallaCompleta()) {
+      botonPantalla(this, w - 96, 28, 172, 34, '⛶ Pantalla completa', 0x90caf9, () => alternarPantallaCompleta(), 15);
+    }
 
     // Huesitos guardados (la moneda del juego)
     this.textoHuesitos = this.add.text(14, 12, '', {
@@ -47,6 +57,7 @@ class MenuScene extends Phaser.Scene {
     const nombresTeclas = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
     this.teclas = this.razas.map((_, i) => this.input.keyboard.addKey(nombresTeclas[i]));
     this.teclaAlbum = this.input.keyboard.addKey('A');
+    this.teclaRincon = this.input.keyboard.addKey('B');
     this.teclaH = this.input.keyboard.addKey('H'); // modo de prueba: +100 huesitos guardados
   }
 
@@ -59,6 +70,7 @@ class MenuScene extends Phaser.Scene {
       if (Phaser.Input.Keyboard.JustDown(tecla)) this.elegir(i);
     });
     if (Phaser.Input.Keyboard.JustDown(this.teclaAlbum)) this.scene.start('AlbumScene');
+    if (Phaser.Input.Keyboard.JustDown(this.teclaRincon)) this.scene.start('ApuestasScene', { modo: 'fin' });
     // Modo de prueba: H da huesitos guardados (cuánto, en CONFIG.HUESITOS.PRUEBA_TECLA_H)
     if (Phaser.Input.Keyboard.JustDown(this.teclaH)) {
       sumarHuesitos(CONFIG.HUESITOS.PRUEBA_TECLA_H);
@@ -72,7 +84,7 @@ class MenuScene extends Phaser.Scene {
 
   // Botón "Álbum" abajo al centro (src/scenes/AlbumScene.js)
   crearBotonAlbum() {
-    const cx = this.scale.width / 2;
+    const cx = this.scale.width / 2 - 140;
     const cy = this.scale.height - 26;
     const ancho = 260;
     const alto = 34;
@@ -83,7 +95,7 @@ class MenuScene extends Phaser.Scene {
       marcoPixel(g, cx - ancho / 2, cy - alto / 2, ancho, alto, encima ? 0xffffff : 0xce93d8, encima ? 0x4a3560 : 0x2a1f3a);
     };
     pintar(false);
-    this.add.text(cx, cy, 'Álbum (A)   ✦ ' + encontrados, {
+    this.add.text(cx, cy, 'Álbum' + (modoTactil() ? '' : ' (A)') + '   ✦ ' + encontrados, {
       fontFamily: FUENTE, fontSize: '16px', color: '#f3e5f5', fontStyle: 'bold'
     }).setOrigin(0.5);
     const zona = this.add.zone(cx, cy, ancho, alto).setInteractive({ useHandCursor: true });
@@ -143,7 +155,7 @@ class MenuScene extends Phaser.Scene {
       poner(raza.frase, { fontSize: '14px', color: '#ffffff', fontStyle: 'italic' }, 12);
       poner('+ ' + raza.fortalezas, { fontSize: '14px', color: '#9ccc65' }, 6);
       poner('− ' + raza.debilidades, { fontSize: '14px', color: '#ef9a9a' }, 12);
-      poner('Poder: ' + raza.poder + espera, { fontSize: '14px', color: '#ffe082', fontStyle: 'bold' }, 4);
+      poner('Poder: ' + sinTeclas(raza.poder) + espera, { fontSize: '14px', color: '#ffe082', fontStyle: 'bold' }, 4);
       poner(raza.poderTexto, { fontSize: '13px', color: '#dddddd' }, 0);
     });
   }

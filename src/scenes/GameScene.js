@@ -7,7 +7,8 @@
 //  el reloj y las fases de la noche, de src/noche.js; el jefe final, de src/jefe.js;
 //  las zonas especiales, de src/zonas.js; los mini desafíos, de src/desafios.js;
 //  los ultra raros coleccionables, de src/coleccionables.js;
-//  los huesitos, de src/huesitos.js; el Rincón de apuestas, de src/scenes/ApuestasScene.js)
+//  los huesitos, de src/huesitos.js; el Rincón de apuestas, de src/scenes/ApuestasScene.js;
+//  el joystick y los botones del celular, de src/tactil.js)
 
 const COLOR_ATURDIDO = 0x9575cd; // morado: enemigo aturdido por la Mandíbula de hierro
 const COLOR_AVISO = 0xb9f6ca;    // verde claro: aviso de embestida del Drogadicto
@@ -169,6 +170,10 @@ class GameScene extends Phaser.Scene {
 
     this.crearHUD();
 
+    // Celular: joystick y botones Sprint / Pausa (src/tactil.js). En PC no aparece nada.
+    crearControlesTactiles(this);
+    this.cuadro = 0;              // contador de cuadros (para redibujar la oscuridad menos seguido en celular)
+
     // Zonas especiales (src/zonas.js) y mini desafíos (src/desafios.js)
     iniciarZonas(this);
     iniciarDesafios(this);
@@ -178,6 +183,8 @@ class GameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    actualizarControlesTactiles(this); // joystick y botones del celular (o los esconde)
+
     if (this.gameOver) {
       if (Phaser.Input.Keyboard.JustDown(this.teclaR)) {
         this.scene.restart({ raza: this.razaId }); // misma raza
@@ -221,7 +228,9 @@ class GameScene extends Phaser.Scene {
     }
 
     // Sprint del Galgo (no se puede si la Perrera lo atrapó)
-    if (this.poder === 'sprint' && Phaser.Input.Keyboard.JustDown(this.teclaEspacio) &&
+    const sprintTactil = pidioSprintTactil(this); // botón SPRINT del celular (se lee siempre)
+    const pidioSprint = Phaser.Input.Keyboard.JustDown(this.teclaEspacio) || sprintTactil;
+    if (this.poder === 'sprint' && pidioSprint &&
         this.poderListo() && !this.estaAtrapado()) {
       this.iniciarSprint();
     }
@@ -338,8 +347,12 @@ class GameScene extends Phaser.Scene {
     this.perro.setAlpha(invulnerable ? 0.5 : 1);
 
     // La oscuridad baja al acercarse el amanecer; el jefe lleva su propia luz
+    // (en celular se redibuja cada MOVIL.OSCURIDAD_CADA_CUADROS cuadros, para ir más fluido)
     const luces = this.jefeVivo() ? [this.jefe] : [];
-    actualizarOscuridad(this, this.oscuridad, this.plaza, this.perro, this.nivelOscuridad(), luces);
+    const cada = modoTactil() ? Math.max(1, CONFIG.MOVIL.OSCURIDAD_CADA_CUADROS) : 1;
+    if (this.cuadro++ % cada === 0) {
+      actualizarOscuridad(this, this.oscuridad, this.plaza, this.perro, this.nivelOscuridad(), luces);
+    }
     this.actualizarHUD();
   }
 
@@ -388,6 +401,7 @@ class GameScene extends Phaser.Scene {
     this.events.once('resume', () => {
       // Olvidar teclas presionadas o soltadas mientras estaba el rincón
       this.input.keyboard.resetKeys();
+      soltarJoystick(this);         // el dedo pudo soltarse mientras estaba el rincón
       this.actualizarHUD();
     });
     this.scene.launch('ApuestasScene', { modo: 'fase' });
@@ -568,6 +582,15 @@ class GameScene extends Phaser.Scene {
     if (this.cursors.up.isDown || this.wasd.W.isDown) dy -= 1;
     if (this.cursors.down.isDown || this.wasd.S.isDown) dy += 1;
 
+    // Joystick del celular (src/tactil.js): dirección e intensidad
+    let intensidad = 1;
+    const joy = direccionJoystick(this);
+    if (joy && dx === 0 && dy === 0) {
+      dx = joy.dx;
+      dy = joy.dy;
+      intensidad = joy.fuerza;
+    }
+
     if (dx !== 0 || dy !== 0) {
       this.ultimaDireccion.set(dx, dy).normalize();
     }
@@ -590,7 +613,7 @@ class GameScene extends Phaser.Scene {
     }
 
     // Normalizar para que en diagonal no vaya más rápido
-    const vel = new Phaser.Math.Vector2(dx, dy).normalize().scale(this.velocidadPerro() * barro);
+    const vel = new Phaser.Math.Vector2(dx, dy).normalize().scale(this.velocidadPerro() * barro * intensidad);
     this.perro.body.setVelocity(vel.x, vel.y);
   }
 
@@ -800,6 +823,7 @@ class GameScene extends Phaser.Scene {
 
   // Sombra que se desvanece donde estaba un personaje (sprint del Galgo, embestida del jefe)
   dejarSombra(quien) {
+    if (efectosLimitados(this)) return; // celular con muchos enemigos: sin sombras
     const sombra = this.add.image(quien.x, quien.y, quien.texture.key, quien.frame.name)
       .setScale(quien.scaleX).setFlipX(quien.flipX).setAlpha(0.4);
     if (quien.isTinted) sombra.setTint(quien.tintTopLeft);
@@ -907,7 +931,7 @@ class GameScene extends Phaser.Scene {
   }
 
   crearEnemigo(tipo, x, y, ignorarLimite, elite) {
-    if (!ignorarLimite && this.enemigos.countActive() >= CONFIG.ENEMIGOS_MAXIMOS) return null;
+    if (!ignorarLimite && this.enemigos.countActive() >= limiteEnemigos()) return null;
 
     const cfg = CONFIG.ENEMIGOS[tipo];
     const tamano = elite ? CONFIG.ELITE_TAMANO : 1;
@@ -1152,6 +1176,9 @@ class GameScene extends Phaser.Scene {
   // Dientes de pixel art sobre el enemigo que se desvanecen
   // (amarillos y más grandes si es la Mandíbula de hierro; rojos si es crítica)
   mostrarMordida(objetivo, fuerte, critico) {
+    // Celular con muchos enemigos: solo 1 de cada MOVIL.EFECTOS_UNO_DE_CADA (src/tactil.js)
+    if (!fuerte && !critico && efectosLimitados(this) &&
+        (this.mordidasOmitidas = (this.mordidasOmitidas || 0) + 1) % CONFIG.MOVIL.EFECTOS_UNO_DE_CADA !== 0) return;
     const escala = fuerte || critico ? ESCALA_PIXEL + 1 : ESCALA_PIXEL;
     const dientes = this.add.image(objetivo.x, objetivo.y, 'mordida', 0).setScale(escala);
     dientes.setDepth(20);
@@ -1595,9 +1622,12 @@ class GameScene extends Phaser.Scene {
     capa.push(this.add.text(w / 2, 90, '¡Subiste a nivel ' + this.nivel + '!', {
       fontFamily: FUENTE, fontSize: '36px', color: '#ffffff', fontStyle: 'bold'
     }).setOrigin(0.5));
+    const como = modoTactil() ? '(toca una carta)' : '(clic o teclas 1, 2, 3)';
     const titulo = fusiones.length > 0
-      ? '¡Fusión disponible! Elige una carta (clic o teclas 1, 2, 3)'
-      : 'Elige un instinto (clic o teclas 1, 2, 3)';
+      ? '¡Fusión disponible! Elige una carta ' + como
+      : 'Elige un instinto ' + como;
+    // En celular, las cartas no se pueden tocar hasta pasado un ratito (evita toques sin querer)
+    this.cartasListasEn = this.time.now + (modoTactil() ? CONFIG.MOVIL.CARTAS_ESPERA_MS : 0);
     capa.push(this.add.text(w / 2, 130, titulo, {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5));
@@ -1621,7 +1651,7 @@ class GameScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true });
       fondo.on('pointerover', () => fondo.setStrokeStyle(3, COLOR_HUESO));
       fondo.on('pointerout', () => fondo.setStrokeStyle(3, 0x888899));
-      fondo.on('pointerdown', () => this.elegirCarta(i));
+      fondo.on('pointerdown', () => this.tocarCarta(i));
 
       const tecla = this.add.text(cx, cy - 105, '[' + (i + 1) + ']', {
         fontFamily: FUENTE, fontSize: '18px', color: '#aaaaaa'
@@ -1661,7 +1691,7 @@ class GameScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     fondo.on('pointerover', () => fondo.setStrokeStyle(5, 0xffffff));
     fondo.on('pointerout', () => fondo.setStrokeStyle(4, 0xffd54f));
-    fondo.on('pointerdown', () => this.elegirCarta(i));
+    fondo.on('pointerdown', () => this.tocarCarta(i));
 
     const tecla = this.add.text(cx, cy - 108, '[' + (i + 1) + ']  FUSIÓN', {
       fontFamily: FUENTE, fontSize: '16px', color: '#ffd54f', fontStyle: 'bold'
@@ -1684,6 +1714,12 @@ class GameScene extends Phaser.Scene {
     // La carta palpita para que se note
     this.tweens.add({ targets: fondo, alpha: 0.8, duration: 500, yoyo: true, repeat: -1 });
     return [fondo, tecla, nombre, frase, icono, combinacion];
+  }
+
+  // Clic o toque en una carta (ignora toques justo cuando recién aparecen)
+  tocarCarta(indice) {
+    if (this.time.now < (this.cartasListasEn || 0)) return;
+    this.elegirCarta(indice);
   }
 
   elegirCarta(indice) {
@@ -1869,13 +1905,30 @@ class GameScene extends Phaser.Scene {
     y += 21;
     lineas.push({ texto: textoDesgloseHuesitos(huesitos), y, tam: '14px', color: '#e6d28a', ancho: 900 });
 
-    const textoM = CONFIG.APUESTAS.EN_FIN_DE_PARTIDA ? 'M: Rincón de apuestas y volver al inicio' : 'M: volver al inicio y elegir otra raza';
-    lineas.push({ texto: 'R: jugar de nuevo con la misma raza     ·     ' + textoM, y: 518, tam: '18px', color: '#dddddd' });
 
     lineas.forEach((l) => {
       const estilo = { fontFamily: FUENTE, fontSize: l.tam, color: l.color, fontStyle: l.negrita ? 'bold' : 'normal', align: 'center' };
       if (l.ancho) estilo.wordWrap = { width: l.ancho };
       this.add.text(cx, l.y, l.texto, estilo).setOrigin(0.5).setScrollFactor(0).setDepth(2001);
+    });
+
+    // Botones (se pueden tocar o clickear; también funcionan R y M)
+    const tecla = (t) => (modoTactil() ? '' : ' (' + t + ')'); // en celular no se muestran las teclas
+    const botones = [
+      { texto: 'Reiniciar' + tecla('R'), color: 0x9ccc65, accion: () => this.scene.restart({ raza: this.razaId }) }
+    ];
+    if (CONFIG.APUESTAS.EN_FIN_DE_PARTIDA) {
+      botones.push({ texto: 'Rincón de apuestas' + tecla('M'), color: 0xf2d64b, accion: () => this.scene.start('ApuestasScene', { modo: 'fin' }) });
+      botones.push({ texto: 'Menú', color: 0xffd54f, accion: () => this.scene.start('MenuScene') });
+    } else {
+      botones.push({ texto: 'Menú' + tecla('M'), color: 0xffd54f, accion: () => this.scene.start('MenuScene') });
+    }
+    const anchoB = 250;
+    const sepB = 270;
+    botones.forEach((b, i) => {
+      const bx = cx + (i - (botones.length - 1) / 2) * sepB;
+      botonPantalla(this, bx, 518, anchoB, 34, b.texto, b.color, b.accion, 17)
+        .forEach((o) => o.setScrollFactor(0).setDepth(2002));
     });
   }
 
@@ -1898,10 +1951,12 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.13', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.14', estilo)
       .setScrollFactor(0).setDepth(1000);
-    this.add.text(12, this.scale.height - 10, 'P / Esc: pausa', { ...estilo, fontSize: '13px', color: '#9e9e9e' })
-      .setOrigin(0, 1).setScrollFactor(0).setDepth(1000);
+    if (!modoTactil()) { // en celular está el botón de pausa
+      this.add.text(12, this.scale.height - 10, 'P / Esc: pausa', { ...estilo, fontSize: '13px', color: '#9e9e9e' })
+        .setOrigin(0, 1).setScrollFactor(0).setDepth(1000);
+    }
 
     this.barraVida = this.add.graphics().setScrollFactor(0).setDepth(1000);
     this.textoVida = this.add.text(12 + 100, 57, '', { ...estilo, fontSize: '14px' })
@@ -1909,7 +1964,7 @@ class GameScene extends Phaser.Scene {
 
     // Raza y poder
     const espera = this.poderEsperaTotal > 0 ? '' : ' (pasivo)';
-    const poder = this.textosRaza.poder ? ' · ' + this.textosRaza.poder + espera : '';
+    const poder = this.textosRaza.poder ? ' · ' + sinTeclas(this.textosRaza.poder) + espera : '';
     this.add.text(12, 74, this.textosRaza.nombre + poder, { ...estilo, fontSize: '15px', color: '#ffe082' })
       .setScrollFactor(0).setDepth(1000);
 
@@ -2023,7 +2078,7 @@ class GameScene extends Phaser.Scene {
       this.barraPoder.strokeRect(12, 91, 140, 10);
 
       if (listo) {
-        this.textoPoder.setText(this.poder === 'sprint' ? '¡Listo! [Espacio]' : '¡Listo!');
+        this.textoPoder.setText(this.poder === 'sprint' ? sinTeclas('¡Listo! [Espacio]') : '¡Listo!');
         this.textoPoder.setColor('#ffe082');
       } else {
         const faltan = (this.poderEsperaTotal - this.poderCarga) / 1000;

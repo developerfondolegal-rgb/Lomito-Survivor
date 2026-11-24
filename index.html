@@ -2,26 +2,76 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Celular: sin zoom con dos dedos ni doble toque, y usa toda la pantalla (también con muesca) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#000000">
   <title>Lomito Survivor</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       background: #000;
+      width: 100%;
       height: 100%;
-      overflow: hidden;
+      overflow: hidden;            /* sin scroll */
+      overscroll-behavior: none;   /* sin "tirar para recargar" */
+      touch-action: none;          /* sin zoom ni gestos del navegador */
+      -webkit-user-select: none;   /* sin seleccionar texto */
+      user-select: none;
+      -webkit-touch-callout: none; /* sin menú al mantener presionado */
+      -webkit-tap-highlight-color: transparent;
     }
     #game {
+      position: fixed;
+      inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100%;
+    }
+    canvas { touch-action: none; }
+
+    /* Aviso "Gira el celular" (solo en celular y en vertical; lo activa src/tactil.js) */
+    #gira {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      background: #000;
+      color: #ffe082;
+      font-family: Arial, sans-serif;
+      font-size: 22px;
+      font-weight: bold;
+      text-align: center;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+    body.vertical #gira { display: flex; }
+    #gira small { color: #cfd8dc; font-size: 15px; font-weight: normal; }
+    #gira svg { animation: girar 2s ease-in-out infinite; }
+    @keyframes girar {
+      0%, 25% { transform: rotate(0deg); }
+      60%, 100% { transform: rotate(-90deg); }
     }
   </style>
 </head>
 <body>
   <div id="game"></div>
+
+  <!-- Se ve solo con el celular en vertical -->
+  <div id="gira">
+    <svg width="90" height="140" viewBox="0 0 90 140" aria-hidden="true">
+      <rect x="5" y="5" width="80" height="130" rx="10" fill="#1d1b2e" stroke="#ffe082" stroke-width="6"/>
+      <rect x="15" y="20" width="60" height="95" fill="#3a5a2a"/>
+      <rect x="38" y="122" width="14" height="5" rx="2" fill="#ffe082"/>
+      <rect x="35" y="60" width="20" height="12" fill="#8b5a2b"/>
+      <rect x="51" y="55" width="8" height="8" fill="#8b5a2b"/>
+    </svg>
+    <div>Gira el celular</div>
+    <small>Lomito Survivor se juega en horizontal</small>
+  </div>
 
   <!-- Phaser 3 desde CDN (requiere internet la primera vez) -->
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
@@ -42,6 +92,7 @@
   <script src="src/pausa.js"></script>
   <script src="src/coleccionables.js"></script>
   <script src="src/huesitos.js"></script>
+  <script src="src/tactil.js"></script>
   <script src="src/scenes/MenuScene.js"></script>
   <script src="src/scenes/GameScene.js"></script>
   <script src="src/scenes/AlbumScene.js"></script>

@@ -70,7 +70,7 @@ class AlbumScene extends Phaser.Scene {
 
     // Botones de abajo
     const yb = h - 28;
-    this.boton(w / 2 - 130, yb, 220, 'Volver (Esc / A)', 0xffd54f, () => this.scene.start('MenuScene'));
+    this.boton(w / 2 - 130, yb, 220, modoTactil() ? 'Volver' : 'Volver (Esc / A)', 0xffd54f, () => this.scene.start('MenuScene'));
     this.boton(w / 2 + 130, yb, 220, 'Borrar progreso', 0xef5350, () => this.abrirConfirmar());
   }
 
@@ -120,7 +120,9 @@ class AlbumScene extends Phaser.Scene {
     texto(derecha, y + 58, info.max ? 'Nivel máximo · ' + info.copias + ' copias'
       : 'Copias: ' + info.progreso + ' / ' + info.necesita + ' para Nv ' + (info.nivel + 1), 11, '#cfd8dc');
     const bonus = texto(x + 10, y + 70, textoBonusColeccionable(c.id, info.nivel), 11, '#c5e1a5', { wordWrap: { width: ancho - 20 } });
-    texto(x + 10, bonus.y + bonus.height + 2, c.frase, 10, '#b0bec5', { fontStyle: 'italic', wordWrap: { width: ancho - 20 } });
+    const frase = texto(x + 10, bonus.y + bonus.height + 2, c.frase, 10, '#b0bec5', { fontStyle: 'italic', wordWrap: { width: ancho - 20 } });
+    // En celular la letra es más grande (src/tactil.js): si la frase no cabe en la carta, vuelve a su tamaño normal
+    if (frase.y + frase.height > y + alto - 6) frase.setFontSize(10);
   }
 
   boton(cx, cy, ancho, texto, color, alHacerClic, capa) {
@@ -170,7 +172,7 @@ class AlbumScene extends Phaser.Scene {
       this.dibujar();
       this.avisoBorrado();
     }, capa);
-    this.boton(w / 2 + 120, h / 2 + 55, 200, 'Cancelar (Esc)', 0xffd54f, () => this.cerrarConfirmar(), capa);
+    this.boton(w / 2 + 120, h / 2 + 55, 200, modoTactil() ? 'Cancelar' : 'Cancelar (Esc)', 0xffd54f, () => this.cerrarConfirmar(), capa);
   }
 
   cerrarConfirmar() {

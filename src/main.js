@@ -10,10 +10,17 @@ const config = {
     default: 'arcade',
     arcade: { debug: false }
   },
+  // El juego mide siempre 960 x 540 y se agranda o achica para caber en
+  // cualquier pantalla sin deformarse (quedan franjas negras si sobra espacio)
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
+  // Varios dedos a la vez (moverse con el joystick y apretar Sprint)
+  input: {
+    activePointers: 3
+  },
+  disableContextMenu: true,
   scene: [MenuScene, GameScene, AlbumScene, ApuestasScene] // la primera de la lista es la que se muestra al abrir
 };
 

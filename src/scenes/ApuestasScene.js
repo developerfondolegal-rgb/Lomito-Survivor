@@ -365,7 +365,8 @@ class ApuestasScene extends Phaser.Scene {
       : 'Huesitos guardados: ' + huesitosGuardados();
     this.texto(cx, 60, saldo, 17, '#f2d64b', { fontStyle: 'bold' }).setOrigin(0.5, 0);
 
-    const textoSalir = this.modo === 'fase' ? 'Seguir jugando (Esc)' : 'Salir (Esc)';
+    const esc = modoTactil() ? '' : ' (Esc)'; // en celular no se muestran las teclas
+    const textoSalir = (this.modo === 'fase' ? 'Seguir jugando' : 'Salir') + esc;
 
     // Nada que apostar: solo se puede salir
     if (!this.hayAlgo() && !this.huboTirada) {
@@ -386,7 +387,7 @@ class ApuestasScene extends Phaser.Scene {
         () => { this.apostarColeccionable = true; this.dibujar(); }, 15);
       if (this.apostarColeccionable) this.marcarElegido(cx + 150, y, 280, 30, 0xce93d8);
       else this.marcarElegido(cx - 150, y, 280, 30, 0xf2d64b);
-      this.texto(cx, y + 18, 'Tab: cambiar', 11, '#9e9e9e').setOrigin(0.5, 0);
+      if (!modoTactil()) this.texto(cx, y + 18, 'Tab: cambiar', 11, '#9e9e9e').setOrigin(0.5, 0);
     } else {
       this.texto(cx, y, 'La noche cambió de fase. ¿Una apuestita antes de seguir?', 15, '#b3e5fc').setOrigin(0.5);
     }
@@ -411,14 +412,14 @@ class ApuestasScene extends Phaser.Scene {
     y = 236;
     const id = JUEGOS_APUESTA[this.juego].id;
     if (id === 'exacto') {
-      this.texto(cx - 300, y, 'Tu número (↑ ↓):', 15, '#ffffff').setOrigin(0, 0.5);
+      this.texto(cx - 300, y, modoTactil() ? 'Tu número:' : 'Tu número (↑ ↓):', 15, '#ffffff').setOrigin(0, 0.5);
       for (let n = 1; n <= 6; n++) {
         const bx = cx - 110 + (n - 1) * 52;
         this.boton(bx, y, 44, 32, String(n), 0xffd54f, true, () => { this.numeroElegido = n; this.dibujar(); }, 17);
         if (n === this.numeroElegido) this.marcarElegido(bx, y, 44, 32, 0xffd54f);
       }
     } else if (id === 'bajoalto') {
-      this.texto(cx - 300, y, 'Tu elección (↑ ↓):', 15, '#ffffff').setOrigin(0, 0.5);
+      this.texto(cx - 300, y, modoTactil() ? 'Tu elección:' : 'Tu elección (↑ ↓):', 15, '#ffffff').setOrigin(0, 0.5);
       this.boton(cx - 40, y, 170, 32, 'Bajo (1-2-3)', 0x81d4fa, true, () => { this.alto = false; this.dibujar(); });
       this.boton(cx + 150, y, 170, 32, 'Alto (4-5-6)', 0xff8a65, true, () => { this.alto = true; this.dibujar(); });
       if (this.alto) this.marcarElegido(cx + 150, y, 170, 32, 0xff8a65);
@@ -433,15 +434,16 @@ class ApuestasScene extends Phaser.Scene {
       const c = this.coleccionableElegido();
       const info = infoColeccionable(c.id);
       const extra = this.copiasSiGanas();
-      this.boton(cx - 300, y, 40, 32, '◀', 0xce93d8, true, () => this.cambiarMonto(-1));
-      this.boton(cx + 300, y, 40, 32, '▶', 0xce93d8, true, () => this.cambiarMonto(1));
+      this.boton(cx - 300, y, 44, 38, '◀', 0xce93d8, true, () => this.cambiarMonto(-1));
+      this.boton(cx + 300, y, 44, 38, '▶', 0xce93d8, true, () => this.cambiarMonto(1));
       const icono = this.add.image(cx - 250, y, claveColeccionable(c.id), 0).setScale(2);
       this.capa.push(icono);
       this.texto(cx - 225, y, 'Apuestas 1 copia de ' + c.nombre + '  (tienes ' + info.copias + ', Nv ' + info.nivel + ')' +
         '\nSi ganas: +' + extra + (extra === 1 ? ' copia' : ' copias') + '  ·  Si pierdes: −1 copia', 13, '#f3e5f5').setOrigin(0, 0.5);
     } else if (this.disponibleHuesitos() >= A.MINIMO) {
-      this.boton(cx - 130, y, 40, 32, '◀', 0xf2d64b, true, () => this.cambiarMonto(-1));
-      this.boton(cx + 130, y, 40, 32, '▶', 0xf2d64b, true, () => this.cambiarMonto(1));
+      // − y + cambian el monto (también las flechas izquierda / derecha)
+      this.boton(cx - 140, y, 52, 38, '−', 0xf2d64b, true, () => this.cambiarMonto(-1), 22);
+      this.boton(cx + 140, y, 52, 38, '+', 0xf2d64b, true, () => this.cambiarMonto(1), 22);
       this.texto(cx, y - 8, 'Apuestas: ' + this.monto + ' huesitos', 18, '#f2d64b', { fontStyle: 'bold' }).setOrigin(0.5);
       const premio = Math.floor(this.monto * JUEGOS_APUESTA[this.juego].pago());
       this.texto(cx, y + 12, 'Si ganas recibes ' + premio + ' (mín ' + A.MINIMO + ', máx ' +
@@ -461,9 +463,9 @@ class ApuestasScene extends Phaser.Scene {
       { fontStyle: 'bold', align: 'center', wordWrap: { width: 840 }, stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5);
 
     // Botones de abajo
-    this.boton(cx - 150, 490, 260, 40, 'Tirar (Espacio)', 0x9ccc65, this.puedeApostar(), () => this.tirar(), 18);
+    this.boton(cx - 150, 490, 260, 40, 'Tirar' + (modoTactil() ? '' : ' (Espacio)'), 0x9ccc65, this.puedeApostar(), () => this.tirar(), 18);
     this.boton(cx + 150, 490, 260, 40, textoSalir, 0xffd54f, true, () => this.salir(), 18);
-    this.texto(cx, 516, '1-2-3: juego  ·  ↑ ↓: elección  ·  ← →: ' + (this.apostarColeccionable ? 'coleccionable' : 'monto') +
+    if (!modoTactil()) this.texto(cx, 516, '1-2-3: juego  ·  ↑ ↓: elección  ·  ← →: ' + (this.apostarColeccionable ? 'coleccionable' : 'monto') +
       (this.modo === 'fin' ? '  ·  Tab: huesitos o coleccionable' : ''), 11, '#9e9e9e').setOrigin(0.5, 0);
   }
 

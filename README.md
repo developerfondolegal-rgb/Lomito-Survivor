@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.13** — huesitos y rincón de apuestas.
+Versión actual: **v0.14** — versión para celular Android.
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -14,12 +14,38 @@ Versión actual: **v0.13** — huesitos y rincón de apuestas.
 
 > Necesitas conexión a internet, porque el motor del juego (Phaser 3) se descarga desde internet al abrir la página.
 
+## Jugar en el celular (Android)
+
+1. Abre en **Chrome** la dirección del juego en GitHub Pages.
+2. **Pon el celular en horizontal.** Si está en vertical sale el aviso **"Gira el celular"** y la partida se pausa sola.
+3. Al primer toque el juego intenta ponerse en **pantalla completa** y quedarse en horizontal (si Chrome lo permite). En la pantalla de inicio también está el botón **⛶ Pantalla completa** (arriba a la derecha) para entrar o salir.
+4. Toca la carta de una raza para empezar.
+
+**Controles táctiles** (solo aparecen en pantallas táctiles; en PC todo sigue con teclado):
+
+| Acción | Cómo |
+|---|---|
+| Moverse | Pon el dedo en la **mitad izquierda** de la pantalla y arrástralo: aparece un **joystick** donde tocaste. Mientras más lo alejas, más rápido corre el perro |
+| Sprint (solo Galgo) | Botón redondo **SPRINT** abajo a la derecha. El anillo muestra cuánto falta para que se recargue. Se puede apretar mientras mueves el joystick con el otro dedo |
+| Pausa | Botón redondo **II** a la derecha, debajo del reloj |
+| Atacar | Automático, igual que en PC |
+| Cartas al subir de nivel | Toca la carta (los primeros instantes no responden, para que no elijas sin querer) |
+| Menú de pausa | Toca las pestañas y los botones **Continuar**, **Reiniciar** y **Salir al menú** |
+| Pantalla final | Botones **Reiniciar**, **Rincón de apuestas** y **Menú** |
+| Álbum | Botones **Volver** y **Borrar progreso** (pide confirmar) |
+| Rincón de apuestas | Toca el juego, tu número o bajo/alto, **−** y **+** para el monto, "Huesitos guardados" o "1 copia de un coleccionable", **Tirar** y **Seguir jugando** / **Salir** |
+
+Las teclas de prueba (T, Y, U, J, K, Z, X, C, H) no tienen versión táctil.
+
+**Probar los controles táctiles en el PC:** abre `index.html?tactil=1` (o en Chrome usa F12 → ícono de celular "Toggle device toolbar" y elige un Android en horizontal). Con `?tactil=0` se quitan aunque la pantalla sea táctil.
+
 ## Controles
 
 | Acción | Teclas |
 |---|---|
 | Elegir raza (pantalla de inicio) | **clic**, o teclas **1**, **2**, **3**, **4** |
 | Abrir el Álbum de coleccionables (pantalla de inicio) | botón **Álbum** o tecla **A** |
+| Abrir el Rincón de apuestas con los huesitos guardados (pantalla de inicio) | botón **Rincón de apuestas** o tecla **B** |
 | Volver del Álbum a la pantalla de inicio | **Esc** o **A** (o el botón Volver) |
 | Modo de prueba: +100 huesitos guardados (pantalla de inicio) | **H** |
 | Mover al perro | **W A S D** o **flechas** |
@@ -340,6 +366,7 @@ A los **9 minutos** (05:12 en el reloj) llega un perro enorme y oscuro con colla
 - Arriba de todo: barra de experiencia y tu **nivel**.
 - Arriba a la izquierda: barra de **vida**, tu **raza** y su poder. Si el poder tiene espera (Pitbull y Galgo), una barrita muestra cuánto falta; cuando se pone amarilla dice **¡Listo!** Debajo, los **huesitos de la partida**.
 - Arriba a la derecha: **hora de la noche**, y debajo la fase y el tiempo jugado.
+- En celular: botón de **pausa** a la derecha (debajo del reloj), **SPRINT** abajo a la derecha (solo Galgo) y el **joystick** donde pongas el dedo a la izquierda.
 - Arriba al centro (solo con el jefe vivo): nombre y **barra de vida del jefe**.
 - Arriba al centro, en dorado (solo durante un desafío): el **desafío**, su progreso y los segundos que quedan. Se pone rojo y parpadea los últimos 10 segundos.
 - Abajo al centro: **inventario** de objetos y fusiones logradas.
@@ -589,6 +616,15 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `DADO_MS`: cuánto rato rueda el dado.
 - En `src/scenes/ApuestasScene.js` están los dibujos del **dado** (6 caras de 12 x 12) y del **gato** (16 x 16), en el mismo formato que `src/sprites.js`, y los mensajes del gato.
 
+### Celular (`src/config.js`, sección `MOVIL`, y `src/tactil.js`)
+
+- `CONTROLES_TACTILES`: `'auto'` (solo en pantallas táctiles), `true` (siempre) o `false` (nunca).
+- `JOYSTICK_RADIO_REAL`, `JOYSTICK_ZONA_MUERTA`, `JOYSTICK_ZONA`: tamaño del joystick, cuánto hay que mover el dedo para que empiece a andar y qué parte de la pantalla sirve para el joystick.
+- `BOTON_SPRINT_REAL`, `BOTON_PAUSA_REAL`, `BOTONES_ALFA`: tamaño de los botones en píxeles reales del celular y su transparencia.
+- `CARTAS_ESPERA_MS`: rato en que las cartas de nivel no responden al aparecer.
+- `TEXTO_MINIMO`: tamaño mínimo de letra en celular (súbelo si te cuesta leer; puede encimar textos).
+- Rendimiento: `ENEMIGOS_MAXIMOS` (límite de enemigos en celular), `LIMITAR_EFECTOS_DESDE` y `EFECTOS_UNO_DE_CADA` (con muchos enemigos se muestran menos dientes de mordida y no hay sombras del sprint), `OSCURIDAD_CADA_CUADROS` (cada cuántos cuadros se redibuja la oscuridad).
+
 ### Nombres, dibujos y parejas de fusión (`src/objetos.js`)
 
 - `RAREZAS`: nombre y color de cada rareza, y si destella.
@@ -608,6 +644,7 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/sinergias.js` — las sinergias: nombre, frase, qué pide cada una y cómo se calcula su bonus.
 - `src/pausa.js` — el menú de pausa: panel, pestañas (incluidas Desafíos y Colección) y botones.
 - `src/coleccionables.js` — los ultra raros coleccionables: nombres, frases, dibujos, a qué mapa pertenecen, guardado en el navegador, peluche, aviso grande y la tecla C.
+- `src/tactil.js` — el celular: detecta pantallas táctiles, joystick, botones Sprint y Pausa, pantalla completa, aviso "Gira el celular", letra mínima y límites de rendimiento.
 - `src/huesitos.js` — los huesitos: cuánto se gana en la partida, el desglose y el guardado en el navegador.
 - `src/zonas.js` — las zonas especiales: nombres, colores, íconos, dónde aparecen y qué hacen.
 - `src/desafios.js` — los mini desafíos: nombres, frases, cómo avanzan, flechas, recompensas y la tecla X.
@@ -625,5 +662,7 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 ## Si algo no funciona
 
 - Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js`, `src/sinergias.js`, `src/zonas.js`, `src/desafios.js`, `src/coleccionables.js`, `src/huesitos.js` o `src/scenes/ApuestasScene.js`, revisa ese cambio.
+- En el celular no aparece el joystick: revisa que `CONTROLES_TACTILES` en `src/config.js` esté en `'auto'` o `true`. Si se ve todo muy chico, gira el celular a horizontal y usa pantalla completa.
+- En el celular va lento: baja `ENEMIGOS_MAXIMOS` o `LIMITAR_EFECTOS_DESDE` en la sección `MOVIL`, o sube `OSCURIDAD_CADA_CUADROS` a 3.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.
 - La colección no se guarda: revisa que no estés en una ventana privada/incógnito. Cada navegador guarda su propia colección.

@@ -100,7 +100,8 @@ function dibujarPausa(escena) {
   capa.push(marco);
 
   capa.push(textoPausa(escena, w / 2, py + 26, 'PAUSA', 28, '#ffe082', true).setOrigin(0.5));
-  capa.push(textoPausa(escena, px + pw - 18, py + 26, '◄ ►  cambiar pestaña   ·   P / Esc: volver a jugar', 12, '#9e9e9e')
+  const ayuda = modoTactil() ? 'Toca una pestaña para cambiar' : '◄ ►  cambiar pestaña   ·   P / Esc: volver a jugar';
+  capa.push(textoPausa(escena, px + pw - 18, py + 26, ayuda, 12, '#9e9e9e')
     .setOrigin(1, 0.5));
 
   // Pestañas
@@ -131,11 +132,11 @@ function dibujarPausa(escena) {
   // Botones de abajo
   const yb = py + ph - 32;
   botonPausa(escena, capa, w / 2 - 230, yb, 200, 'Continuar', () => cerrarPausa(escena));
-  botonPausa(escena, capa, w / 2, yb, 200, 'Reiniciar (R)', () => {
+  botonPausa(escena, capa, w / 2, yb, 200, modoTactil() ? 'Reiniciar' : 'Reiniciar (R)', () => {
     salirDePausa(escena);
     escena.scene.restart({ raza: escena.razaId });
   });
-  botonPausa(escena, capa, w / 2 + 230, yb, 200, 'Volver al menú (M)', () => {
+  botonPausa(escena, capa, w / 2 + 230, yb, 200, modoTactil() ? 'Salir al menú' : 'Salir al menú (M)', () => {
     salirDePausa(escena);
     escena.scene.start('MenuScene');
   });
@@ -166,7 +167,7 @@ function textoPausa(escena, x, y, texto, tam, color, negrita, ancho) {
 }
 
 function botonPausa(escena, capa, cx, cy, ancho, texto, alHacerClic) {
-  const alto = 34;
+  const alto = modoTactil() ? 40 : 34; // en celular, un poco más alto para el dedo
   const g = escena.add.graphics();
   const pintar = (encima) => {
     g.clear();

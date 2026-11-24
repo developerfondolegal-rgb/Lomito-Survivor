@@ -626,5 +626,34 @@ const CONFIG = {
     GATO_PROBABILIDAD: 1 / 12,  // 1 de cada 12 tiradas el gato salta y pierdes
 
     DADO_MS: 900                // cuánto rato rueda el dado antes de mostrar el resultado
+  },
+
+  // ---------------------------------------------------------------
+  //  MÓVIL: celulares y tablets con pantalla táctil (src/tactil.js)
+  //  En PC con teclado y mouse nada de esto se activa.
+  //  Los tamaños "reales" son píxeles de la pantalla del celular
+  //  (no del juego, que se achica para caber).
+  // ---------------------------------------------------------------
+  MOVIL: {
+    CONTROLES_TACTILES: 'auto', // 'auto' = solo en pantallas táctiles · true = siempre · false = nunca
+
+    // Joystick (mitad izquierda de la pantalla: aparece donde pones el dedo)
+    JOYSTICK_RADIO_REAL: 60,    // cuánto hay que mover el dedo para ir a toda velocidad
+    JOYSTICK_ZONA_MUERTA: 0.15, // movimientos más chicos que esto (15% del radio) no mueven al perro
+    JOYSTICK_ZONA: 0.5,         // qué parte de la pantalla (desde la izquierda) sirve para el joystick (0.5 = la mitad)
+
+    // Botones de la derecha (Sprint y Pausa)
+    BOTON_SPRINT_REAL: 84,      // tamaño del botón de Sprint en px reales (mínimo recomendado: 60)
+    BOTON_PAUSA_REAL: 62,       // tamaño del botón de Pausa en px reales
+    BOTONES_ALFA: 0.45,         // transparencia de los controles (0 = invisibles, 1 = sólidos)
+
+    CARTAS_ESPERA_MS: 450,      // las cartas de nivel no se pueden tocar hasta pasado este rato (evita toques sin querer)
+    TEXTO_MINIMO: 12,           // tamaño mínimo de letra en celular (px del juego). Más alto = más legible pero puede encimarse
+
+    // Rendimiento (solo en celular)
+    ENEMIGOS_MAXIMOS: 100,      // límite de enemigos a la vez en celular (en PC se usa ENEMIGOS_MAXIMOS de arriba)
+    LIMITAR_EFECTOS_DESDE: 45,  // con más enemigos que esto se omiten efectos chicos (dientes, sombras del sprint)
+    EFECTOS_UNO_DE_CADA: 3,     // cuando se limitan, solo se muestra 1 de cada 3 dientes de mordida
+    OSCURIDAD_CADA_CUADROS: 2   // la oscuridad de la noche se redibuja cada 2 cuadros (1 = siempre, más fluido pero más pesado)
   }
 };
