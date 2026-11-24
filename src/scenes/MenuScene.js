@@ -20,6 +20,8 @@ class MenuScene extends Phaser.Scene {
 
   create() {
     const w = this.scale.width;
+    const e = margenExtra(); // en celular, todo lo de las esquinas se aleja un poco más del borde (0 en PC)
+    this.margenExtra = e;
     crearSprites(this);
     this.anims.resumeAll(); // por si venimos de un Game Over (animaciones en pausa)
 
@@ -32,7 +34,7 @@ class MenuScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5);
 
-    this.add.text(w - 10, this.scale.height - 8, 'Lomito Survivor - v0.14', {
+    this.add.text(w - 10 - e, this.scale.height - 8 - e, 'Lomito Survivor - v0.14.1', {
       fontFamily: FUENTE, fontSize: '13px', color: '#888888'
     }).setOrigin(1, 1);
 
@@ -40,16 +42,21 @@ class MenuScene extends Phaser.Scene {
     this.crearBotonAlbum();
 
     // Rincón de apuestas con los huesitos guardados (src/scenes/ApuestasScene.js)
-    botonPantalla(this, w / 2 + 140, this.scale.height - 26, 260, 34, 'Rincón de apuestas' + (modoTactil() ? '' : ' (B)'),
+    botonPantalla(this, w / 2 + 140, this.scale.height - 26 - e / 2, 260, 34, 'Rincón de apuestas' + (modoTactil() ? '' : ' (B)'),
       0xf2d64b, () => this.scene.start('ApuestasScene', { modo: 'fin' }));
 
-    // Celular: botón de pantalla completa (src/tactil.js), si el navegador lo permite
-    if (modoTactil() && puedePantallaCompleta()) {
-      botonPantalla(this, w - 96, 28, 172, 34, '⛶ Pantalla completa', 0x90caf9, () => alternarPantallaCompleta(), 15);
+    // Celular: botón de pantalla completa (src/tactil.js). No se muestra si ya se abrió
+    // como app desde la pantalla de inicio. En iPhone no se puede: muestra cómo agregarlo a inicio.
+    if (modoTactil() && !esModoApp()) {
+      const bx = w - 96 - e;
+      const by = 28 + e / 2;
+      botonPantalla(this, bx, by, 172, 34, '⛶ Pantalla completa', 0x90caf9, () => {
+        alternarPantallaCompleta(() => avisoBreve(this, w - 190 - e, by + 40, AVISO_IPHONE));
+      }, 15);
     }
 
     // Huesitos guardados (la moneda del juego)
-    this.textoHuesitos = this.add.text(14, 12, '', {
+    this.textoHuesitos = this.add.text(14 + e, 12 + e / 2, '', {
       fontFamily: FUENTE, fontSize: '18px', color: '#f2d64b', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
     });
     this.actualizarHuesitos();
@@ -75,17 +82,17 @@ class MenuScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.teclaH)) {
       sumarHuesitos(CONFIG.HUESITOS.PRUEBA_TECLA_H);
       this.actualizarHuesitos();
-      const t = this.add.text(14, 36, '+' + CONFIG.HUESITOS.PRUEBA_TECLA_H + ' (prueba)', {
+      const t = this.add.text(14 + this.margenExtra, 36 + this.margenExtra / 2, '+' + CONFIG.HUESITOS.PRUEBA_TECLA_H + ' (prueba)', {
         fontFamily: FUENTE, fontSize: '15px', color: '#f2d64b', stroke: '#000000', strokeThickness: 3
       });
-      this.tweens.add({ targets: t, y: 26, alpha: 0, duration: 900, onComplete: () => t.destroy() });
+      this.tweens.add({ targets: t, y: t.y - 10, alpha: 0, duration: 900, onComplete: () => t.destroy() });
     }
   }
 
   // Botón "Álbum" abajo al centro (src/scenes/AlbumScene.js)
   crearBotonAlbum() {
     const cx = this.scale.width / 2 - 140;
-    const cy = this.scale.height - 26;
+    const cy = this.scale.height - 26 - this.margenExtra / 2;
     const ancho = 260;
     const alto = 34;
     const encontrados = cuantosEncontrados('plaza') + ' / ' + listaColeccionables('plaza').length;

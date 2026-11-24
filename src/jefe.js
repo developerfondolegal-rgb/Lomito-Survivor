@@ -245,7 +245,7 @@ function dibujarBarraJefe(escena, jefe) {
   const ancho = 460;
   const alto = 16;
   const x = escena.scale.width / 2 - ancho / 2;
-  const y = 64;
+  const y = 64 + (escena.margenHudExtra || 0);
   const porcentaje = Math.max(0, jefe.vida / jefe.vidaMax);
 
   g.fillStyle(0x000000, 0.7);

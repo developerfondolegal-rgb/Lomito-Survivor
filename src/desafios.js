@@ -60,7 +60,7 @@ function iniciarDesafios(escena) {
   escena.proximoDesafio = CONFIG.DESAFIO_PRIMERO_MS;
 
   // Aviso arriba al centro (debajo del nivel y de la barra del jefe)
-  escena.textoDesafio = escena.add.text(escena.scale.width / 2, 72, '', {
+  escena.textoDesafio = escena.add.text(escena.scale.width / 2, 72 + margenExtra(), '', {
     fontFamily: FUENTE, fontSize: '17px', color: '#ffe082', fontStyle: 'bold',
     stroke: '#000000', strokeThickness: 4, align: 'center'
   }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(1001).setVisible(false);

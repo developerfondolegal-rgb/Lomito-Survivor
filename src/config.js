@@ -648,6 +648,7 @@ const CONFIG = {
     BOTONES_ALFA: 0.45,         // transparencia de los controles (0 = invisibles, 1 = sólidos)
 
     CARTAS_ESPERA_MS: 450,      // las cartas de nivel no se pueden tocar hasta pasado este rato (evita toques sin querer)
+    MARGEN_HUD: 24,             // distancia (px del juego) entre los bordes de la pantalla y los textos/botones del HUD en celular (en PC es 12)
     TEXTO_MINIMO: 12,           // tamaño mínimo de letra en celular (px del juego). Más alto = más legible pero puede encimarse
 
     // Rendimiento (solo en celular)

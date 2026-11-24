@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.14** — versión para celular Android.
+Versión actual: **v0.14.1** — HUD visible en celulares y modo app en iPhone.
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -20,6 +20,18 @@ Versión actual: **v0.14** — versión para celular Android.
 2. **Pon el celular en horizontal.** Si está en vertical sale el aviso **"Gira el celular"** y la partida se pausa sola.
 3. Al primer toque el juego intenta ponerse en **pantalla completa** y quedarse en horizontal (si Chrome lo permite). En la pantalla de inicio también está el botón **⛶ Pantalla completa** (arriba a la derecha) para entrar o salir.
 4. Toca la carta de una raza para empezar.
+
+### iPhone (Safari o Chrome)
+
+En iPhone el navegador no deja poner la página en pantalla completa (el botón **⛶ Pantalla completa** solo muestra el aviso *"En iPhone: Compartir → Agregar a inicio"*). Para jugar sin barra del navegador:
+
+1. Abre el juego en **Safari** (en Chrome de iPhone también aparece "Agregar a inicio" en el menú **Compartir**).
+2. Toca **Compartir** → **Agregar a inicio**.
+3. Abre **Lomito Survivor** desde el ícono del perro en la pantalla de inicio: se abre como app, en pantalla completa y en horizontal.
+
+El juego se ajusta solo a la parte visible de la pantalla (sin la barra del navegador), deja libre el notch y las esquinas redondeadas, y se vuelve a acomodar al girar el celular o cuando la barra del navegador aparece o desaparece. En pantallas muy anchas (iPhone 19.5:9, Android 20:9) quedan franjas negras a los lados, donde está el notch.
+
+> Si después de actualizar el juego en GitHub Pages ves la versión anterior, recarga la página: cada versión carga sus archivos con `?v=` y su número, para que el navegador no use los viejos.
 
 **Controles táctiles** (solo aparecen en pantallas táctiles; en PC todo sigue con teclado):
 
@@ -622,6 +634,7 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `JOYSTICK_RADIO_REAL`, `JOYSTICK_ZONA_MUERTA`, `JOYSTICK_ZONA`: tamaño del joystick, cuánto hay que mover el dedo para que empiece a andar y qué parte de la pantalla sirve para el joystick.
 - `BOTON_SPRINT_REAL`, `BOTON_PAUSA_REAL`, `BOTONES_ALFA`: tamaño de los botones en píxeles reales del celular y su transparencia.
 - `CARTAS_ESPERA_MS`: rato en que las cartas de nivel no responden al aparecer.
+- `MARGEN_HUD`: distancia entre los bordes de la pantalla y el HUD en celular (vida, poder, huesitos, reloj, botón de pausa, inventario y botones de las esquinas del menú). En PC siempre es 12. Súbelo si algo queda muy pegado al borde.
 - `TEXTO_MINIMO`: tamaño mínimo de letra en celular (súbelo si te cuesta leer; puede encimar textos).
 - Rendimiento: `ENEMIGOS_MAXIMOS` (límite de enemigos en celular), `LIMITAR_EFECTOS_DESDE` y `EFECTOS_UNO_DE_CADA` (con muchos enemigos se muestran menos dientes de mordida y no hay sombras del sprint), `OSCURIDAD_CADA_CUADROS` (cada cuántos cuadros se redibuja la oscuridad).
 
@@ -636,7 +649,9 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 
 ## Archivos
 
-- `index.html` — la página que abre el juego.
+- `index.html` — la página que abre el juego (zona segura del notch, altura visible y modo app de iPhone).
+- `manifest.json` — datos para "Agregar a pantalla de inicio": nombre, pantalla completa, horizontal e ícono.
+- `icons/` — ícono del perro en pixel art (180, 192 y 512 px).
 - `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, zonas, desafíos, ultra raros, la noche, el jefe, los huesitos y las apuestas).
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
@@ -644,7 +659,7 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/sinergias.js` — las sinergias: nombre, frase, qué pide cada una y cómo se calcula su bonus.
 - `src/pausa.js` — el menú de pausa: panel, pestañas (incluidas Desafíos y Colección) y botones.
 - `src/coleccionables.js` — los ultra raros coleccionables: nombres, frases, dibujos, a qué mapa pertenecen, guardado en el navegador, peluche, aviso grande y la tecla C.
-- `src/tactil.js` — el celular: detecta pantallas táctiles, joystick, botones Sprint y Pausa, pantalla completa, aviso "Gira el celular", letra mínima y límites de rendimiento.
+- `src/tactil.js` — el celular: detecta pantallas táctiles, joystick, botones Sprint y Pausa, pantalla completa (y aviso en iPhone), altura visible real, margen del HUD, aviso "Gira el celular", letra mínima y límites de rendimiento.
 - `src/huesitos.js` — los huesitos: cuánto se gana en la partida, el desglose y el guardado en el navegador.
 - `src/zonas.js` — las zonas especiales: nombres, colores, íconos, dónde aparecen y qué hacen.
 - `src/desafios.js` — los mini desafíos: nombres, frases, cómo avanzan, flechas, recompensas y la tecla X.
@@ -664,5 +679,6 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js`, `src/sinergias.js`, `src/zonas.js`, `src/desafios.js`, `src/coleccionables.js`, `src/huesitos.js` o `src/scenes/ApuestasScene.js`, revisa ese cambio.
 - En el celular no aparece el joystick: revisa que `CONTROLES_TACTILES` en `src/config.js` esté en `'auto'` o `true`. Si se ve todo muy chico, gira el celular a horizontal y usa pantalla completa.
 - En el celular va lento: baja `ENEMIGOS_MAXIMOS` o `LIMITAR_EFECTOS_DESDE` en la sección `MOVIL`, o sube `OSCURIDAD_CADA_CUADROS` a 3.
+- En el celular se corta el HUD arriba o abajo: recarga la página (puede ser caché vieja) y gira el celular a horizontal. Si aún queda pegado al borde, sube `MARGEN_HUD` en la sección `MOVIL`.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.
 - La colección no se guarda: revisa que no estés en una ventana privada/incógnito. Cada navegador guarda su propia colección.

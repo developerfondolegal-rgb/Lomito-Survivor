@@ -848,7 +848,7 @@ class GameScene extends Phaser.Scene {
     const h = this.scale.height;
     const cx = w / 2;
     const cy = h / 2;
-    const margen = 26;
+    const margen = 26 + margenExtra();
 
     // Enemigos fuera de la pantalla, los más cercanos primero
     const fuera = this.enemigos.getChildren()
@@ -1018,7 +1018,7 @@ class GameScene extends Phaser.Scene {
   mostrarAviso(texto, color) {
     // si ya hay avisos en pantalla, el nuevo sale más abajo
     this.avisosVisibles = (this.avisosVisibles || []).filter((a) => a.active);
-    const y = 120 + this.avisosVisibles.length * 34;
+    const y = 120 + (this.margenHudExtra || 0) + this.avisosVisibles.length * 34;
     const aviso = this.add.text(this.scale.width / 2, y, texto, {
       fontFamily: FUENTE, fontSize: '26px', color, fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5).setScrollFactor(0).setDepth(1500);
@@ -1945,13 +1945,18 @@ class GameScene extends Phaser.Scene {
 
   crearHUD() {
     const estilo = { fontFamily: FUENTE, fontSize: '18px', color: '#ffffff' };
+    // Margen desde los bordes: 12 en PC, MOVIL.MARGEN_HUD en celular (src/tactil.js)
+    const m = margenHUD();
+    const e = margenExtra(); // lo que se baja todo en celular (0 en PC)
+    this.margenHud = m;
+    this.margenHudExtra = e;
 
     // Barra de experiencia arriba de todo
     this.barraXP = this.add.graphics().setScrollFactor(0).setDepth(1000);
-    this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
+    this.textoNivel = this.add.text(this.scale.width / 2, 20 + e, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.14', estilo)
+    this.add.text(m, 20 + e, 'Lomito Survivor - v0.14.1', estilo)
       .setScrollFactor(0).setDepth(1000);
     if (!modoTactil()) { // en celular está el botón de pausa
       this.add.text(12, this.scale.height - 10, 'P / Esc: pausa', { ...estilo, fontSize: '13px', color: '#9e9e9e' })
@@ -1959,36 +1964,36 @@ class GameScene extends Phaser.Scene {
     }
 
     this.barraVida = this.add.graphics().setScrollFactor(0).setDepth(1000);
-    this.textoVida = this.add.text(12 + 100, 57, '', { ...estilo, fontSize: '14px' })
+    this.textoVida = this.add.text(m + 100, 57 + e, '', { ...estilo, fontSize: '14px' })
       .setOrigin(0.5).setScrollFactor(0).setDepth(1001);
 
     // Raza y poder
     const espera = this.poderEsperaTotal > 0 ? '' : ' (pasivo)';
     const poder = this.textosRaza.poder ? ' · ' + sinTeclas(this.textosRaza.poder) + espera : '';
-    this.add.text(12, 74, this.textosRaza.nombre + poder, { ...estilo, fontSize: '15px', color: '#ffe082' })
+    this.add.text(m, 74 + e, this.textosRaza.nombre + poder, { ...estilo, fontSize: '15px', color: '#ffe082' })
       .setScrollFactor(0).setDepth(1000);
 
     // Huesitos de la partida (src/huesitos.js), debajo del poder
-    this.textoHuesitos = this.add.text(12, 108, '', {
+    this.textoHuesitos = this.add.text(m, 108 + e, '', {
       ...estilo, fontSize: '15px', color: '#f2d64b', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
     }).setScrollFactor(0).setDepth(1000);
 
     // Indicador de carga del poder (solo si tiene espera)
     this.barraPoder = this.add.graphics().setScrollFactor(0).setDepth(1000);
-    this.textoPoder = this.add.text(160, 96, '', { ...estilo, fontSize: '14px' })
+    this.textoPoder = this.add.text(m + 148, 96 + e, '', { ...estilo, fontSize: '14px' })
       .setOrigin(0, 0.5).setScrollFactor(0).setDepth(1000);
 
     // Reloj de la noche (hora grande) y debajo la fase y el tiempo jugado
-    this.textoTiempo = this.add.text(this.scale.width - 12, 18, '', {
+    this.textoTiempo = this.add.text(this.scale.width - m, 18 + e, '', {
       ...estilo, fontSize: '30px', color: '#ffe082', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(1000);
-    this.textoFase = this.add.text(this.scale.width - 12, 56, '', {
+    this.textoFase = this.add.text(this.scale.width - m, 56 + e, '', {
       ...estilo, fontSize: '14px', color: '#cfd8dc', stroke: '#000000', strokeThickness: 3
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(1000);
 
     // Barra de vida del jefe (src/jefe.js), arriba al centro
     this.barraJefe = this.add.graphics().setScrollFactor(0).setDepth(1000);
-    this.textoJefe = this.add.text(this.scale.width / 2, 42, '', {
+    this.textoJefe = this.add.text(this.scale.width / 2, 42 + e, '', {
       ...estilo, fontSize: '17px', color: '#ffd54f', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(1001).setVisible(false);
 
@@ -2007,7 +2012,7 @@ class GameScene extends Phaser.Scene {
     const lado = 44;
     const espacio = 6;
     const total = CONFIG.INVENTARIO_MAX;
-    const y = this.scale.height - 10 - lado / 2;
+    const y = this.scale.height - 10 - (this.margenHudExtra || 0) - lado / 2;
     const inicioX = this.scale.width / 2 - ((total - 1) * (lado + espacio)) / 2;
     const max = CONFIG.OBJETO_NIVEL_MAX;
     const capa = [];
@@ -2054,15 +2059,16 @@ class GameScene extends Phaser.Scene {
     // Vida
     const ancho = 200;
     const alto = 18;
-    const y = 48;
+    const m = this.margenHud;
+    const y = 48 + this.margenHudExtra;
     const porcentaje = this.vida / this.vidaMax;
     this.barraVida.clear();
     this.barraVida.fillStyle(0x000000, 0.6);
-    this.barraVida.fillRect(12, y, ancho, alto);
+    this.barraVida.fillRect(m, y, ancho, alto);
     this.barraVida.fillStyle(porcentaje > 0.3 ? 0x4caf50 : 0xe53935, 1);
-    this.barraVida.fillRect(12, y, ancho * porcentaje, alto);
+    this.barraVida.fillRect(m, y, ancho * porcentaje, alto);
     this.barraVida.lineStyle(2, COLOR_BLANCO, 0.8);
-    this.barraVida.strokeRect(12, y, ancho, alto);
+    this.barraVida.strokeRect(m, y, ancho, alto);
     this.textoVida.setText(this.vida + ' / ' + this.vidaMax);
 
     // Poder con espera
@@ -2071,11 +2077,12 @@ class GameScene extends Phaser.Scene {
       const listo = this.poderListo();
       this.barraPoder.clear();
       this.barraPoder.fillStyle(0x000000, 0.6);
-      this.barraPoder.fillRect(12, 91, 140, 10);
+      const yp = 91 + this.margenHudExtra;
+      this.barraPoder.fillRect(m, yp, 140, 10);
       this.barraPoder.fillStyle(listo ? COLOR_HUESO : 0x9e9e9e, 1);
-      this.barraPoder.fillRect(12, 91, 140 * carga, 10);
+      this.barraPoder.fillRect(m, yp, 140 * carga, 10);
       this.barraPoder.lineStyle(1, COLOR_BLANCO, 0.6);
-      this.barraPoder.strokeRect(12, 91, 140, 10);
+      this.barraPoder.strokeRect(m, yp, 140, 10);
 
       if (listo) {
         this.textoPoder.setText(this.poder === 'sprint' ? sinTeclas('¡Listo! [Espacio]') : '¡Listo!');

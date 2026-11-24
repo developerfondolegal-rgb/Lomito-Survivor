@@ -43,6 +43,50 @@ function pxReales(escena, n) {
   return n * (s && s.x > 0 ? s.x : 1);
 }
 
+// Margen (px del juego) entre los bordes de la pantalla y el HUD.
+// En PC siempre 12 (igual que antes); en celular MOVIL.MARGEN_HUD.
+function margenHUD() {
+  return modoTactil() ? ((CONFIG.MOVIL && CONFIG.MOVIL.MARGEN_HUD) || 12) : 12;
+}
+
+// Lo que el margen del celular agrega sobre el de PC (0 en PC)
+function margenExtra() {
+  return Math.max(0, margenHUD() - 12);
+}
+
+// ---------------- Altura visible real ----------------
+// En celular la barra del navegador tapa parte de la pantalla, y "100%" o
+// innerHeight a veces la incluyen. visualViewport da lo que de verdad se ve.
+// index.html usa estas medidas para el marco del juego (#marco).
+function ajustarAltoVisible() {
+  const vv = window.visualViewport;
+  const alto = vv ? vv.height : window.innerHeight;
+  const arriba = vv ? Math.max(0, vv.offsetTop) : 0;
+  const raiz = document.documentElement.style;
+  raiz.setProperty('--alto-visible', Math.round(alto) + 'px');
+  raiz.setProperty('--arriba-visible', Math.round(arriba) + 'px');
+  // Que Phaser vuelva a medir el marco y re-escale el juego
+  if (typeof game !== 'undefined' && game.scale) game.scale.refresh();
+}
+
+// Al girar o cuando la barra aparece/desaparece, la medida tarda un poco en asentarse
+let esperaAjuste = null;
+function ajustarAltoVisiblePronto() {
+  ajustarAltoVisible();
+  clearTimeout(esperaAjuste);
+  esperaAjuste = setTimeout(ajustarAltoVisible, 350);
+}
+
+ajustarAltoVisible();
+window.addEventListener('resize', ajustarAltoVisiblePronto);
+window.addEventListener('orientationchange', ajustarAltoVisiblePronto);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', ajustarAltoVisiblePronto);
+  window.visualViewport.addEventListener('scroll', ajustarAltoVisiblePronto);
+}
+document.addEventListener('fullscreenchange', ajustarAltoVisiblePronto);
+document.addEventListener('webkitfullscreenchange', ajustarAltoVisiblePronto);
+
 // ---------------- Letra mínima en celular ----------------
 // Todos los textos del juego pasan por aquí: si la letra es más chica que
 // MOVIL.TEXTO_MINIMO, en celular se agranda a ese tamaño. En PC no cambia nada.
@@ -66,6 +110,20 @@ function puedePantallaCompleta() {
   return !!(d.requestFullscreen || d.webkitRequestFullscreen);
 }
 
+// iPhone / iPod (Safari y Chrome de iPhone usan el mismo motor y no dejan
+// poner la página en pantalla completa)
+function esIPhone() {
+  return /iPhone|iPod/.test(navigator.userAgent || '');
+}
+
+// true si el juego se abrió desde el ícono de la pantalla de inicio (ya sin barra)
+function esModoApp() {
+  const mq = (q) => !!(window.matchMedia && window.matchMedia(q).matches);
+  return navigator.standalone === true || mq('(display-mode: fullscreen)') || mq('(display-mode: standalone)');
+}
+
+const AVISO_IPHONE = 'En iPhone: Compartir → Agregar a inicio';
+
 function enPantallaCompleta() {
   return !!(document.fullscreenElement || document.webkitFullscreenElement);
 }
@@ -77,18 +135,21 @@ function bloquearHorizontal() {
   } catch (e) { /* el navegador no deja: no pasa nada */ }
 }
 
-function pedirPantallaCompleta() {
-  if (enPantallaCompleta() || !puedePantallaCompleta()) return;
+// alFallar (opcional) se llama si el navegador no deja (por ejemplo en iPhone)
+function pedirPantallaCompleta(alFallar) {
+  const fallo = () => { if (alFallar) alFallar(); };
+  if (enPantallaCompleta()) return;
+  if (!puedePantallaCompleta() || esIPhone()) { fallo(); return; }
   try {
     const d = document.documentElement;
     const pedir = d.requestFullscreen || d.webkitRequestFullscreen;
-    Promise.resolve(pedir.call(d, { navigationUI: 'hide' })).then(bloquearHorizontal).catch(() => {});
-  } catch (e) { /* el navegador no deja: no pasa nada */ }
+    Promise.resolve(pedir.call(d, { navigationUI: 'hide' })).then(bloquearHorizontal).catch(fallo);
+  } catch (e) { fallo(); /* el navegador no deja */ }
 }
 
-function alternarPantallaCompleta() {
+function alternarPantallaCompleta(alFallar) {
   try {
-    if (!enPantallaCompleta()) { pedirPantallaCompleta(); return; }
+    if (!enPantallaCompleta()) { pedirPantallaCompleta(alFallar); return; }
     const salir = document.exitFullscreen || document.webkitExitFullscreen;
     if (salir) Promise.resolve(salir.call(document)).catch(() => {});
   } catch (e) { /* nada */ }
@@ -240,7 +301,7 @@ function colocarControlesTactiles(escena) {
   const w = escena.scale.width;
   const h = escena.scale.height;
   t.escala = escena.scale.displayScale.x;
-  const margen = pxReales(escena, 16);
+  const margen = Math.max(pxReales(escena, 16), margenHUD());
   const ubicar = (b, diametroReal, x, y) => {
     b.r = pxReales(escena, diametroReal) / 2;
     b.x = x(b.r);
@@ -250,7 +311,7 @@ function colocarControlesTactiles(escena) {
   };
   // Sprint: abajo a la derecha. Pausa: a la derecha, debajo del reloj.
   if (t.sprint) ubicar(t.sprint, M.BOTON_SPRINT_REAL, (r) => w - margen - r, (r) => h - margen - r);
-  ubicar(t.pausa, M.BOTON_PAUSA_REAL, (r) => w - margen - r, (r) => 82 + r);
+  ubicar(t.pausa, M.BOTON_PAUSA_REAL, (r) => w - margen - r, (r) => 82 + margenExtra() + r);
 }
 
 // Se llama en cada cuadro (también en pausa, cartas y Game Over, para esconderlos)
@@ -281,8 +342,9 @@ function actualizarControlesTactiles(escena) {
   } else {
     // Pista suave de dónde va el joystick
     const r = pxReales(escena, CONFIG.MOVIL.JOYSTICK_RADIO_REAL);
+    const borde = Math.max(r * 1.6, margenHUD() + r + 8);
     g.lineStyle(2, 0xffffff, alfa * 0.35);
-    g.strokeCircle(r * 1.6, escena.scale.height - r * 1.6, r);
+    g.strokeCircle(borde, escena.scale.height - borde, r);
   }
 
   // Botones (el de Sprint muestra la carga del poder)
@@ -316,6 +378,18 @@ function limiteEnemigos() {
 // true si conviene saltarse un efecto chico (muchos enemigos en celular)
 function efectosLimitados(escena) {
   return modoTactil() && escena.enemigos && escena.enemigos.countActive() > CONFIG.MOVIL.LIMITAR_EFECTOS_DESDE;
+}
+
+// Aviso chico que se desvanece (por ejemplo "En iPhone: Compartir → Agregar a inicio")
+function avisoBreve(escena, x, y, texto) {
+  if (escena.avisoBreveTexto && escena.avisoBreveTexto.active) escena.avisoBreveTexto.destroy();
+  const t = escena.add.text(x, y, texto, {
+    fontFamily: FUENTE, fontSize: '16px', color: '#ffffff', fontStyle: 'bold',
+    backgroundColor: '#000000cc', padding: { x: 10, y: 6 }
+  }).setOrigin(0.5).setDepth(5000);
+  escena.avisoBreveTexto = t;
+  escena.tweens.add({ targets: t, alpha: 0, delay: 2600, duration: 500, onComplete: () => t.destroy() });
+  return t;
 }
 
 // ---------------- Botón simple para las pantallas (menú, final) ----------------
