@@ -564,5 +564,67 @@ const CONFIG = {
     AULLIDO_DISTANCIA: 180,     // a qué distancia del jefe aparecen
 
     FURIA_AVISO: 0.7            // en furia, los avisos duran esto (0.7 = 70% del tiempo normal)
+  },
+
+  // ---------------------------------------------------------------
+  //  HUESITOS: la moneda del juego. Durante la partida se juntan
+  //  "huesitos de la partida" (se ven arriba a la izquierda). Al terminar
+  //  (muerte o amanecer) se suman al total guardado en el navegador.
+  //  El código está en src/huesitos.js
+  // ---------------------------------------------------------------
+  HUESITOS: {
+    POR_MINUTO: 3,              // huesitos por cada minuto entero sobrevivido
+    POR_NIVEL: 1,               // huesitos por cada nivel subido (el nivel 1 no cuenta)
+    ENEMIGOS_POR_HUESITO: 10,   // 1 huesito por cada 10 enemigos derrotados
+    POR_DESAFIO: 5,             // huesitos por cada mini desafío cumplido
+    POR_JEFE: 20,               // huesitos por derrotar al Jefe de la Plaza
+    BONUS_AMANECER: 25,         // bonus extra si sobrevives la noche (amanece)
+    PRUEBA_TECLA_H: 100,        // modo de prueba: cuántos huesitos da la tecla H en la pantalla de inicio
+    GUARDADO: 'lomitoSurvivor_huesitos' // nombre del guardado en el navegador (no lo cambies o se "pierden" los huesitos)
+  },
+
+  // ---------------------------------------------------------------
+  //  RINCÓN DE APUESTAS (src/scenes/ApuestasScene.js)
+  //  Aparece al cambiar de fase la noche (solo con los huesitos de la
+  //  partida) y al terminar la partida (con el total guardado o con
+  //  1 copia de un coleccionable).
+  //  PAGO = cuánto te devuelven en total si ganas, contando lo apostado
+  //  (apuestas 10 con PAGO 2: recibes 20, o sea ganas 10). Se redondea hacia abajo.
+  //  Con coleccionables: si ganas te quedas tu copia y recibes
+  //  (PAGO - 1) copias extra redondeado hacia abajo, mínimo 1.
+  //
+  //  REGLA: la casa siempre gana un poquito. Cada juego tiene valor
+  //  esperado NEGATIVO para el jugador (lo que ganas en promedio por cada
+  //  huesito apostado; −0,10 = pierdes 10 de cada 100 a la larga).
+  //  Si cambias PAGO o probabilidades, revisa que siga siendo negativo.
+  // ---------------------------------------------------------------
+  APUESTAS: {
+    EN_CAMBIO_DE_FASE: true,    // false = el rincón NO aparece al cambiar de fase (útil para probar)
+    EN_FIN_DE_PARTIDA: true,    // false = al terminar la partida, M vuelve directo al menú
+    MINIMO: 5,                  // apuesta mínima en huesitos
+    MAXIMO: 200,                // apuesta máxima en huesitos (nunca más de lo que tienes)
+    PASO: 5,                    // cuánto sube o baja la apuesta con las flechas izquierda/derecha
+
+    // Número exacto: eliges del 1 al 6 y se tira 1 dado.
+    //  Ganas 1 de cada 6 veces. Valor esperado = (1/6) × 5 − 1 = −0,167 (−16,7%)
+    //  Coleccionable: +4 copias. VE = (1/6) × 4 − (5/6) × 1 = −0,167 copias
+    EXACTO_PAGO: 5,
+
+    // Contra la máquina: tú y la máquina tiran 2 dados; gana la suma más alta.
+    //  EMPATE = gana la máquina. Empatan 146 de 1296 veces (11,3%),
+    //  así que ganas 575/1296 = 44,4% de las veces.
+    //  Valor esperado = 0,444 × 2 − 1 = −0,113 (−11,3%)
+    //  Coleccionable: +1 copia. VE = 0,444 × 1 − 0,556 × 1 = −0,113 copias
+    MAQUINA_PAGO: 2,
+
+    // Bajo o alto: "bajo" = 1, 2 o 3; "alto" = 4, 5 o 6. Acertar es 1 de 2...
+    //  ...pero "el gato salta a la mesa" GATO_PROBABILIDAD de las veces y pierdes igual.
+    //  Ganas (1/2) × (11/12) = 45,8% de las veces.
+    //  Valor esperado = 0,458 × 1,8 − 1 = −0,175 (−17,5%)
+    //  Coleccionable: +1 copia (mínimo 1). VE = 0,458 × 1 − 0,542 × 1 = −0,083 copias
+    BAJO_ALTO_PAGO: 1.8,
+    GATO_PROBABILIDAD: 1 / 12,  // 1 de cada 12 tiradas el gato salta y pierdes
+
+    DADO_MS: 900                // cuánto rato rueda el dado antes de mostrar el resultado
   }
 };

@@ -6,7 +6,8 @@
 //  la plaza, la luz y los obstáculos, de src/mapa.js;
 //  el reloj y las fases de la noche, de src/noche.js; el jefe final, de src/jefe.js;
 //  las zonas especiales, de src/zonas.js; los mini desafíos, de src/desafios.js;
-//  los ultra raros coleccionables, de src/coleccionables.js)
+//  los ultra raros coleccionables, de src/coleccionables.js;
+//  los huesitos, de src/huesitos.js; el Rincón de apuestas, de src/scenes/ApuestasScene.js)
 
 const COLOR_ATURDIDO = 0x9575cd; // morado: enemigo aturdido por la Mandíbula de hierro
 const COLOR_AVISO = 0xb9f6ca;    // verde claro: aviso de embestida del Drogadicto
@@ -56,6 +57,7 @@ class GameScene extends Phaser.Scene {
     this.derrotados = 0;
     this.derrotadosPorTipo = {};
     Object.keys(CONFIG.ENEMIGOS).forEach((id) => { this.derrotadosPorTipo[id] = 0; });
+    iniciarHuesitos(this);        // huesitos de la partida (src/huesitos.js)
     this.esperaMordida = 0;
     this.esperaLadrido = 0;
     this.esperaAparicion = 0;
@@ -180,7 +182,9 @@ class GameScene extends Phaser.Scene {
       if (Phaser.Input.Keyboard.JustDown(this.teclaR)) {
         this.scene.restart({ raza: this.razaId }); // misma raza
       } else if (Phaser.Input.Keyboard.JustDown(this.teclaM)) {
-        this.scene.start('MenuScene');             // volver al inicio
+        // Rincón de apuestas (src/scenes/ApuestasScene.js) y de ahí al inicio
+        if (CONFIG.APUESTAS.EN_FIN_DE_PARTIDA) this.scene.start('ApuestasScene', { modo: 'fin' });
+        else this.scene.start('MenuScene');        // volver al inicio
       }
       return;
     }
@@ -355,6 +359,7 @@ class GameScene extends Phaser.Scene {
       } else if (nombre) {
         this.mostrarAvisoGrande(nombre, '¡La noche se pone más peligrosa!', '#ffcc80');
       }
+      if (!primera && CONFIG.APUESTAS.EN_CAMBIO_DE_FASE) this.abrirRincon();
     }
 
     // El jefe llega a su minuto (o al final, si su minuto es después)
@@ -375,6 +380,18 @@ class GameScene extends Phaser.Scene {
     }
 
     if (this.amaneciendo) this.actualizarAmanecer(delta);
+  }
+
+  // Cambio de fase: la partida se congela y se abre el Rincón de apuestas encima
+  // (src/scenes/ApuestasScene.js). Al volver, todo sigue donde estaba.
+  abrirRincon() {
+    this.events.once('resume', () => {
+      // Olvidar teclas presionadas o soltadas mientras estaba el rincón
+      this.input.keyboard.resetKeys();
+      this.actualizarHUD();
+    });
+    this.scene.launch('ApuestasScene', { modo: 'fase' });
+    this.scene.pause();
   }
 
   // Qué tan oscura está la plaza ahora
@@ -1090,6 +1107,7 @@ class GameScene extends Phaser.Scene {
   // El jefe murió: aviso (los huesos y el objeto los suelta danarEnemigo)
   derrotarJefe(jefe) {
     this.jefeDerrotado = true;
+    this.jefesDerrotados++;       // para los huesitos (src/huesitos.js)
     this.avisosJefe.clear();
     this.cameras.main.shake(500, 0.012);
     const falta = this.tiempoSobrevivido < duracionNocheMs();
@@ -1813,15 +1831,15 @@ class GameScene extends Phaser.Scene {
     ];
 
     // Una línea por cada tipo de enemigo
-    let y = 228;
+    let y = 226;
     this.listaEnemigos().forEach((e) => {
-      lineas.push({ texto: e.nombre + ': ' + (this.derrotadosPorTipo[e.id] || 0), y, tam: '18px', color: '#cccccc' });
-      y += 24;
+      lineas.push({ texto: e.nombre + ': ' + (this.derrotadosPorTipo[e.id] || 0), y, tam: '17px', color: '#cccccc' });
+      y += 21;
     });
     if (this.jefeAparecido) {
       lineas.push({ texto: NOMBRE_JEFE + ': ' + (this.jefeDerrotado ? 'derrotado' : 'sigue vivo'),
-        y, tam: '18px', color: this.jefeDerrotado ? '#ffd54f' : '#ff8a80', negrita: this.jefeDerrotado });
-      y += 24;
+        y, tam: '17px', color: this.jefeDerrotado ? '#ffd54f' : '#ff8a80', negrita: this.jefeDerrotado });
+      y += 21;
     }
 
     // Objetos que tenías y fusiones logradas
@@ -1843,8 +1861,16 @@ class GameScene extends Phaser.Scene {
       (ultras ? '     ·     Ultra raros: ' + ultras : ''),
       y, tam: '18px', color: '#9ccc65', negrita: completados > 0 || ultras > 0 });
 
-    lineas.push({ texto: 'R: jugar de nuevo con la misma raza', y: 482, tam: '20px', color: '#dddddd' });
-    lineas.push({ texto: 'M: volver al inicio y elegir otra raza', y: 510, tam: '20px', color: '#dddddd' });
+    // Huesitos: se suman al total guardado ahora mismo (src/huesitos.js)
+    const huesitos = cobrarHuesitos(this, victoria);
+    y += 28;
+    lineas.push({ texto: 'Huesitos de la partida: +' + huesitos.total + '     ·     Total guardado: ' + huesitosGuardados(),
+      y, tam: '19px', color: '#f2d64b', negrita: true });
+    y += 21;
+    lineas.push({ texto: textoDesgloseHuesitos(huesitos), y, tam: '14px', color: '#e6d28a', ancho: 900 });
+
+    const textoM = CONFIG.APUESTAS.EN_FIN_DE_PARTIDA ? 'M: Rincón de apuestas y volver al inicio' : 'M: volver al inicio y elegir otra raza';
+    lineas.push({ texto: 'R: jugar de nuevo con la misma raza     ·     ' + textoM, y: 518, tam: '18px', color: '#dddddd' });
 
     lineas.forEach((l) => {
       const estilo = { fontFamily: FUENTE, fontSize: l.tam, color: l.color, fontStyle: l.negrita ? 'bold' : 'normal', align: 'center' };
@@ -1872,7 +1898,7 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.12', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.13', estilo)
       .setScrollFactor(0).setDepth(1000);
     this.add.text(12, this.scale.height - 10, 'P / Esc: pausa', { ...estilo, fontSize: '13px', color: '#9e9e9e' })
       .setOrigin(0, 1).setScrollFactor(0).setDepth(1000);
@@ -1886,6 +1912,11 @@ class GameScene extends Phaser.Scene {
     const poder = this.textosRaza.poder ? ' · ' + this.textosRaza.poder + espera : '';
     this.add.text(12, 74, this.textosRaza.nombre + poder, { ...estilo, fontSize: '15px', color: '#ffe082' })
       .setScrollFactor(0).setDepth(1000);
+
+    // Huesitos de la partida (src/huesitos.js), debajo del poder
+    this.textoHuesitos = this.add.text(12, 108, '', {
+      ...estilo, fontSize: '15px', color: '#f2d64b', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
+    }).setScrollFactor(0).setDepth(1000);
 
     // Indicador de carga del poder (solo si tiene espera)
     this.barraPoder = this.add.graphics().setScrollFactor(0).setDepth(1000);
@@ -2000,6 +2031,8 @@ class GameScene extends Phaser.Scene {
         this.textoPoder.setColor('#bbbbbb');
       }
     }
+
+    this.textoHuesitos.setText('Huesitos: ' + huesitosDePartida(this));
 
     this.textoTiempo.setText(horaDeLaNoche(this.tiempoSobrevivido));
     const fase = datosFase(Math.max(0, this.faseActual)).NOMBRE;

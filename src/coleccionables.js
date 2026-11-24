@@ -448,6 +448,23 @@ function copiasColeccionable(id) {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
+// Suma (o resta, si cambio es negativo) copias de un coleccionable y guarda al tiro.
+// Si llega a 0 copias, deja de estar "encontrado". Lo usa el Rincón de apuestas.
+// Devuelve { antes, despues } (lo mismo que infoColeccionable, antes y después del cambio)
+function cambiarCopiasColeccionable(id, cambio) {
+  const antes = infoColeccionable(id);
+  const copias = Math.max(0, antes.copias + Math.floor(cambio));
+  if (copias > 0) datosColeccion().copias[id] = copias;
+  else delete datosColeccion().copias[id];
+  guardarColeccion();
+  return { antes, despues: infoColeccionable(id) };
+}
+
+// Coleccionables que tienes (al menos 1 copia), de todos los mapas
+function coleccionablesQueTienes() {
+  return COLECCIONABLES.filter((c) => copiasColeccionable(c.id) > 0);
+}
+
 function nivelMaximoColeccion() {
   return CONFIG.COLECCION_COPIAS.length;
 }

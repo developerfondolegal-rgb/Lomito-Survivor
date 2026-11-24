@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.12** — ultra raros coleccionables y álbum.
+Versión actual: **v0.13** — huesitos y rincón de apuestas.
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -21,6 +21,7 @@ Versión actual: **v0.12** — ultra raros coleccionables y álbum.
 | Elegir raza (pantalla de inicio) | **clic**, o teclas **1**, **2**, **3**, **4** |
 | Abrir el Álbum de coleccionables (pantalla de inicio) | botón **Álbum** o tecla **A** |
 | Volver del Álbum a la pantalla de inicio | **Esc** o **A** (o el botón Volver) |
+| Modo de prueba: +100 huesitos guardados (pantalla de inicio) | **H** |
 | Mover al perro | **W A S D** o **flechas** |
 | Sprint (solo Galgo) | **Espacio** |
 | Pausa (abrir y cerrar el menú) | **P** o **Esc** |
@@ -28,7 +29,13 @@ Versión actual: **v0.12** — ultra raros coleccionables y álbum.
 | Reiniciar / volver al menú desde la pausa | **R** / **M** (o los botones) |
 | Elegir carta al subir de nivel | **clic**, o teclas **1**, **2**, **3** |
 | Jugar de nuevo con la misma raza (en Game Over) | **R** |
-| Volver a la pantalla de inicio (en Game Over) | **M** |
+| Ir al Rincón de apuestas y después a la pantalla de inicio (en Game Over) | **M** |
+| Rincón de apuestas: elegir juego | **1**, **2**, **3** (o clic) |
+| Rincón de apuestas: cambiar el número o bajo/alto | **flechas arriba / abajo** (o clic) |
+| Rincón de apuestas: cambiar el monto (o el coleccionable) | **flechas izquierda / derecha** |
+| Rincón de apuestas: huesitos o coleccionable (solo al terminar) | **Tab** |
+| Rincón de apuestas: tirar los dados | **Espacio** o **Enter** |
+| Rincón de apuestas: seguir jugando / salir | **Esc** |
 | Modo de prueba: un enemigo de cada tipo cerca del perro | **T** |
 | Modo de prueba: un objeto de cada rareza cerca del perro | **Y** |
 | Modo de prueba: subir 5 niveles de golpe | **U** |
@@ -51,6 +58,10 @@ No hay botón para atacar: el perro muerde solo.
 - **Z**: aparecen **4 zonas especiales** alrededor del perro, una de cada tipo (miedo, peligrosa, barro y segura). Nunca encima del perro ni de la pileta. Camina a cada una para ver su aviso y su efecto. Duran lo normal (25 segundos).
 - **X**: empieza **un desafío al azar** (Búsqueda, Aguanta, Cacería o Sin morder). Si ya había uno, se cancela sin contar como fallido y empieza otro. Presiona X varias veces hasta que salga el que quieres probar.
 - **C**: aparece **un ultra raro coleccionable al azar** cerca del perro, con brillo arcoíris. Pasa encima para recogerlo: sale el aviso grande y **se guarda de verdad** en tu colección (cuenta como una copia más). Si quieres volver a empezar tu colección, usa **Borrar progreso** en el Álbum.
+
+- **H** (en la pantalla de inicio): **+100 huesitos guardados**, para probar el Rincón de apuestas sin jugar mucho. Se guardan de verdad; para volver a 0 usa **Borrar progreso** en el Álbum (ojo: también borra la colección).
+
+**Probar el Rincón de apuestas rápido:** en la partida presiona **K** 3 veces: a las 00:00 cambia la fase y se abre el rincón. Si molesta mientras pruebas otra cosa, pon `EN_CAMBIO_DE_FASE: false` en `src/config.js`.
 
 **Probar el final rápido:** presiona **J**, derrota al jefe (o quítale vida con U para subir niveles) y luego presiona **K** unas 10 veces hasta las 06:00: amanece y sale "¡Sobreviviste la noche!". Para ver qué pasa si el jefe sigue vivo, presiona **K** 10 veces sin derrotarlo: el reloj se queda en 06:00 hasta que lo derrotes.
 
@@ -244,12 +255,43 @@ Los 12 coleccionables de la plaza (bonus por cada nivel):
 
 El Peluche no ataca en la Zona de miedo ni durante el desafío "Sin morder" (se ve transparente).
 
+### Huesitos
+
+Los **huesitos** son la moneda del juego (no confundir con los huesos amarillos que dan experiencia).
+
+- Durante la partida juntas **huesitos de la partida** (arriba a la izquierda, debajo del poder). Todavía **no están guardados**.
+- Se ganan por: **minutos sobrevividos** (3 por minuto), **nivel alcanzado** (1 por cada nivel subido), **enemigos derrotados** (1 por cada 10), **desafíos cumplidos** (5 cada uno), **derrotar al Jefe** (20) y **bonus por amanecer** (25 si sobrevives la noche).
+- Al terminar la partida (muerte o amanecer) se **suman al total guardado**. La pantalla final muestra el desglose y el total.
+- El total guardado se ve arriba a la izquierda en la **pantalla de inicio**.
+- **H** en la pantalla de inicio (modo de prueba): +100 huesitos guardados.
+- Se guardan en el navegador igual que la colección. **Borrar progreso** del Álbum también los borra.
+
+### Rincón de apuestas
+
+Una mesita verde con dados en pixel art. Aparece en dos momentos:
+
+1. **Al cambiar de fase la noche** (Medianoche, Madrugada y Antes del alba): la partida se congela y el rincón sale encima. Solo puedes apostar los **huesitos de la partida**. **Seguir jugando** (Esc) vuelve a la partida exactamente donde estaba.
+2. **Al terminar la partida**: en la pantalla final presiona **M**. Puedes apostar tu **total guardado** o **1 copia de un coleccionable** que tengas (Tab para cambiar; flechas izquierda/derecha para elegir cuál). **Salir** (Esc) va a la pantalla de inicio. (R sigue siendo "jugar de nuevo" directo.)
+
+Eliges el monto con las flechas izquierda/derecha (de 5 en 5, mínimo 5 y máximo 200, nunca más de lo que tienes). Si no tienes nada para apostar sale **"Vuelve cuando tengas huesitos"** y solo puedes salir.
+
+| Juego | Cómo se juega | Si ganas recibes |
+|---|---|---|
+| **Número exacto** | Eliges del 1 al 6 y se tira 1 dado. Ganas si sale tu número | 5 veces lo apostado |
+| **Contra la máquina** | Tú y la máquina tiran 2 dados. Gana la suma más alta. **Empate: gana la máquina** | 2 veces lo apostado |
+| **Bajo o alto** | Eliges bajo (1-2-3) o alto (4-5-6). **Regla de la casa:** 1 de cada 12 veces el gato salta a la mesa y pierdes igual | 1,8 veces lo apostado |
+
+- "Recibes" incluye lo apostado (apuestas 10 en Contra la máquina y ganas: recibes 20, o sea +10). Se redondea hacia abajo.
+- Con un **coleccionable**: si ganas te quedas tu copia y recibes copias extra (Número exacto +4, Contra la máquina +1, Bajo o alto +1). Si pierdes, pierdes esa copia y **puede bajar su nivel** (con 0 copias deja de estar en tu álbum).
+- Al ganar, destello verde; al perder, la pantalla tiembla en rojo. El saldo se **guarda al instante** al tirar.
+- **La casa siempre gana un poquito**: los tres juegos están hechos para que, a la larga, pierdas más de lo que ganas (Número exacto −16,7%, Contra la máquina −11,3%, Bajo o alto −17,5%). Apostar es para divertirse, no para hacerse rico.
+
 ### Álbum
 
 En la pantalla de inicio, el botón **Álbum** (o la tecla **A**) muestra los 12 coleccionables en una cuadrícula:
 - Los **no encontrados** salen como **silueta negra** con "???".
 - Los **encontrados** muestran su dibujo con brillo arcoíris, su nombre, su frase, su **nivel** (estrellas), cuántas **copias** faltan para el siguiente nivel y su **bonus actual**. Los que están en nivel máximo tienen borde dorado.
-- **Borrar progreso**: borra toda tu colección. Antes pregunta **"¿Borrar todo tu progreso?"** con los botones **Sí, borrar** y **Cancelar** (o Esc). No se puede deshacer.
+- **Borrar progreso**: borra toda tu colección **y tus huesitos guardados**. Antes pregunta **"¿Borrar todo tu progreso?"** con los botones **Sí, borrar** y **Cancelar** (o Esc). No se puede deshacer.
 
 **Dónde se guarda:** en el almacenamiento del navegador (localStorage). Se mantiene al cerrar el juego, pero es **de ese navegador**: si abres el juego en otro navegador o en una ventana privada/incógnito, la colección empieza vacía. Si borras los datos de navegación, también se borra.
 
@@ -296,7 +338,7 @@ A los **9 minutos** (05:12 en el reloj) llega un perro enorme y oscuro con colla
 ### Pantalla
 
 - Arriba de todo: barra de experiencia y tu **nivel**.
-- Arriba a la izquierda: barra de **vida**, tu **raza** y su poder. Si el poder tiene espera (Pitbull y Galgo), una barrita muestra cuánto falta; cuando se pone amarilla dice **¡Listo!**
+- Arriba a la izquierda: barra de **vida**, tu **raza** y su poder. Si el poder tiene espera (Pitbull y Galgo), una barrita muestra cuánto falta; cuando se pone amarilla dice **¡Listo!** Debajo, los **huesitos de la partida**.
 - Arriba a la derecha: **hora de la noche**, y debajo la fase y el tiempo jugado.
 - Arriba al centro (solo con el jefe vivo): nombre y **barra de vida del jefe**.
 - Arriba al centro, en dorado (solo durante un desafío): el **desafío**, su progreso y los segundos que quedan. Se pone rojo y parpadea los últimos 10 segundos.
@@ -304,9 +346,9 @@ A los **9 minutos** (05:12 en el reloj) llega un perro enorme y oscuro con colla
 
 ### Game Over y victoria
 
-Al llegar a 0 de vida aparece "Game Over". Si sobrevives la noche aparece **"¡Sobreviviste la noche!"**. Las dos pantallas muestran tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados, cuántos de cada tipo, si derrotaste al jefe, los **objetos** que tenías (con su nivel), las **fusiones** logradas y cuántos **desafíos completaste** (y cuántos fallaste). Si recogiste ultra raros, también dice cuántos.
+Al llegar a 0 de vida aparece "Game Over". Si sobrevives la noche aparece **"¡Sobreviviste la noche!"**. Las dos pantallas muestran tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados, cuántos de cada tipo, si derrotaste al jefe, los **objetos** que tenías (con su nivel), las **fusiones** logradas y cuántos **desafíos completaste** (y cuántos fallaste). Si recogiste ultra raros, también dice cuántos. Al final aparecen los **huesitos de la partida** (ya sumados a tu total guardado) con su desglose.
 - **R**: jugar de nuevo con la misma raza.
-- **M**: volver a la pantalla de inicio para elegir otra raza.
+- **M**: ir al **Rincón de apuestas** y de ahí a la pantalla de inicio (si `EN_FIN_DE_PARTIDA` está en `false`, va directo al inicio).
 
 ## Cómo ajustar el juego
 
@@ -532,6 +574,21 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `COLECCION_GUARDADO`: el nombre del guardado en el navegador. Si lo cambias, el juego empieza una colección nueva (la vieja queda escondida).
 - En `src/coleccionables.js` están los nombres, las frases, los dibujos de 16 x 16 y a qué **mapa** pertenece cada uno (por ahora todos `'plaza'`). Al principio del archivo están los pasos para agregar uno nuevo (o de otro mapa).
 
+### Huesitos (`src/config.js`, sección `HUESITOS`, y `src/huesitos.js`)
+
+- `POR_MINUTO`, `POR_NIVEL`, `ENEMIGOS_POR_HUESITO`, `POR_DESAFIO`, `POR_JEFE`, `BONUS_AMANECER`: cuántos huesitos da cada cosa.
+- `PRUEBA_TECLA_H`: cuántos da la tecla H en la pantalla de inicio.
+- `GUARDADO`: el nombre del guardado en el navegador (no lo cambies o los huesitos se "pierden").
+
+### Rincón de apuestas (`src/config.js`, sección `APUESTAS`, y `src/scenes/ApuestasScene.js`)
+
+- `EN_CAMBIO_DE_FASE`: ponlo en `false` para que el rincón **no aparezca** al cambiar de fase (útil para probar).
+- `EN_FIN_DE_PARTIDA`: en `false`, la M de la pantalla final vuelve directo al inicio.
+- `MINIMO`, `MAXIMO`, `PASO`: apuesta mínima, máxima y cuánto cambia con las flechas.
+- `EXACTO_PAGO`, `MAQUINA_PAGO`, `BAJO_ALTO_PAGO`, `GATO_PROBABILIDAD`: pagos y la probabilidad del gato. En los comentarios está calculado el **valor esperado** de cada juego: si cambias algo, revisa que siga siendo **negativo** (la casa gana).
+- `DADO_MS`: cuánto rato rueda el dado.
+- En `src/scenes/ApuestasScene.js` están los dibujos del **dado** (6 caras de 12 x 12) y del **gato** (16 x 16), en el mismo formato que `src/sprites.js`, y los mensajes del gato.
+
 ### Nombres, dibujos y parejas de fusión (`src/objetos.js`)
 
 - `RAREZAS`: nombre y color de cada rareza, y si destella.
@@ -544,13 +601,14 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 ## Archivos
 
 - `index.html` — la página que abre el juego.
-- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, zonas, desafíos, ultra raros, la noche y el jefe).
+- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, zonas, desafíos, ultra raros, la noche, el jefe, los huesitos y las apuestas).
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
 - `src/instintos.js` — nombres y frases de las cartas de instintos, y sus íconos (12 x 12) para el menú de pausa.
 - `src/sinergias.js` — las sinergias: nombre, frase, qué pide cada una y cómo se calcula su bonus.
 - `src/pausa.js` — el menú de pausa: panel, pestañas (incluidas Desafíos y Colección) y botones.
 - `src/coleccionables.js` — los ultra raros coleccionables: nombres, frases, dibujos, a qué mapa pertenecen, guardado en el navegador, peluche, aviso grande y la tecla C.
+- `src/huesitos.js` — los huesitos: cuánto se gana en la partida, el desglose y el guardado en el navegador.
 - `src/zonas.js` — las zonas especiales: nombres, colores, íconos, dónde aparecen y qué hacen.
 - `src/desafios.js` — los mini desafíos: nombres, frases, cómo avanzan, flechas, recompensas y la tecla X.
 - `src/sprites.js` — los dibujos en pixel art de todos los personajes, el hueso y la mordida (y el borde de las élites y objetos).
@@ -561,10 +619,11 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/main.js` — configuración del motor del juego.
 - `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza (y el botón Álbum).
 - `src/scenes/AlbumScene.js` — el Álbum de coleccionables y el botón Borrar progreso.
+- `src/scenes/ApuestasScene.js` — el Rincón de apuestas: los tres juegos, el dado y el gato en pixel art.
 - `src/scenes/GameScene.js` — la partida: perro, enemigos (y cómo rodean obstáculos), ataques, poderes, comida, agua, experiencia, objetos, élites, fusiones, cartas, fases de la noche, amanecer, Game Over y victoria.
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js`, `src/sinergias.js`, `src/zonas.js`, `src/desafios.js` o `src/coleccionables.js`, revisa ese cambio.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js`, `src/sinergias.js`, `src/zonas.js`, `src/desafios.js`, `src/coleccionables.js`, `src/huesitos.js` o `src/scenes/ApuestasScene.js`, revisa ese cambio.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.
 - La colección no se guarda: revisa que no estés en una ventana privada/incógnito. Cada navegador guarda su propia colección.

@@ -1,4 +1,5 @@
 // Pantalla de inicio: elegir la raza del perro (y abrir el Álbum de coleccionables).
+// Arriba a la izquierda se ven los huesitos guardados (src/huesitos.js).
 
 const FUENTE = 'Arial, sans-serif';
 
@@ -30,16 +31,27 @@ class MenuScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5);
 
-    this.add.text(w - 10, this.scale.height - 8, 'Lomito Survivor - v0.12', {
+    this.add.text(w - 10, this.scale.height - 8, 'Lomito Survivor - v0.13', {
       fontFamily: FUENTE, fontSize: '13px', color: '#888888'
     }).setOrigin(1, 1);
 
     this.crearCartas();
     this.crearBotonAlbum();
 
+    // Huesitos guardados (la moneda del juego)
+    this.textoHuesitos = this.add.text(14, 12, '', {
+      fontFamily: FUENTE, fontSize: '18px', color: '#f2d64b', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
+    });
+    this.actualizarHuesitos();
+
     const nombresTeclas = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
     this.teclas = this.razas.map((_, i) => this.input.keyboard.addKey(nombresTeclas[i]));
     this.teclaAlbum = this.input.keyboard.addKey('A');
+    this.teclaH = this.input.keyboard.addKey('H'); // modo de prueba: +100 huesitos guardados
+  }
+
+  actualizarHuesitos() {
+    this.textoHuesitos.setText('Huesitos: ' + huesitosGuardados());
   }
 
   update() {
@@ -47,6 +59,15 @@ class MenuScene extends Phaser.Scene {
       if (Phaser.Input.Keyboard.JustDown(tecla)) this.elegir(i);
     });
     if (Phaser.Input.Keyboard.JustDown(this.teclaAlbum)) this.scene.start('AlbumScene');
+    // Modo de prueba: H da huesitos guardados (cuánto, en CONFIG.HUESITOS.PRUEBA_TECLA_H)
+    if (Phaser.Input.Keyboard.JustDown(this.teclaH)) {
+      sumarHuesitos(CONFIG.HUESITOS.PRUEBA_TECLA_H);
+      this.actualizarHuesitos();
+      const t = this.add.text(14, 36, '+' + CONFIG.HUESITOS.PRUEBA_TECLA_H + ' (prueba)', {
+        fontFamily: FUENTE, fontSize: '15px', color: '#f2d64b', stroke: '#000000', strokeThickness: 3
+      });
+      this.tweens.add({ targets: t, y: 26, alpha: 0, duration: 900, onComplete: () => t.destroy() });
+    }
   }
 
   // Botón "Álbum" abajo al centro (src/scenes/AlbumScene.js)

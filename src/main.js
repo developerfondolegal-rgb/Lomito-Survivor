@@ -14,7 +14,7 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
-  scene: [MenuScene, GameScene, AlbumScene] // la primera de la lista es la que se muestra al abrir
+  scene: [MenuScene, GameScene, AlbumScene, ApuestasScene] // la primera de la lista es la que se muestra al abrir
 };
 
 const game = new Phaser.Game(config);
