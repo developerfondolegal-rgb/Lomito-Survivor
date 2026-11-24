@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.7** — mapa de la plaza de noche.
+Versión actual: **v0.8** — objetos con rareza, enemigos élite y fusiones.
 
 ## Cómo abrir el juego
 
@@ -23,12 +23,23 @@ Versión actual: **v0.7** — mapa de la plaza de noche.
 | Jugar de nuevo con la misma raza (en Game Over) | **R** |
 | Volver a la pantalla de inicio (en Game Over) | **M** |
 | Modo de prueba: un enemigo de cada tipo cerca del perro | **T** |
+| Modo de prueba: un objeto de cada rareza cerca del perro | **Y** |
+| Modo de prueba: subir 5 niveles de golpe | **U** |
 
 No hay botón para atacar: el perro muerde solo.
 
-### Modo de prueba (tecla T)
+### Modo de prueba (teclas T, Y y U)
 
-Durante la partida, presiona **T** y aparecerá un enemigo de cada tipo en un círculo alrededor del perro (la Manada aparece como grupo completo). Sirve para ver cómo se mueve cada enemigo sin esperar minutos. Puedes presionarla varias veces. Estos enemigos **no sueltan huesos ni cuentan** en el Game Over, pero sí hacen daño y atrapan como los normales.
+- **T**: aparece un enemigo de cada tipo en un círculo alrededor del perro (la Manada aparece como grupo completo). Sirve para ver cómo se mueve cada enemigo sin esperar minutos. Estos enemigos **no sueltan huesos ni objetos ni cuentan** en el Game Over, pero sí hacen daño y atrapan como los normales.
+- **Y**: aparecen **4 objetos** alrededor del perro, uno de cada rareza (blanco, azul, morado y dorado). Cada vez que presionas Y salen objetos distintos, así en pocas veces tienes cada objeto en morado (épico) o dorado (legendario), que lo suben directo al nivel 3.
+- **U**: el perro sube **5 niveles de golpe** y salen 5 rondas de cartas seguidas.
+
+**Cómo forzar una fusión rápido** (por ejemplo *Frenesí*):
+1. Presiona **U** y en cada ronda elige **Mordida rápida** cuando aparezca. Repite U hasta que llegue a nivel 5 (deja de aparecer en las cartas).
+2. Presiona **Y** varias veces hasta que salga el **Collar viejo** morado o dorado, y pasa encima para recogerlo (queda en **MAX**).
+3. Presiona **U** otra vez: la primera carta será la **carta dorada de Frenesí**.
+
+Todas las teclas se pueden presionar varias veces.
 
 ## Razas
 
@@ -103,15 +114,56 @@ Al subir de nivel el juego se pausa y aparecen **3 cartas al azar**. Elige una c
 | **Olfato** | Atraes los huesos desde más lejos |
 | **Ladrido** | Nuevo ataque: cada pocos segundos una onda blanca pixelada daña y empuja a los enemigos cercanos. Cada nivel ladra más seguido, más lejos y más fuerte |
 
+### Objetos con rareza
+
+Además de huesos, a veces los enemigos sueltan un **objeto** (3 de cada 100 veces). Brilla en el suelo con el color de su **rareza** y se ve aunque esté oscuro. Pasa encima para recogerlo.
+
+| Rareza | Color | Qué tan seguido | Cuánto sube el objeto |
+|---|---|---|---|
+| **Común** | blanco | 70 de cada 100 objetos | +1 nivel |
+| **Raro** | azul (destella) | 22 de cada 100 | +2 niveles |
+| **Épico** | morado (destella) | 7 de cada 100 | directo al máximo |
+| **Legendario** | dorado (destella) | 1 de cada 100 | directo al máximo **y cura toda la vida** |
+
+Cada objeto llega hasta **nivel 3**. Si recoges uno que ya tienes, sube de nivel.
+
+| Objeto | Qué hace (por nivel) |
+|---|---|
+| **Collar viejo** | 10% menos daño recibido (30% en nivel 3) |
+| **Pelota mordida** | Corres más rápido |
+| **Hueso de caracú** | Recuperas vida de a poco |
+| **Placa de identificación** | 25% más experiencia por hueso |
+| **Frazada** | +20 de vida máxima (y te cura lo mismo) |
+
+**Inventario:** abajo al centro hay 6 casillas con tus objetos y su nivel (**Nv1**, **Nv2** o **MAX** en dorado). Si las 6 casillas están llenas, no puedes recoger un objeto nuevo (sí puedes subir los que ya tienes).
+
+### Enemigos élite
+
+Cada **1 minuto** aparece un **élite**: una versión más grande de un enemigo que ya está apareciendo, con **borde dorado** y **10 veces más vida**. Arriba sale el aviso "¡Apareció un élite!". Al morir suelta el triple de huesos y **siempre un objeto raro o mejor**.
+
+### Fusiones
+
+Si tienes un **instinto en nivel 5** y su **objeto pareja en nivel 3**, al subir de nivel aparece una **carta dorada de fusión** (dice qué combinación la desbloqueó). Si la eliges, ese poder se transforma en una versión mucho más fuerte:
+
+| Fusión | Instinto + Objeto | Qué hace |
+|---|---|---|
+| **Frenesí** | Mordida rápida + Collar viejo | Muerdes el doble de rápido y a **2 enemigos** a la vez |
+| **Aullido** | Ladrido + Placa de identificación | Ladrido dorado más grande que además hace **huir** a los enemigos 2 segundos |
+| **Estampida** | Patas ligeras + Pelota mordida | Al moverte dejas un **rastro de huellas** naranjas que daña a los enemigos que las pisan |
+| **Cuero de calle** | Pellejo duro + Frazada | Después de cada golpe, recibes **la mitad de daño durante 3 segundos** (se ve un anillo café alrededor del perro) |
+
+Las fusiones logradas salen escritas encima del inventario.
+
 ### Pantalla
 
 - Arriba de todo: barra de experiencia y tu **nivel**.
 - Arriba a la izquierda: barra de **vida**, tu **raza** y su poder. Si el poder tiene espera (Pitbull y Galgo), una barrita muestra cuánto falta; cuando se pone amarilla dice **¡Listo!**
 - Arriba a la derecha: **tiempo** sobrevivido.
+- Abajo al centro: **inventario** de objetos y fusiones logradas.
 
 ### Game Over
 
-Al llegar a 0 de vida aparece "Game Over" con tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados y cuántos de cada tipo.
+Al llegar a 0 de vida aparece "Game Over" con tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados, cuántos de cada tipo, los **objetos** que tenías (con su nivel) y las **fusiones** logradas.
 - **R**: jugar de nuevo con la misma raza.
 - **M**: volver a la pantalla de inicio para elegir otra raza.
 
@@ -269,20 +321,45 @@ Los dibujos de la plaza (bancas, basureros, faroles, autos y comida) y el tamañ
 | `LADRIDO_DANO` / `LADRIDO_DANO_EXTRA` | Ladrido: daño / daño extra por nivel |
 | `LADRIDO_EMPUJE` / `LADRIDO_EMPUJE_MS` | Ladrido: fuerza del empujón / cuánto dura |
 
+### Objetos, rarezas, fusiones y élites (`src/config.js`, sección `OBJETOS`)
+
+| Ajuste | Qué hace |
+|---|---|
+| `OBJETO_PROBABILIDAD` | Probabilidad de que un enemigo suelte objeto (0.03 = 3 de cada 100) |
+| `OBJETO_NIVEL_MAX` | Nivel máximo de cada objeto |
+| `INVENTARIO_MAX` | Cuántos objetos distintos puedes llevar |
+| `OBJETO_RECOGER` | Qué tan cerca tienes que pasar para recogerlo |
+| `RAREZAS` | Para cada rareza: `PESO` (qué tan seguido sale), `SUBE` (niveles que sube; `'max'` = al máximo) y `CURA_TODO` (cura toda la vida) |
+| `OBJETOS` | Lo que hace cada objeto por nivel (`MENOS_DANO`, `VELOCIDAD`, `CURA` / `CADA_MS`, `XP_EXTRA`, `VIDA`) |
+| `FUSIONES` | Los números de cada fusión (velocidad de mordida y objetivos del Frenesí; radio extra y tiempo de huida del Aullido; huellas de la Estampida; reducción y duración del Cuero de calle) |
+| `ELITE_CADA_SEGUNDOS` | Cada cuánto aparece un élite |
+| `ELITE_TAMANO` / `ELITE_VIDA` / `ELITE_HUESOS` | Cuánto más grande es, cuánta vida y cuántos huesos (multiplicando los del enemigo normal) |
+| `ELITE_RAREZA_MINIMA` | Rareza mínima del objeto que suelta (`'raro'`) |
+
+### Nombres, dibujos y parejas de fusión (`src/objetos.js`)
+
+- `RAREZAS`: nombre y color de cada rareza, y si destella.
+- `OBJETOS`: nombre y frase de cada objeto.
+- `FUSIONES`: nombre, frase y qué instinto + objeto la desbloquean.
+- `SPRITES_OBJETOS`: los dibujos de 16 x 16 de cada objeto (mismo formato que `src/sprites.js`), más la huella de la Estampida y la chispita.
+
+**Agregar un objeto nuevo:** sigue los pasos escritos al principio de `src/objetos.js`. El nombre, dibujo, rareza e inventario funcionan solos; lo que *hace* el objeto hay que programarlo en `src/scenes/GameScene.js`.
+
 ## Archivos
 
 - `index.html` — la página que abre el juego.
-- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos).
+- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones y élites).
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
 - `src/instintos.js` — nombres y frases de las cartas de instintos.
-- `src/sprites.js` — los dibujos en pixel art de todos los personajes, el hueso y la mordida.
+- `src/sprites.js` — los dibujos en pixel art de todos los personajes, el hueso y la mordida (y el borde de las élites y objetos).
+- `src/objetos.js` — objetos, rarezas y fusiones: nombres, frases y dibujos.
 - `src/mapa.js` — la plaza: suelo, pileta, bancas, árboles, faroles, basureros, autos, comida, obstáculos y la oscuridad de la noche.
 - `src/main.js` — configuración del motor del juego.
 - `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza.
-- `src/scenes/GameScene.js` — la partida: perro, enemigos (y cómo rodean obstáculos), ataques, poderes, comida, agua, experiencia, cartas y Game Over.
+- `src/scenes/GameScene.js` — la partida: perro, enemigos (y cómo rodean obstáculos), ataques, poderes, comida, agua, experiencia, objetos, élites, fusiones, cartas y Game Over.
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js` o `src/mapa.js`, revisa ese cambio.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js` u `src/objetos.js`, revisa ese cambio.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.

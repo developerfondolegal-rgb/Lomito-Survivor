@@ -279,5 +279,74 @@ const CONFIG = {
   LADRIDO_DANO: 8,              // daño en el nivel 1
   LADRIDO_DANO_EXTRA: 4,        // daño extra en cada nivel
   LADRIDO_EMPUJE: 350,          // qué tan fuerte empuja a los enemigos
-  LADRIDO_EMPUJE_MS: 250        // cuánto dura el empujón
+  LADRIDO_EMPUJE_MS: 250,       // cuánto dura el empujón
+
+  // ---------------------------------------------------------------
+  //  OBJETOS
+  //  Caen a veces de los enemigos (además de los huesos). Pasa encima
+  //  para recogerlos. Los nombres, frases y dibujos están en src/objetos.js
+  // ---------------------------------------------------------------
+  OBJETO_PROBABILIDAD: 0.03,    // probabilidad de que un enemigo suelte objeto (0.03 = 3 de cada 100)
+  OBJETO_NIVEL_MAX: 3,          // nivel máximo de cada objeto
+  INVENTARIO_MAX: 6,            // cuántos objetos distintos puedes llevar
+  OBJETO_RECOGER: 22,           // qué tan cerca tienes que pasar para recogerlo (se suma al RADIO del perro)
+
+  // Rarezas: PESO = qué tan seguido sale comparado con las demás
+  //          (70 de 100 veces común, 22 raro, 7 épico, 1 legendario)
+  //          SUBE = cuántos niveles sube el objeto ('max' = directo al máximo)
+  //          CURA_TODO = true para que además cure toda la vida
+  RAREZAS: {
+    comun:      { PESO: 70, SUBE: 1 },
+    raro:       { PESO: 22, SUBE: 2 },
+    epico:      { PESO: 7,  SUBE: 'max' },
+    legendario: { PESO: 1,  SUBE: 'max', CURA_TODO: true }
+  },
+
+  // Qué hace cada objeto POR CADA NIVEL (nivel 3 = 3 veces esto)
+  OBJETOS: {
+    collar:  { MENOS_DANO: 0.1 },             // Collar viejo: 10% menos daño recibido por nivel
+    pelota:  { VELOCIDAD: 20 },               // Pelota mordida: velocidad extra por nivel
+    caracu:  { CURA: 1, CADA_MS: 2500 },      // Hueso de caracú: vida que recupera por nivel, cada este tiempo
+    placa:   { XP_EXTRA: 0.25 },              // Placa: 25% más experiencia por hueso por nivel
+    frazada: { VIDA: 20 }                     // Frazada: vida máxima extra por nivel (y te cura lo mismo)
+  },
+
+  // ---------------------------------------------------------------
+  //  FUSIONES (instinto en nivel 5 + su objeto en nivel 3)
+  //  Qué combinación desbloquea cada una está en src/objetos.js
+  // ---------------------------------------------------------------
+  FUSIONES: {
+    // Frenesí (Mordida rápida + Collar viejo)
+    frenesi: {
+      MORDIDA_MULTIPLICADOR: 0.5, // el tiempo entre mordidas se multiplica por esto (0.5 = el doble de rápido)
+      OBJETIVOS: 2                // a cuántos enemigos muerde a la vez
+    },
+    // Aullido (Ladrido + Placa de identificación)
+    aullido: {
+      RADIO_EXTRA: 80,            // círculo del ladrido más grande
+      HUIR_MS: 2000               // cuánto rato huyen los enemigos alcanzados
+    },
+    // Estampida (Patas ligeras + Pelota mordida)
+    estampida: {
+      HUELLA_CADA_MS: 90,         // cada cuánto deja una huella mientras corre
+      HUELLA_DURA_MS: 1500,       // cuánto dura cada huella en el suelo
+      HUELLA_RADIO: 22,           // tamaño de la zona que daña de cada huella
+      DANO: 6,                    // daño que hacen las huellas...
+      GOLPE_CADA_MS: 350          // ...cada este tiempo, a los enemigos que las pisan
+    },
+    // Cuero de calle (Pellejo duro + Frazada)
+    cuero: {
+      MULTIPLICADOR: 0.5,         // daño recibido mientras está activo (0.5 = la mitad)
+      DURACION_MS: 3000           // cuánto dura después de cada golpe
+    }
+  },
+
+  // ---------------------------------------------------------------
+  //  ENEMIGO ÉLITE: versión grande de un enemigo, con borde dorado
+  // ---------------------------------------------------------------
+  ELITE_CADA_SEGUNDOS: 60,      // cada cuánto aparece uno (60 = cada minuto)
+  ELITE_TAMANO: 1.7,            // cuánto más grande es (dibujo y choque)
+  ELITE_VIDA: 10,               // su vida es la del enemigo normal por este número
+  ELITE_HUESOS: 3,              // suelta los huesos del enemigo normal por este número
+  ELITE_RAREZA_MINIMA: 'raro'   // siempre suelta un objeto de esta rareza o mejor
 };

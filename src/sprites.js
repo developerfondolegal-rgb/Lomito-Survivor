@@ -604,3 +604,46 @@ function texturaOnda(escena, radio) {
   textura.refresh();
   return clave;
 }
+
+// Borde blanco de 1 píxel alrededor de un dibujo (por fuera de su silueta).
+// Se pinta de otro color con setTint: dorado en los enemigos élite y del
+// color de la rareza en los objetos. Tiene los mismos cuadros que el dibujo
+// original, pero cada cuadro es 2 píxeles más ancho y más alto.
+function texturaBorde(escena, clave) {
+  const claveBorde = 'borde_' + clave;
+  if (escena.textures.exists(claveBorde)) return claveBorde;
+  const original = escena.textures.get(clave);
+  const fuente = original.getSourceImage();
+  const nombres = original.getFrameNames().sort((a, b) => Number(a) - Number(b));
+  const ctxFuente = fuente.getContext('2d');
+  const datos = ctxFuente.getImageData(0, 0, fuente.width, fuente.height);
+  const lleno = (x, y) => x >= 0 && y >= 0 && x < fuente.width && y < fuente.height &&
+    datos.data[(y * fuente.width + x) * 4 + 3] > 0;
+
+  const cuadros = nombres.length > 0 ? nombres.map((n) => original.get(n)) : [original.get()];
+  const ancho = cuadros[0].width + 2;
+  const alto = cuadros[0].height + 2;
+  const textura = escena.textures.createCanvas(claveBorde, ancho * cuadros.length, alto);
+  const ctx = textura.getContext();
+  ctx.fillStyle = '#ffffff';
+
+  cuadros.forEach((cuadro, i) => {
+    for (let y = -1; y <= cuadro.height; y++) {
+      for (let x = -1; x <= cuadro.width; x++) {
+        const dentro = x >= 0 && y >= 0 && x < cuadro.width && y < cuadro.height;
+        if (dentro && lleno(cuadro.cutX + x, cuadro.cutY + y)) continue;
+        // ¿tiene un píxel del dibujo al lado (arriba, abajo o a los lados)?
+        const vecino = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+          const vx = x + dx;
+          const vy = y + dy;
+          return vx >= 0 && vy >= 0 && vx < cuadro.width && vy < cuadro.height &&
+            lleno(cuadro.cutX + vx, cuadro.cutY + vy);
+        });
+        if (vecino) ctx.fillRect(i * ancho + x + 1, y + 1, 1, 1);
+      }
+    }
+    textura.add(nombres.length > 0 ? nombres[i] : i, 0, i * ancho, 0, ancho, alto);
+  });
+  textura.refresh();
+  return claveBorde;
+}

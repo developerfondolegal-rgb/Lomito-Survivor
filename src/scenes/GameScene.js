@@ -1,7 +1,7 @@
 // Escena principal: la plaza donde el perro sobrevive la noche.
 // Los números para ajustar el juego están en src/config.js
 // Los textos de razas, enemigos e instintos están en src/razas.js,
-// src/enemigos.js y src/instintos.js
+// src/enemigos.js y src/instintos.js; los objetos, rarezas y fusiones, en src/objetos.js
 // (FUENTE y dibujarPerro vienen de MenuScene.js; los dibujos, de src/sprites.js;
 //  la plaza, la luz y los obstáculos, de src/mapa.js)
 
@@ -61,9 +61,22 @@ class GameScene extends Phaser.Scene {
     this.instintos = {};
     INSTINTOS.forEach((inst) => { this.instintos[inst.id] = 0; });
 
+    // Objetos (src/objetos.js): nivel de cada objeto recogido y en qué orden
+    this.objetos = {};
+    this.inventario = [];
+    this.fusiones = {};           // fusiones logradas (id: true)
+    this.esperaCaracu = 0;
+    this.proximoElite = CONFIG.ELITE_CADA_SEGUNDOS * 1000;
+    this.cueroHasta = 0;          // "Cuero de calle" activo hasta este momento
+    this.rastro = [];             // huellas de la Estampida
+    this.esperaHuella = 0;
+    this.esperaGolpeRastro = 0;
+    this.rondaPrueba = 0;         // para que la tecla Y saque objetos distintos cada vez
+
     // Por si venimos de un Game Over (la física y las animaciones quedaron en pausa)
     this.physics.resume();
     crearSprites(this);
+    crearTexturasObjetos(this);
     this.anims.resumeAll();
 
     // Mapa y cámara
@@ -92,6 +105,7 @@ class GameScene extends Phaser.Scene {
     // Huesos y comida
     this.huesos = this.add.group();
     this.comidas = this.add.group();
+    this.objetosSuelo = this.add.group(); // objetos con rareza tirados en el suelo
 
     // Noche: todo oscuro menos cerca de los faroles y del perro
     this.oscuridad = crearOscuridad(this);
@@ -102,6 +116,7 @@ class GameScene extends Phaser.Scene {
     // Líneas de aviso del Drogadicto y jaula de la Perrera
     this.avisos = this.add.graphics().setDepth(4);
     this.jaula = this.add.graphics().setDepth(12);
+    this.escudo = this.add.graphics().setDepth(11); // anillo del "Cuero de calle"
 
     // Controles
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -109,7 +124,9 @@ class GameScene extends Phaser.Scene {
     this.teclaR = this.input.keyboard.addKey('R');
     this.teclaM = this.input.keyboard.addKey('M');
     this.teclaEspacio = this.input.keyboard.addKey('SPACE');
-    this.teclaT = this.input.keyboard.addKey('T'); // modo de prueba
+    this.teclaT = this.input.keyboard.addKey('T'); // modo de prueba: enemigos
+    this.teclaY = this.input.keyboard.addKey('Y'); // modo de prueba: objetos
+    this.teclaU = this.input.keyboard.addKey('U'); // modo de prueba: +5 niveles
     this.teclasCartas = [
       this.input.keyboard.addKey('ONE'),
       this.input.keyboard.addKey('TWO'),
@@ -155,6 +172,17 @@ class GameScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.teclaT)) {
       this.modoPrueba();
     }
+    // Modo de prueba: un objeto de cada rareza cerca del perro
+    if (Phaser.Input.Keyboard.JustDown(this.teclaY)) {
+      this.pruebaObjetos();
+    }
+    // Modo de prueba: subir 5 niveles de golpe (salen las cartas)
+    if (Phaser.Input.Keyboard.JustDown(this.teclaU)) {
+      this.nivel += 5;
+      this.nivelesPendientes += 5;
+      this.mostrarCartas();
+      if (this.eligiendo) return;
+    }
 
     this.moverPerro();
     this.moverEnemigos();
@@ -162,7 +190,17 @@ class GameScene extends Phaser.Scene {
     this.aparecerComida(delta);
     this.comer();
     this.beberAgua(delta);
+    this.recogerObjetos();
+    this.efectosObjetos(delta);
+    this.actualizarEstampida(delta);
     this.dibujarJaula();
+    this.dibujarEscudo();
+
+    // Enemigo élite cada cierto tiempo
+    if (this.tiempoSobrevivido >= this.proximoElite) {
+      this.proximoElite += CONFIG.ELITE_CADA_SEGUNDOS * 1000;
+      this.aparecerElite();
+    }
 
     // Aparición de enemigos
     this.esperaAparicion += delta;
@@ -212,11 +250,19 @@ class GameScene extends Phaser.Scene {
   // ---------------- Valores que dependen de la raza y los instintos ----------------
 
   velocidadPerro() {
-    return this.base.VELOCIDAD + this.instintos.patasLigeras * CONFIG.PATAS_VELOCIDAD;
+    return this.base.VELOCIDAD + this.instintos.patasLigeras * CONFIG.PATAS_VELOCIDAD +
+      this.nivelObjeto('pelota') * CONFIG.OBJETOS.pelota.VELOCIDAD;
   }
 
   intervaloMordida() {
-    return Math.max(100, this.base.MORDIDA_CADA_MS - this.instintos.mordidaRapida * CONFIG.MORDIDA_RAPIDA_MS);
+    let ms = Math.max(100, this.base.MORDIDA_CADA_MS - this.instintos.mordidaRapida * CONFIG.MORDIDA_RAPIDA_MS);
+    if (this.fusiones.frenesi) ms = Math.max(100, ms * CONFIG.FUSIONES.frenesi.MORDIDA_MULTIPLICADOR);
+    return ms;
+  }
+
+  // Nivel de un objeto (0 = no lo tiene)
+  nivelObjeto(id) {
+    return this.objetos[id] || 0;
   }
 
   danoMordida() {
@@ -233,7 +279,8 @@ class GameScene extends Phaser.Scene {
   }
 
   radioLadrido() {
-    return CONFIG.LADRIDO_RADIO + (this.instintos.ladrido - 1) * CONFIG.LADRIDO_RADIO_EXTRA;
+    const extra = this.fusiones.aullido ? CONFIG.FUSIONES.aullido.RADIO_EXTRA : 0;
+    return CONFIG.LADRIDO_RADIO + (this.instintos.ladrido - 1) * CONFIG.LADRIDO_RADIO_EXTRA + extra;
   }
 
   danoLadrido() {
@@ -309,6 +356,11 @@ class GameScene extends Phaser.Scene {
       } else if (ahora < enemigo.aturdidoHasta) {
         enemigo.body.setVelocity(0, 0); // aturdido: se queda quieto
         enemigo.estado = 'acercarse';
+      } else if (ahora < enemigo.huyendoHasta) {
+        // Lo asustó el Aullido: corre alejándose del perro
+        const angulo = Phaser.Math.Angle.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y);
+        enemigo.body.setVelocity(Math.cos(angulo) * cfg.VELOCIDAD, Math.sin(angulo) * cfg.VELOCIDAD);
+        enemigo.estado = 'acercarse';
       } else if (cfg.COMPORTAMIENTO === 'zigzag') {
         this.moverZigzag(enemigo, ahora);
       } else if (cfg.COMPORTAMIENTO === 'embestida') {
@@ -342,6 +394,14 @@ class GameScene extends Phaser.Scene {
       // La Perrera se ve transparente mientras no puede atraparte
       if (cfg.COMPORTAMIENTO === 'atrapar') {
         enemigo.setAlpha(ahora < enemigo.recargaHasta ? 0.45 : 1);
+      }
+
+      // El borde dorado del élite sigue al enemigo (mismo cuadro y mismo lado)
+      if (enemigo.borde) {
+        enemigo.borde.setPosition(enemigo.x, enemigo.y);
+        enemigo.borde.setFrame(enemigo.frame.name);
+        enemigo.borde.setFlipX(enemigo.flipX);
+        enemigo.borde.setAlpha(enemigo.alpha);
       }
     });
   }
@@ -574,11 +634,12 @@ class GameScene extends Phaser.Scene {
     return creados;
   }
 
-  crearEnemigo(tipo, x, y, ignorarLimite) {
+  crearEnemigo(tipo, x, y, ignorarLimite, elite) {
     if (!ignorarLimite && this.enemigos.countActive() >= CONFIG.ENEMIGOS_MAXIMOS) return null;
 
     const cfg = CONFIG.ENEMIGOS[tipo];
-    const r = cfg.RADIO;
+    const tamano = elite ? CONFIG.ELITE_TAMANO : 1;
+    const r = cfg.RADIO * tamano;
     // Nunca dentro de un obstáculo: si el lugar está ocupado, busca el más cercano libre
     const lugar = this.plaza.buscarLibre(x, y, r + 4);
     x = lugar.x;
@@ -591,15 +652,26 @@ class GameScene extends Phaser.Scene {
     if (enemigo.tinteBase !== null) enemigo.setTint(enemigo.tinteBase);
     enemigo.tinte = 'normal';
     enemigo.setDepth(6);
+    if (elite) enemigo.setScale(ESCALA_PIXEL * tamano);
 
     this.enemigos.add(enemigo);
     // El "cuerpo" para choques es siempre un círculo de RADIO centrado en el dibujo
     ponerChoqueCircular(enemigo, r);
 
+    // Élite: borde dorado detrás del dibujo (se borra solo cuando muere)
+    enemigo.elite = !!elite;
+    enemigo.borde = null;
+    if (elite) {
+      enemigo.borde = this.add.sprite(x, y, texturaBorde(this, clave), 0)
+        .setScale(ESCALA_PIXEL * tamano).setTint(0xffd54f).setDepth(5.9);
+      enemigo.once('destroy', () => { if (enemigo.borde) enemigo.borde.destroy(); });
+    }
+
     enemigo.tipo = tipo;
     enemigo.cfg = cfg;
     enemigo.radio = r;
-    enemigo.vida = cfg.VIDA;
+    enemigo.vida = cfg.VIDA * (elite ? CONFIG.ELITE_VIDA : 1);
+    enemigo.huyendoHasta = 0;     // huyendo del Aullido hasta este momento
     enemigo.empujadoHasta = 0;
     enemigo.aturdidoHasta = 0;
     enemigo.destelloHasta = 0;
@@ -626,6 +698,56 @@ class GameScene extends Phaser.Scene {
       const y = Phaser.Math.Clamp(this.perro.y + Math.sin(angulo) * 220, 20, CONFIG.MAPA_ALTO - 20);
       this.crearGrupo(tipo, x, y, true).forEach((enemigo) => { enemigo.dePrueba = true; });
     });
+  }
+
+  // Enemigo élite: uno grande, con borde dorado y mucha vida, de algún
+  // tipo que ya esté apareciendo. Siempre suelta un objeto raro o mejor.
+  aparecerElite() {
+    const segundos = this.tiempoSobrevivido / 1000;
+    const tipos = Object.keys(CONFIG.ENEMIGOS).filter((id) => segundos >= (CONFIG.ENEMIGOS[id].DESDE_SEGUNDOS || 0));
+    if (tipos.length === 0) return;
+    const tipo = Phaser.Math.RND.pick(tipos);
+    const pos = this.posicionFueraDePantalla();
+    const elite = this.crearEnemigo(tipo, pos.x, pos.y, true, true);
+    if (!elite) return;
+
+    const nombre = (ENEMIGOS.find((e) => e.id === tipo) || { nombre: tipo }).nombre;
+    this.mostrarAviso('¡Apareció un élite: ' + nombre + '!', '#ffd54f');
+  }
+
+  // Texto grande arriba al centro que se desvanece
+  mostrarAviso(texto, color) {
+    // si ya hay avisos en pantalla, el nuevo sale más abajo
+    this.avisosVisibles = (this.avisosVisibles || []).filter((a) => a.active);
+    const y = 120 + this.avisosVisibles.length * 34;
+    const aviso = this.add.text(this.scale.width / 2, y, texto, {
+      fontFamily: FUENTE, fontSize: '26px', color, fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(1500);
+    this.avisosVisibles.push(aviso);
+    this.tweens.add({
+      targets: aviso,
+      alpha: 0,
+      delay: 1800,
+      duration: 600,
+      onComplete: () => aviso.destroy()
+    });
+  }
+
+  // Modo de prueba (tecla Y): un objeto de cada rareza en un círculo
+  // alrededor del perro. Cada vez que presionas Y salen objetos distintos,
+  // así en pocas veces tienes cada objeto en épico y legendario.
+  pruebaObjetos() {
+    RAREZAS.forEach((rareza, i) => {
+      const objeto = OBJETOS[(this.rondaPrueba + i) % OBJETOS.length];
+      const angulo = (i / RAREZAS.length) * Math.PI * 2 - Math.PI / 2;
+      const lugar = this.plaza.buscarLibre(
+        Phaser.Math.Clamp(this.perro.x + Math.cos(angulo) * 90, 20, CONFIG.MAPA_ANCHO - 20),
+        Phaser.Math.Clamp(this.perro.y + Math.sin(angulo) * 90, 20, CONFIG.MAPA_ALTO - 20),
+        12
+      );
+      this.soltarObjeto(lugar.x, lugar.y, objeto.id, rareza.id);
+    });
+    this.rondaPrueba++;
   }
 
   // Busca un punto justo fuera de lo que se ve en pantalla, pero dentro del mapa
@@ -675,7 +797,8 @@ class GameScene extends Phaser.Scene {
       }
 
       const probabilidad = this.base.HUESO_PROBABILIDAD === undefined ? 1 : this.base.HUESO_PROBABILIDAD;
-      const cantidad = enemigo.cfg.HUESOS === undefined ? 1 : enemigo.cfg.HUESOS;
+      let cantidad = enemigo.cfg.HUESOS === undefined ? 1 : enemigo.cfg.HUESOS;
+      if (enemigo.elite) cantidad *= CONFIG.ELITE_HUESOS;
       for (let i = 0; i < cantidad; i++) {
         if (Math.random() < probabilidad) {
           const ox = cantidad > 1 ? Phaser.Math.Between(-14, 14) : 0;
@@ -684,6 +807,13 @@ class GameScene extends Phaser.Scene {
           const libre = this.plaza.libre(enemigo.x + ox, enemigo.y + oy, 4);
           this.soltarHueso(libre ? enemigo.x + ox : enemigo.x, libre ? enemigo.y + oy : enemigo.y);
         }
+      }
+
+      // A veces suelta un objeto con rareza (el élite, siempre uno raro o mejor)
+      if (enemigo.elite) {
+        this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza(CONFIG.ELITE_RAREZA_MINIMA));
+      } else if (Math.random() < CONFIG.OBJETO_PROBABILIDAD) {
+        this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza());
       }
       this.derrotados++;
       this.derrotadosPorTipo[enemigo.tipo] = (this.derrotadosPorTipo[enemigo.tipo] || 0) + 1;
@@ -697,32 +827,32 @@ class GameScene extends Phaser.Scene {
   // ---------------- Mordida ----------------
 
   morder() {
-    // Buscar el enemigo más cercano dentro del alcance (medido hasta su borde)
-    let objetivo = null;
-    let distanciaMin = Infinity;
-    this.enemigos.getChildren().forEach((enemigo) => {
-      const d = Phaser.Math.Distance.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y) - enemigo.radio;
-      if (d < distanciaMin) {
-        distanciaMin = d;
-        objetivo = enemigo;
+    // Los enemigos dentro del alcance (medido hasta su borde), el más cercano primero.
+    // Normalmente muerde a 1; con la fusión "Frenesí", a varios.
+    const cuantos = this.fusiones.frenesi ? CONFIG.FUSIONES.frenesi.OBJETIVOS : 1;
+    const objetivos = this.enemigos.getChildren()
+      .map((enemigo) => ({ enemigo, d: Phaser.Math.Distance.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y) - enemigo.radio }))
+      .filter((o) => o.d <= CONFIG.MORDIDA_ALCANCE)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, cuantos)
+      .map((o) => o.enemigo);
+
+    objetivos.forEach((objetivo, i) => {
+      let dano = this.danoMordida();
+      let fuerte = false;
+
+      // Poder "Mandíbula de hierro" (Pitbull): si está cargado, aturde y hace daño extra
+      // (solo al primero)
+      if (i === 0 && this.poder === 'mandibula' && this.poderListo()) {
+        dano += this.base.MANDIBULA_DANO_EXTRA;
+        objetivo.aturdidoHasta = this.tiempoSobrevivido + this.base.MANDIBULA_ATURDIR_MS;
+        this.poderCarga = 0;
+        fuerte = true;
       }
+
+      this.mostrarMordida(objetivo, fuerte);
+      this.danarEnemigo(objetivo, dano);
     });
-
-    if (!objetivo || distanciaMin > CONFIG.MORDIDA_ALCANCE) return;
-
-    let dano = this.danoMordida();
-    let fuerte = false;
-
-    // Poder "Mandíbula de hierro" (Pitbull): si está cargado, aturde y hace daño extra
-    if (this.poder === 'mandibula' && this.poderListo()) {
-      dano += this.base.MANDIBULA_DANO_EXTRA;
-      objetivo.aturdidoHasta = this.tiempoSobrevivido + this.base.MANDIBULA_ATURDIR_MS;
-      this.poderCarga = 0;
-      fuerte = true;
-    }
-
-    this.mostrarMordida(objetivo, fuerte);
-    this.danarEnemigo(objetivo, dano);
   }
 
   // Dientes de pixel art sobre el enemigo que se desvanecen
@@ -752,6 +882,8 @@ class GameScene extends Phaser.Scene {
     const onda = this.add.image(this.perro.x, this.perro.y, texturaOnda(this, radio));
     onda.setDepth(5);
     onda.setScale(ESCALA_PIXEL * 0.2);
+    const aullido = !!this.fusiones.aullido;
+    if (aullido) onda.setTint(0xffd54f); // el Aullido se ve dorado
     this.tweens.add({
       targets: onda,
       scale: ESCALA_PIXEL,
@@ -769,6 +901,8 @@ class GameScene extends Phaser.Scene {
       const angulo = Phaser.Math.Angle.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y);
       enemigo.body.setVelocity(Math.cos(angulo) * CONFIG.LADRIDO_EMPUJE, Math.sin(angulo) * CONFIG.LADRIDO_EMPUJE);
       enemigo.empujadoHasta = this.tiempoSobrevivido + CONFIG.LADRIDO_EMPUJE_MS;
+      // Aullido: además huyen un rato (después del empujón)
+      if (aullido) enemigo.huyendoHasta = enemigo.empujadoHasta + CONFIG.FUSIONES.aullido.HUIR_MS;
 
       this.danarEnemigo(enemigo, dano);
     });
@@ -793,7 +927,8 @@ class GameScene extends Phaser.Scene {
 
       if (d <= distanciaRecoger) {
         hueso.destroy();
-        this.ganarXP(CONFIG.HUESO_XP);
+        // Placa de identificación: más experiencia por hueso
+        this.ganarXP(CONFIG.HUESO_XP * (1 + this.nivelObjeto('placa') * CONFIG.OBJETOS.placa.XP_EXTRA));
         return;
       }
 
@@ -927,6 +1062,205 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  // ---------------- Objetos con rareza (src/objetos.js) ----------------
+
+  // Sortea una rareza según su PESO en config.js.
+  // "minima": si se da, solo sale esa rareza o una mejor (para los élites).
+  sortearRareza(minima) {
+    const desde = minima ? Math.max(0, RAREZAS.findIndex((r) => r.id === minima)) : 0;
+    const posibles = RAREZAS.slice(desde).filter((r) => CONFIG.RAREZAS[r.id] && CONFIG.RAREZAS[r.id].PESO > 0);
+    if (posibles.length === 0) return RAREZAS[RAREZAS.length - 1].id;
+    const total = posibles.reduce((suma, r) => suma + CONFIG.RAREZAS[r.id].PESO, 0);
+    let sorteo = Math.random() * total;
+    for (const r of posibles) {
+      sorteo -= CONFIG.RAREZAS[r.id].PESO;
+      if (sorteo < 0) return r.id;
+    }
+    return posibles[posibles.length - 1].id;
+  }
+
+  // Deja un objeto en el suelo, con brillo del color de su rareza.
+  // Si objetoId es null, se elige un objeto al azar.
+  soltarObjeto(x, y, objetoId, rarezaId) {
+    const objeto = objetoId ? buscarObjeto(objetoId) : Phaser.Math.RND.pick(OBJETOS);
+    const rareza = buscarRareza(rarezaId);
+    if (!this.plaza.libre(x, y, 8)) {
+      const lugar = this.plaza.buscarLibre(x, y, 12);
+      x = lugar.x;
+      y = lugar.y;
+    }
+
+    // Va encima de la oscuridad para que se vea brillar de noche
+    const brillo = this.add.image(0, 0, 'brillo_objeto').setScale(ESCALA_PIXEL).setTint(rareza.color);
+    const borde = this.add.image(0, 0, texturaBorde(this, objeto.id), 0).setScale(2).setTint(rareza.color);
+    const icono = this.add.image(0, 0, objeto.id, 0).setScale(2);
+    const cosa = this.add.container(x, y, [brillo, borde, icono]).setDepth(805);
+    cosa.objetoId = objeto.id;
+    cosa.rarezaId = rareza.id;
+    cosa.avisoLleno = false;
+    cosa.proximaChispa = 0;
+    this.objetosSuelo.add(cosa);
+    // al recogerlo, se detienen sus animaciones
+    cosa.once('destroy', () => this.tweens.killTweensOf([brillo, borde, icono]));
+
+    // Flota un poquito arriba y abajo
+    this.tweens.add({ targets: [borde, icono], y: -4, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    // Raro o mejor: el brillo palpita (destella)
+    if (rareza.destella) {
+      this.tweens.add({ targets: brillo, alpha: 0.35, scale: ESCALA_PIXEL * 1.25, duration: 450, yoyo: true, repeat: -1 });
+      this.tweens.add({ targets: borde, alpha: 0.3, duration: 300, yoyo: true, repeat: -1 });
+    }
+    return cosa;
+  }
+
+  // Pasar encima de un objeto lo recoge; los raros o mejores sueltan chispitas
+  recogerObjetos() {
+    const alcance = this.base.RADIO + CONFIG.OBJETO_RECOGER;
+    const ahora = this.tiempoSobrevivido;
+    this.objetosSuelo.getChildren().slice().forEach((cosa) => {
+      if (Phaser.Math.Distance.Between(this.perro.x, this.perro.y, cosa.x, cosa.y) <= alcance) {
+        if (this.recogerObjeto(cosa.objetoId, cosa.rarezaId)) {
+          cosa.destroy();
+          return;
+        }
+        if (!cosa.avisoLleno) {
+          cosa.avisoLleno = true;
+          this.textoFlotante('¡Inventario lleno!', '#ff8a80');
+        }
+      }
+
+      const rareza = buscarRareza(cosa.rarezaId);
+      if (rareza.destella && ahora >= cosa.proximaChispa) {
+        cosa.proximaChispa = ahora + Phaser.Math.Between(250, 600);
+        const chispa = this.add.image(
+          cosa.x + Phaser.Math.Between(-20, 20), cosa.y + Phaser.Math.Between(-22, 14), 'chispa', 0
+        ).setScale(2).setTint(rareza.color).setDepth(806);
+        this.tweens.add({ targets: chispa, alpha: 0, scale: 0.5, duration: 500, onComplete: () => chispa.destroy() });
+      }
+    });
+  }
+
+  // Suma niveles al objeto según la rareza. Devuelve false si no cabe en el inventario.
+  recogerObjeto(objetoId, rarezaId) {
+    const rareza = buscarRareza(rarezaId);
+    const cfgRareza = CONFIG.RAREZAS[rareza.id] || { SUBE: 1 };
+    const max = CONFIG.OBJETO_NIVEL_MAX;
+
+    if (this.objetos[objetoId] === undefined) {
+      if (this.inventario.length >= CONFIG.INVENTARIO_MAX) return false;
+      this.inventario.push(objetoId);
+      this.objetos[objetoId] = 0;
+    }
+
+    const antes = this.objetos[objetoId];
+    const sube = cfgRareza.SUBE === 'max' ? max : (cfgRareza.SUBE || 1);
+    const ahora = Math.min(max, antes + sube);
+    const ganados = ahora - antes;
+    this.objetos[objetoId] = ahora;
+
+    // Frazada: más vida máxima (y te cura lo mismo)
+    if (objetoId === 'frazada' && ganados > 0) {
+      const extra = ganados * CONFIG.OBJETOS.frazada.VIDA;
+      this.vidaMax += extra;
+      this.vida = Math.min(this.vidaMax, this.vida + extra);
+    }
+
+    const nombre = buscarObjeto(objetoId).nombre;
+    const nivelTexto = ahora >= max ? 'MAX' : 'Nv ' + ahora;
+    this.textoFlotante(nombre + ' ' + (ganados > 0 ? nivelTexto : '(ya al máximo)'), rareza.colorTexto);
+
+    // Legendario: además cura toda la vida
+    if (cfgRareza.CURA_TODO) this.curar(this.vidaMax - this.vida, '#ffd54f');
+
+    this.actualizarInventario();
+    return true;
+  }
+
+  // Texto que sube y se desvanece sobre el perro
+  textoFlotante(texto, color) {
+    // si salen varios casi al mismo tiempo, se apilan para no taparse
+    const ahora = this.tiempoSobrevivido;
+    this.pilaFlotante = ahora - (this.ultimoFlotante || -9999) < 400 ? (this.pilaFlotante || 0) + 1 : 0;
+    this.ultimoFlotante = ahora;
+    const t = this.add.text(this.perro.x, this.perro.y - 50 - this.pilaFlotante * 20, texto, {
+      fontFamily: FUENTE, fontSize: '16px', color, fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
+    }).setOrigin(0.5).setDepth(950);
+    this.tweens.add({ targets: t, y: t.y - 30, alpha: 0, duration: 1200, onComplete: () => t.destroy() });
+  }
+
+  // Efectos de los objetos que pasan con el tiempo
+  // (Collar viejo está en recibirGolpe, Pelota en velocidadPerro,
+  //  Placa en moverHuesos y Frazada en recogerObjeto)
+  efectosObjetos(delta) {
+    // Hueso de caracú: recupera vida de a poco
+    const caracu = this.nivelObjeto('caracu');
+    if (caracu > 0) {
+      this.esperaCaracu += delta;
+      if (this.esperaCaracu >= CONFIG.OBJETOS.caracu.CADA_MS) {
+        this.esperaCaracu = 0;
+        this.vida = Math.min(this.vidaMax, this.vida + caracu * CONFIG.OBJETOS.caracu.CURA);
+      }
+    }
+  }
+
+  // Fusión "Estampida": al moverse deja huellas que dañan a los enemigos que las pisan
+  actualizarEstampida(delta) {
+    const cfg = CONFIG.FUSIONES.estampida;
+    const ahora = this.tiempoSobrevivido;
+
+    // Borrar las huellas viejas
+    this.rastro = this.rastro.filter((h) => {
+      if (ahora < h.hasta) return true;
+      h.imagen.destroy();
+      return false;
+    });
+    if (!this.fusiones.estampida) return;
+
+    const v = this.perro.body.velocity;
+    this.esperaHuella += delta;
+    if (v.x * v.x + v.y * v.y > 100 && this.esperaHuella >= cfg.HUELLA_CADA_MS) {
+      this.esperaHuella = 0;
+      const imagen = this.add.image(this.perro.x, this.perro.y, 'huella', 0)
+        .setScale(ESCALA_PIXEL).setDepth(2).setRotation(Math.atan2(v.y, v.x) + Math.PI / 2);
+      this.tweens.add({ targets: imagen, alpha: 0.15, duration: cfg.HUELLA_DURA_MS });
+      this.rastro.push({ imagen, x: this.perro.x, y: this.perro.y, hasta: ahora + cfg.HUELLA_DURA_MS });
+    }
+
+    this.esperaGolpeRastro += delta;
+    if (this.esperaGolpeRastro < cfg.GOLPE_CADA_MS || this.rastro.length === 0) return;
+    this.esperaGolpeRastro = 0;
+    this.enemigos.getChildren().slice().forEach((enemigo) => {
+      const pisa = this.rastro.some((h) =>
+        Phaser.Math.Distance.Between(h.x, h.y, enemigo.x, enemigo.y) <= cfg.HUELLA_RADIO + enemigo.radio);
+      if (pisa) this.danarEnemigo(enemigo, cfg.DANO);
+    });
+  }
+
+  // Fusión "Cuero de calle": anillo café alrededor del perro mientras está activo
+  dibujarEscudo() {
+    this.escudo.clear();
+    if (!this.fusiones.cuero || this.tiempoSobrevivido >= this.cueroHasta) return;
+    this.escudo.lineStyle(3, 0xc8935a, 0.9);
+    this.escudo.strokeCircle(this.perro.x, this.perro.y, this.base.RADIO + 10);
+  }
+
+  // ---------------- Fusiones ----------------
+
+  // Fusiones que se pueden elegir ahora: instinto al máximo + objeto al máximo
+  fusionesDisponibles() {
+    return FUSIONES.filter((f) =>
+      !this.fusiones[f.id] &&
+      this.instintos[f.instinto] >= CONFIG.INSTINTO_NIVEL_MAX &&
+      this.nivelObjeto(f.objeto) >= CONFIG.OBJETO_NIVEL_MAX);
+  }
+
+  aplicarFusion(id) {
+    this.fusiones[id] = true;
+    const fusion = FUSIONES.find((f) => f.id === id);
+    this.mostrarAviso('¡Fusión: ' + (fusion ? fusion.nombre : id) + '!', '#ffd54f');
+    this.actualizarInventario();
+  }
+
   // ---------------- Cartas de instintos ----------------
 
   instintosDisponibles() {
@@ -934,7 +1268,10 @@ class GameScene extends Phaser.Scene {
   }
 
   mostrarCartas() {
-    const opciones = Phaser.Utils.Array.Shuffle(this.instintosDisponibles().slice()).slice(0, 3);
+    // Primero las fusiones disponibles (cartas doradas), y el resto instintos al azar
+    const fusiones = this.fusionesDisponibles().slice(0, 3).map((f) => ({ fusion: f }));
+    const instintos = Phaser.Utils.Array.Shuffle(this.instintosDisponibles().slice()).slice(0, 3 - fusiones.length);
+    const opciones = fusiones.concat(instintos);
 
     // Si ya tiene todos los instintos al máximo, no hay nada que elegir
     if (opciones.length === 0) {
@@ -959,7 +1296,10 @@ class GameScene extends Phaser.Scene {
     capa.push(this.add.text(w / 2, 90, '¡Subiste a nivel ' + this.nivel + '!', {
       fontFamily: FUENTE, fontSize: '36px', color: '#ffffff', fontStyle: 'bold'
     }).setOrigin(0.5));
-    capa.push(this.add.text(w / 2, 130, 'Elige un instinto (clic o teclas 1, 2, 3)', {
+    const titulo = fusiones.length > 0
+      ? '¡Fusión disponible! Elige una carta (clic o teclas 1, 2, 3)'
+      : 'Elige un instinto (clic o teclas 1, 2, 3)';
+    capa.push(this.add.text(w / 2, 130, titulo, {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5));
 
@@ -971,6 +1311,10 @@ class GameScene extends Phaser.Scene {
 
     this.cartas = opciones.map((inst, i) => {
       const cx = inicioX + i * separacion;
+      if (inst.fusion) {
+        capa.push(...this.dibujarCartaFusion(inst.fusion, i, cx, cy, anchoCarta, altoCarta));
+        return inst;
+      }
       const nivelActual = this.instintos[inst.id];
 
       const fondo = this.add.rectangle(cx, cy, anchoCarta, altoCarta, 0x2b2b3a)
@@ -1008,14 +1352,50 @@ class GameScene extends Phaser.Scene {
     this.capaCartas = capa;
   }
 
+  // Carta dorada de fusión: muestra qué combinación la desbloqueó
+  dibujarCartaFusion(fusion, i, cx, cy, anchoCarta, altoCarta) {
+    const inst = INSTINTOS.find((x) => x.id === fusion.instinto) || { nombre: fusion.instinto };
+    const obj = buscarObjeto(fusion.objeto);
+
+    const fondo = this.add.rectangle(cx, cy, anchoCarta, altoCarta, 0x4a3a12)
+      .setStrokeStyle(4, 0xffd54f)
+      .setInteractive({ useHandCursor: true });
+    fondo.on('pointerover', () => fondo.setStrokeStyle(5, 0xffffff));
+    fondo.on('pointerout', () => fondo.setStrokeStyle(4, 0xffd54f));
+    fondo.on('pointerdown', () => this.elegirCarta(i));
+
+    const tecla = this.add.text(cx, cy - 108, '[' + (i + 1) + ']  FUSIÓN', {
+      fontFamily: FUENTE, fontSize: '16px', color: '#ffd54f', fontStyle: 'bold'
+    }).setOrigin(0.5);
+    const nombre = this.add.text(cx, cy - 75, fusion.nombre, {
+      fontFamily: FUENTE, fontSize: '26px', color: '#ffe082', fontStyle: 'bold'
+    }).setOrigin(0.5);
+    const frase = this.add.text(cx, cy - 15, fusion.frase, {
+      fontFamily: FUENTE, fontSize: '16px', color: '#ffffff', align: 'center',
+      wordWrap: { width: anchoCarta - 30 }
+    }).setOrigin(0.5);
+    const combinacion = this.add.text(cx, cy + 75,
+      inst.nombre + ' (Nv ' + CONFIG.INSTINTO_NIVEL_MAX + ')\n+ ' + obj.nombre + ' (Nv ' + CONFIG.OBJETO_NIVEL_MAX + ')', {
+        fontFamily: FUENTE, fontSize: '14px', color: '#ffcc80', align: 'center',
+        wordWrap: { width: anchoCarta - 20 }
+      }).setOrigin(0.5);
+    // ícono del objeto que se fusiona
+    const icono = this.add.image(cx, cy + 32, fusion.objeto, 0).setScale(2);
+
+    // La carta palpita para que se note
+    this.tweens.add({ targets: fondo, alpha: 0.8, duration: 500, yoyo: true, repeat: -1 });
+    return [fondo, tecla, nombre, frase, icono, combinacion];
+  }
+
   elegirCarta(indice) {
     if (!this.eligiendo) return;
     const inst = this.cartas[indice];
     if (!inst) return;
 
-    this.aplicarInstinto(inst.id);
+    if (inst.fusion) this.aplicarFusion(inst.fusion.id);
+    else this.aplicarInstinto(inst.id);
 
-    this.capaCartas.forEach((obj) => obj.destroy());
+    this.capaCartas.forEach((obj) => { this.tweens.killTweensOf(obj); obj.destroy(); });
     this.capaCartas = [];
     this.cartas = [];
     this.eligiendo = false;
@@ -1064,8 +1444,14 @@ class GameScene extends Phaser.Scene {
     if (!cfg.DANO || cfg.DANO <= 0) return;
     if (ahora < this.invulnerableHasta) return;
 
-    this.vida = Math.max(0, this.vida - cfg.DANO);
+    // Collar viejo: menos daño por nivel. Cuero de calle: la mitad si está activo.
+    let dano = cfg.DANO * Math.max(0, 1 - this.nivelObjeto('collar') * CONFIG.OBJETOS.collar.MENOS_DANO);
+    if (this.fusiones.cuero && ahora < this.cueroHasta) dano *= CONFIG.FUSIONES.cuero.MULTIPLICADOR;
+    dano = Math.max(1, Math.round(dano));
+
+    this.vida = Math.max(0, this.vida - dano);
     this.invulnerableHasta = this.tiempoSobrevivido + CONFIG.PERRO_INVULNERABLE_MS;
+    if (this.fusiones.cuero) this.cueroHasta = ahora + CONFIG.FUSIONES.cuero.DURACION_MS;
     this.cameras.main.shake(100, 0.005);
 
     if (this.vida <= 0) {
@@ -1081,7 +1467,11 @@ class GameScene extends Phaser.Scene {
     this.flechas.clear();
     this.avisos.clear();
     this.jaula.clear();
+    this.escudo.clear();
     this.actualizarHUD();
+    // el inventario se oculta: los objetos salen escritos en el Game Over
+    this.capaInventario.forEach((obj) => obj.destroy());
+    this.capaInventario = [];
 
     // Olvidar R o M presionadas durante la partida (si no, actuarían al instante)
     Phaser.Input.Keyboard.JustDown(this.teclaR);
@@ -1108,13 +1498,26 @@ class GameScene extends Phaser.Scene {
       y += 24;
     });
 
+    // Objetos que tenías y fusiones logradas
+    const objetos = this.inventario.map((id) => {
+      const nivel = this.objetos[id];
+      return buscarObjeto(id).nombre + ' ' + (nivel >= CONFIG.OBJETO_NIVEL_MAX ? 'MAX' : 'Nv ' + nivel);
+    });
+    const fusiones = FUSIONES.filter((f) => this.fusiones[f.id]).map((f) => f.nombre);
+    y += 8;
+    lineas.push({ texto: 'Objetos: ' + (objetos.length ? objetos.join(' · ') : 'ninguno'),
+      y, tam: '17px', color: '#90caf9', ancho: 900 });
+    y += objetos.length > 3 ? 44 : 28;
+    lineas.push({ texto: 'Fusiones: ' + (fusiones.length ? fusiones.join(' · ') : 'ninguna'),
+      y, tam: '18px', color: '#ffd54f', negrita: fusiones.length > 0 });
+
     lineas.push({ texto: 'R: jugar de nuevo con la misma raza', y: 468, tam: '20px', color: '#dddddd' });
     lineas.push({ texto: 'M: volver al inicio y elegir otra raza', y: 498, tam: '20px', color: '#dddddd' });
 
     lineas.forEach((l) => {
-      this.add.text(cx, l.y, l.texto, {
-        fontFamily: FUENTE, fontSize: l.tam, color: l.color, fontStyle: l.negrita ? 'bold' : 'normal'
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(2001);
+      const estilo = { fontFamily: FUENTE, fontSize: l.tam, color: l.color, fontStyle: l.negrita ? 'bold' : 'normal', align: 'center' };
+      if (l.ancho) estilo.wordWrap = { width: l.ancho };
+      this.add.text(cx, l.y, l.texto, estilo).setOrigin(0.5).setScrollFactor(0).setDepth(2001);
     });
   }
 
@@ -1137,7 +1540,7 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.7', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.8', estilo)
       .setScrollFactor(0).setDepth(1000);
 
     this.barraVida = this.add.graphics().setScrollFactor(0).setDepth(1000);
@@ -1158,7 +1561,51 @@ class GameScene extends Phaser.Scene {
     this.textoTiempo = this.add.text(this.scale.width - 12, 20, '', { ...estilo, fontSize: '22px' })
       .setOrigin(1, 0).setScrollFactor(0).setDepth(1000);
 
+    // Inventario: fila de casillas abajo al centro
+    this.capaInventario = [];
+    this.actualizarInventario();
+
     this.actualizarHUD();
+  }
+
+  // Redibuja el inventario (solo cuando cambia algo: al recoger un objeto o lograr una fusión)
+  actualizarInventario() {
+    this.capaInventario.forEach((obj) => obj.destroy());
+    this.capaInventario = [];
+
+    const lado = 44;
+    const espacio = 6;
+    const total = CONFIG.INVENTARIO_MAX;
+    const y = this.scale.height - 10 - lado / 2;
+    const inicioX = this.scale.width / 2 - ((total - 1) * (lado + espacio)) / 2;
+    const max = CONFIG.OBJETO_NIVEL_MAX;
+    const capa = [];
+
+    for (let i = 0; i < total; i++) {
+      const x = inicioX + i * (lado + espacio);
+      const id = this.inventario[i];
+      const nivel = id ? this.objetos[id] : 0;
+      const alMaximo = id && nivel >= max;
+      capa.push(this.add.rectangle(x, y, lado, lado, 0x000000, 0.6)
+        .setStrokeStyle(2, alMaximo ? 0xffd54f : 0x888899, id ? 1 : 0.5));
+      if (!id) continue;
+      capa.push(this.add.image(x, y - 4, id, 0).setScale(2));
+      capa.push(this.add.text(x + lado / 2 - 3, y + lado / 2 - 1, alMaximo ? 'MAX' : 'Nv' + nivel, {
+        fontFamily: FUENTE, fontSize: '11px', color: alMaximo ? '#ffd54f' : '#ffffff', fontStyle: 'bold',
+        stroke: '#000000', strokeThickness: 3
+      }).setOrigin(1, 1));
+    }
+
+    // Fusiones logradas, encima de las casillas
+    const fusiones = FUSIONES.filter((f) => this.fusiones[f.id]).map((f) => f.nombre);
+    if (fusiones.length > 0) {
+      capa.push(this.add.text(this.scale.width / 2, y - lado / 2 - 6, 'Fusiones: ' + fusiones.join(' · '), {
+        fontFamily: FUENTE, fontSize: '14px', color: '#ffd54f', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
+      }).setOrigin(0.5, 1));
+    }
+
+    capa.forEach((obj) => obj.setScrollFactor(0).setDepth(1000));
+    this.capaInventario = capa;
   }
 
   actualizarHUD() {
