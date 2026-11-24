@@ -5,6 +5,7 @@ const config = {
   width: 960,
   height: 540,
   backgroundColor: '#333333', // gris oscuro
+  pixelArt: true, // sin suavizado: los píxeles se ven nítidos (estilo 8 bits)
   physics: {
     default: 'arcade',
     arcade: { debug: false }

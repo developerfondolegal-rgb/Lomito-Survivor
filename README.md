@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.5** — enemigos nuevos.
+Versión actual: **v0.6** — personajes en pixel art.
 
 ## Cómo abrir el juego
 
@@ -34,19 +34,21 @@ Durante la partida, presiona **T** y aparecerá un enemigo de cada tipo en un c�
 
 Al abrir el juego eliges una raza. Cada una tiene distinta vida, velocidad, mordida, tamaño y un poder especial.
 
-| Raza | Color | Cómo es | Poder especial |
+Todos los personajes están dibujados en **pixel art estilo 8 bits** (ver más abajo cómo editarlos). Caminan con una animación de 2 cuadros y se dan vuelta según hacia dónde se mueven.
+
+| Raza | Cómo se ve | Cómo es | Poder especial |
 |---|---|---|---|
-| **Quiltro** (mestizo) | café | Equilibrado y resistente | **Calle** (pasivo): los enemigos siempre sueltan hueso y te curas un poco con el tiempo |
-| **Pitbull** | gris azulado | Lento, mucha vida, mordida fuerte | **Mandíbula de hierro** (cada 6 s): la siguiente mordida aturde al enemigo (queda quieto y morado) y hace daño extra |
-| **Galgo** | beige claro, más chico | Muy rápido y frágil | **Sprint** (tecla Espacio, cada 4 s): carrera corta muy rápida hacia donde te mueves, sin recibir daño |
-| **Beagle** | blanco con manchas (tricolor), chico | Mordida débil, gran olfato | **Rastreo** (pasivo): imán de huesos gigante y flechas naranjas en el borde que apuntan a enemigos fuera de la pantalla |
+| **Quiltro** (mestizo) | perro café, orejas caídas y cola parada | Equilibrado y resistente | **Calle** (pasivo): los enemigos siempre sueltan hueso y te curas un poco con el tiempo |
+| **Pitbull** | perro gris azulado, ancho, cabeza grande y pecho blanco | Lento, mucha vida, mordida fuerte | **Mandíbula de hierro** (cada 6 s): la siguiente mordida aturde al enemigo (queda quieto y morado) y hace daño extra |
+| **Galgo** | perro beige, muy delgado y de patas largas (el más chico) | Muy rápido y frágil | **Sprint** (tecla Espacio, cada 4 s): carrera corta muy rápida hacia donde te mueves, sin recibir daño |
+| **Beagle** | perro blanco con cabeza café y lomo negro (tricolor), chico | Mordida débil, gran olfato | **Rastreo** (pasivo): imán de huesos gigante y flechas naranjas en el borde que apuntan a enemigos fuera de la pantalla |
 
 Con las otras razas (no Quiltro), los enemigos sueltan hueso 3 de cada 4 veces.
 
 ## Cómo se juega
 
 - **Enemigos**: aparecen desde fuera de la pantalla y con el tiempo llegan cada vez más seguido (ver tabla abajo).
-- **Mordida automática**: tu perro muerde solo al enemigo más cercano si está cerca. Lo verás como un arco blanco (amarillo y grueso si es la Mandíbula de hierro).
+- **Mordida automática**: tu perro muerde solo al enemigo más cercano si está cerca. Lo verás como unos dientes blancos sobre el enemigo (amarillos y más grandes si es la Mandíbula de hierro).
 - **Daño**: si un enemigo te toca, pierdes vida y la pantalla tiembla. Después de cada golpe tienes medio segundo de invulnerabilidad (el perro se ve semitransparente).
 
 ### Enemigos
@@ -55,17 +57,17 @@ Al inicio solo hay perros rivales. Los demás se van sumando con el tiempo:
 
 | Enemigo | Cómo se ve | Qué hace | Aparece desde | Huesos |
 |---|---|---|---|---|
-| **Perro rival** | círculo rojo | Te persigue | 0:00 | 1 |
-| **Manada** | círculos rojo claro pequeños | Llegan en grupos de 3 a 4, rápidos y con poca vida. Aparecen menos seguido que el borracho o el drogadicto | 0:45 | 1 cada uno |
-| **Borracho** | rectángulo naranjo | Lento, camina zigzagueando, mucha vida y golpe fuerte | 1:30 | 3 |
-| **Drogadicto** | triángulo verde | Se acerca, se queda quieto parpadeando con una **línea verde** que avisa hacia dónde va, y embiste muy rápido en línea recta. ¡Sal de la línea! | 2:30 | 3 |
-| **Perrera** | cuadrado azul con borde blanco | No hace daño, pero si te toca te deja **atrapado 1,5 segundos** (aparece una jaula azul). Después se ve transparente un rato y no puede volver a atraparte. Aparece poco (máximo 2 a la vez) | 3:30 | 5 |
+| **Perro rival** | perro rojizo con orejas paradas | Te persigue | 0:00 | 1 |
+| **Manada** | perritos rojizos pequeños | Llegan en grupos de 3 a 4, rápidos y con poca vida. Aparecen menos seguido que el borracho o el drogadicto | 0:45 | 1 cada uno |
+| **Borracho** | persona con camisa naranja, nariz roja y una botella | Lento, camina zigzagueando, mucha vida y golpe fuerte | 1:30 | 3 |
+| **Drogadicto** | persona encorvada con polerón verde pálido | Se acerca, se queda quieto parpadeando con una **línea verde** que avisa hacia dónde va, y embiste muy rápido en línea recta. ¡Sal de la línea! | 2:30 | 3 |
+| **Perrera** | persona con uniforme azul, gorra y un palo con lazo | No hace daño, pero si te toca te deja **atrapado 1,5 segundos** (aparece una jaula azul). Después se ve transparente un rato y no puede volver a atraparte. Aparece poco (máximo 2 a la vez) | 3:30 | 5 |
 
 Los poderes de las razas, los instintos y el Ladrido funcionan contra todos. La Mandíbula de hierro del Pitbull también los aturde. El Sprint del Galgo evita que la Perrera te atrape.
 
 ### Huesos, experiencia y niveles
 
-- Los enemigos derrotados sueltan **huesos** (cuadraditos amarillos). Los más duros sueltan más.
+- Los enemigos derrotados sueltan **huesos** (huesitos amarillos). Los más duros sueltan más.
 - Pasa cerca para recogerlos: cuando estás cerca, el hueso vuela solo hacia ti (como un imán).
 - Cada hueso llena la **barra celeste** de arriba. Al llenarla subes de nivel. Cada nivel pide un poco más de huesos que el anterior.
 
@@ -80,7 +82,7 @@ Al subir de nivel el juego se pausa y aparecen **3 cartas al azar**. Elige una c
 | **Patas ligeras** | Corres más rápido |
 | **Pellejo duro** | Más vida máxima y te cura un poco |
 | **Olfato** | Atraes los huesos desde más lejos |
-| **Ladrido** | Nuevo ataque: cada pocos segundos una onda blanca daña y empuja a los enemigos cercanos. Cada nivel ladra más seguido, más lejos y más fuerte |
+| **Ladrido** | Nuevo ataque: cada pocos segundos una onda blanca pixelada daña y empuja a los enemigos cercanos. Cada nivel ladra más seguido, más lejos y más fuerte |
 
 ### Pantalla
 
@@ -108,12 +110,12 @@ Cada raza tiene su bloque (`quiltro`, `pitbull`, `galgo`, `beagle`) con:
 
 | Ajuste | Qué hace |
 |---|---|
-| `COLOR` | Color del círculo (formato `0xRRGGBB`) |
+| `COLOR` | Ya no cambia el dibujo (eso está en `src/sprites.js`). Solo se usa para pintar una raza nueva que no tenga dibujo |
 | `VIDA` | Vida inicial |
 | `VELOCIDAD` | Qué tan rápido se mueve |
 | `MORDIDA_DANO` | Daño de cada mordida |
 | `MORDIDA_CADA_MS` | Cada cuánto muerde (1000 = una vez por segundo) |
-| `RADIO` | Tamaño del círculo (más chico = más fácil esquivar) |
+| `RADIO` | Tamaño del choque (más chico = más fácil esquivar). No depende del dibujo |
 | `HUESO_PROBABILIDAD` | Probabilidad de que un enemigo suelte hueso (1 = siempre, 0.75 = 3 de cada 4) |
 | `IMAN_EXTRA` | Alcance extra del imán de huesos |
 | `PODER` | Qué poder usa (`'calle'`, `'mandibula'`, `'sprint'`, `'rastreo'` o `''` para ninguno) |
@@ -128,7 +130,7 @@ Y los números propios de cada poder:
 | `MANDIBULA_ATURDIR_MS` | Pitbull | Cuánto tiempo queda quieto el enemigo |
 | `SPRINT_VELOCIDAD` / `SPRINT_DURACION_MS` | Galgo | Velocidad / duración del sprint |
 | `RASTREO_FLECHAS_MAX` | Beagle | Máximo de flechas en pantalla |
-| `COLOR_MANCHA` / `COLOR_MANCHA_2` | Beagle | Colores de las manchas |
+| `COLOR_MANCHA` / `COLOR_MANCHA_2` | Beagle | Ya no se usan (las manchas ahora están en el dibujo de `src/sprites.js`) |
 
 ### Textos de las razas (`src/razas.js`)
 
@@ -142,10 +144,9 @@ Cada enemigo tiene su bloque (`rival`, `manada`, `borracho`, `drogadicto`, `perr
 
 | Ajuste | Qué hace |
 |---|---|
-| `FORMA` | `'circulo'`, `'rectangulo'`, `'triangulo'` o `'cuadrado'` |
-| `COLOR` / `BORDE` | Color de relleno / color del borde (opcional) |
-| `RADIO` | Tamaño (para choques y mordidas) |
-| `ANCHO` / `ALTO` | Solo para rectángulos |
+| `FORMA` / `ANCHO` / `ALTO` / `BORDE` | Ya no se usan desde la v0.6 (el dibujo está en `src/sprites.js`) |
+| `COLOR` | Solo se usa para pintar un enemigo nuevo que no tenga dibujo |
+| `RADIO` | Tamaño del choque y de la mordida (no depende del dibujo) |
 | `VIDA` | Vida del enemigo |
 | `VELOCIDAD` | Qué tan rápido se mueve |
 | `DANO` | Vida que te quita al tocarte (0 = no hace daño) |
@@ -172,7 +173,30 @@ Y los números propios de cada comportamiento:
 
 Nombre y descripción de cada enemigo (el nombre sale en el Game Over).
 
-**Agregar un enemigo nuevo:** copia un bloque en `src/enemigos.js` y otro en `src/config.js` (sección `ENEMIGOS`) con el mismo `id` nuevo (sin espacios ni tildes, por ejemplo `gato`), y cambia sus números, forma y color. En `COMPORTAMIENTO` puedes reutilizar uno existente.
+**Agregar un enemigo nuevo:** copia un bloque en `src/enemigos.js` y otro en `src/config.js` (sección `ENEMIGOS`) con el mismo `id` nuevo (sin espacios ni tildes, por ejemplo `gato`), y cambia sus números. En `COMPORTAMIENTO` puedes reutilizar uno existente. Si no le haces dibujo en `src/sprites.js`, se verá como un perro rival pintado con su `COLOR`.
+
+### Dibujos de los personajes (`src/sprites.js`)
+
+Todos los dibujos están hechos con letras, sin archivos de imagen (por eso el juego sigue abriendo con doble clic). Cada personaje es una cuadrícula de **16 x 16** letras, y en pantalla cada letra se ve como un cuadradito de 3 x 3 píxeles.
+
+Ejemplo (las patas de un perro):
+
+```
+'...KCK.....KCK..',
+'..KCK.......KCK.',
+```
+
+- Cada letra es un color. `.` es transparente.
+- Los colores de cada personaje están en su bloque `colores` (por ejemplo `C: 0x8b5a2b` es café). `K` (borde negro), `W` (blanco) y `R` (rojo) sirven para todos.
+- Cada personaje tiene **2 cuadros** (`cuadros`); el juego los alterna para que camine. `animacion` es qué tan rápido los alterna.
+- Dibuja siempre mirando a la **derecha**: el juego los da vuelta solo.
+- Cada fila debe tener **16 letras**. Si te equivocas, el juego igual abre y avisa en la consola del navegador (tecla **F12** → pestaña Consola).
+- Cambiar un dibujo **no** cambia la dificultad: el tamaño de los choques sigue siendo `RADIO` en `src/config.js`.
+- `ESCALA_PIXEL` (arriba del archivo) es cuánto se agrandan los píxeles (3).
+
+También están ahí el **hueso** y los **dientes de la mordida**. La onda del Ladrido se dibuja sola como un anillo pixelado.
+
+**Raza o enemigo nuevo:** copia el bloque de otro dibujo, ponle el mismo `id` que usaste en `src/config.js` y edítalo.
 
 ### Otros números (`src/config.js`)
 
@@ -212,11 +236,12 @@ Nombre y descripción de cada enemigo (el nombre sale en el Game Over).
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
 - `src/instintos.js` — nombres y frases de las cartas de instintos.
+- `src/sprites.js` — los dibujos en pixel art de todos los personajes, el hueso y la mordida.
 - `src/main.js` — configuración del motor del juego.
 - `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza.
 - `src/scenes/GameScene.js` — la partida: perro, enemigos, ataques, poderes, experiencia, cartas y Game Over.
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js` o `src/enemigos.js`, revisa ese cambio.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js` o `src/sprites.js`, revisa ese cambio.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.

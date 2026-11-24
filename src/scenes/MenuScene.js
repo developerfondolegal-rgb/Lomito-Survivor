@@ -2,24 +2,14 @@
 
 const FUENTE = 'Arial, sans-serif';
 
-// Dibuja un perro (círculo del color de su raza, con manchas si tiene).
+// Dibuja un perro en pixel art (los dibujos están en src/sprites.js).
+// Si la raza no tiene dibujo, usa uno por defecto pintado con su COLOR.
 // La usan la pantalla de inicio y la escena de juego.
-function dibujarPerro(escena, x, y, cfg) {
-  const r = cfg.RADIO;
-  const cuerpo = escena.add.circle(x, y, r, cfg.COLOR);
-  let manchas = null;
-
-  if (cfg.COLOR_MANCHA !== undefined) {
-    manchas = escena.add.graphics({ x, y });
-    manchas.fillStyle(cfg.COLOR_MANCHA, 1);
-    manchas.fillCircle(-0.4 * r, -0.35 * r, 0.45 * r);
-    manchas.fillCircle(0.35 * r, -0.45 * r, 0.3 * r);
-    if (cfg.COLOR_MANCHA_2 !== undefined) {
-      manchas.fillStyle(cfg.COLOR_MANCHA_2, 1);
-      manchas.fillCircle(0.3 * r, 0.3 * r, 0.4 * r);
-    }
-  }
-  return { cuerpo, manchas };
+function dibujarPerro(escena, x, y, razaId) {
+  const clave = claveSprite(razaId, SPRITE_PERRO_POR_DEFECTO);
+  const perro = agregarSprite(escena, x, y, clave);
+  if (clave !== razaId && CONFIG.RAZAS[razaId]) perro.setTint(CONFIG.RAZAS[razaId].COLOR);
+  return perro;
 }
 
 class MenuScene extends Phaser.Scene {
@@ -29,6 +19,8 @@ class MenuScene extends Phaser.Scene {
 
   create() {
     const w = this.scale.width;
+    crearSprites(this);
+    this.anims.resumeAll(); // por si venimos de un Game Over (animaciones en pausa)
 
     this.add.text(w / 2, 50, 'Lomito Survivor', {
       fontFamily: FUENTE, fontSize: '48px', color: '#ffe082', fontStyle: 'bold'
@@ -38,7 +30,7 @@ class MenuScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5);
 
-    this.add.text(w - 10, this.scale.height - 8, 'v0.5', {
+    this.add.text(w - 10, this.scale.height - 8, 'v0.6', {
       fontFamily: FUENTE, fontSize: '13px', color: '#888888'
     }).setOrigin(1, 1);
 
@@ -85,7 +77,8 @@ class MenuScene extends Phaser.Scene {
         fontFamily: FUENTE, fontSize: '15px', color: '#aaaaaa'
       });
 
-      dibujarPerro(this, cx, arriba + 38, cfg);
+      // El perro camina en su lugar sobre la carta
+      dibujarPerro(this, cx, arriba + 38, raza.id).play(claveSprite(raza.id, SPRITE_PERRO_POR_DEFECTO) + '_caminar');
 
       // Textos apilados uno debajo del otro
       let y = arriba + 68;

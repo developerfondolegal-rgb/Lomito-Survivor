@@ -2,7 +2,7 @@
 // Los números para ajustar el juego están en src/config.js
 // Los textos de razas, enemigos e instintos están en src/razas.js,
 // src/enemigos.js y src/instintos.js
-// (FUENTE y dibujarPerro vienen de MenuScene.js)
+// (FUENTE y dibujarPerro vienen de MenuScene.js; los dibujos, de src/sprites.js)
 
 const COLOR_ATURDIDO = 0x9575cd; // morado: enemigo aturdido por la Mandíbula de hierro
 const COLOR_AVISO = 0xb9f6ca;    // verde claro: aviso de embestida del Drogadicto
@@ -57,23 +57,22 @@ class GameScene extends Phaser.Scene {
     this.instintos = {};
     INSTINTOS.forEach((inst) => { this.instintos[inst.id] = 0; });
 
-    // Por si venimos de un Game Over (la física quedó en pausa)
+    // Por si venimos de un Game Over (la física y las animaciones quedaron en pausa)
     this.physics.resume();
+    crearSprites(this);
+    this.anims.resumeAll();
 
     // Mapa y cámara
     this.physics.world.setBounds(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
     this.cameras.main.setBounds(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
     this.dibujarSuelo();
 
-    // El perro (con el color y tamaño de su raza)
-    const dibujo = dibujarPerro(this, CONFIG.MAPA_ANCHO / 2, CONFIG.MAPA_ALTO / 2, this.base);
-    this.perro = dibujo.cuerpo;
-    this.manchas = dibujo.manchas;
+    // El perro (dibujo de su raza; el choque usa el RADIO de config.js)
+    this.perro = dibujarPerro(this, CONFIG.MAPA_ANCHO / 2, CONFIG.MAPA_ALTO / 2, this.razaId);
     this.physics.add.existing(this.perro);
-    this.perro.body.setCircle(this.base.RADIO);
+    ponerChoqueCircular(this.perro, this.base.RADIO);
     this.perro.body.setCollideWorldBounds(true);
     this.perro.setDepth(10);
-    if (this.manchas) this.manchas.setDepth(11);
     this.cameras.main.startFollow(this.perro, true, 0.1, 0.1);
 
     // Enemigos
@@ -189,10 +188,6 @@ class GameScene extends Phaser.Scene {
     // Parpadeo mientras es invulnerable
     const invulnerable = this.tiempoSobrevivido < this.invulnerableHasta;
     this.perro.setAlpha(invulnerable ? 0.5 : 1);
-    if (this.manchas) {
-      this.manchas.setPosition(this.perro.x, this.perro.y);
-      this.manchas.setAlpha(this.perro.alpha);
-    }
 
     this.actualizarHUD();
   }
@@ -247,6 +242,12 @@ class GameScene extends Phaser.Scene {
   // ---------------- Movimiento ----------------
 
   moverPerro() {
+    this.moverPerroSinAnimar();
+    const v = this.perro.body.velocity;
+    animarCaminar(this.perro, v.x, v.y);
+  }
+
+  moverPerroSinAnimar() {
     let dx = 0;
     let dy = 0;
     if (this.cursors.left.isDown || this.wasd.A.isDown) dx -= 1;
@@ -300,19 +301,26 @@ class GameScene extends Phaser.Scene {
         this.physics.moveToObject(enemigo, this.perro, cfg.VELOCIDAD);
       }
 
-      // Los triángulos miran hacia donde van
-      if (cfg.FORMA === 'triangulo') {
+      // Caminar y mirar hacia donde va (si lo empujó un ladrido, sigue mirando igual)
+      if (ahora >= enemigo.empujadoHasta) {
         const v = enemigo.body.velocity;
-        if (enemigo.estado === 'avisar') enemigo.rotation = enemigo.anguloEmbestida + Math.PI / 2;
-        else if (v.lengthSq() > 1) enemigo.rotation = Math.atan2(v.y, v.x) + Math.PI / 2;
+        animarCaminar(enemigo, v.x, v.y);
       }
+      if (enemigo.estado === 'avisar') enemigo.setFlipX(Math.cos(enemigo.anguloEmbestida) < 0);
 
       // Color según su estado
-      let color = cfg.COLOR;
-      if (ahora < enemigo.destelloHasta) color = COLOR_BLANCO;
-      else if (ahora < enemigo.aturdidoHasta) color = COLOR_ATURDIDO;
-      else if (avisando && Math.floor(ahora / 100) % 2 === 0) color = COLOR_AVISO; // parpadeo
-      if (enemigo.fillColor !== color) enemigo.setFillStyle(color);
+      let tinte = 'normal';
+      if (ahora < enemigo.destelloHasta) tinte = 'destello';
+      else if (ahora < enemigo.aturdidoHasta) tinte = 'aturdido';
+      else if (avisando && Math.floor(ahora / 100) % 2 === 0) tinte = 'aviso'; // parpadeo
+      if (enemigo.tinte !== tinte) {
+        enemigo.tinte = tinte;
+        if (tinte === 'destello') enemigo.setTintFill(COLOR_BLANCO);    // todo blanco
+        else if (tinte === 'aviso') enemigo.setTintFill(COLOR_AVISO);   // todo verde claro
+        else if (tinte === 'aturdido') enemigo.setTint(COLOR_ATURDIDO); // teñido morado
+        else if (enemigo.tinteBase !== null) enemigo.setTint(enemigo.tinteBase);
+        else enemigo.clearTint();
+      }
 
       // La Perrera se ve transparente mientras no puede atraparte
       if (cfg.COMPORTAMIENTO === 'atrapar') {
@@ -405,12 +413,14 @@ class GameScene extends Phaser.Scene {
 
   // Sombras que quedan atrás durante el sprint
   dejarEstela() {
-    const sombra = this.add.circle(this.perro.x, this.perro.y, this.base.RADIO, this.base.COLOR, 0.4);
+    const sombra = this.add.image(this.perro.x, this.perro.y, this.perro.texture.key, this.perro.frame.name)
+      .setScale(ESCALA_PIXEL).setFlipX(this.perro.flipX).setAlpha(0.4);
+    if (this.perro.isTinted) sombra.setTint(this.perro.tintTopLeft);
     sombra.setDepth(9);
     this.tweens.add({
       targets: sombra,
       alpha: 0,
-      scale: 0.6,
+      scale: ESCALA_PIXEL * 0.6,
       duration: 250,
       onComplete: () => sombra.destroy()
     });
@@ -510,22 +520,18 @@ class GameScene extends Phaser.Scene {
 
     const cfg = CONFIG.ENEMIGOS[tipo];
     const r = cfg.RADIO;
-    let enemigo;
-    if (cfg.FORMA === 'rectangulo') {
-      enemigo = this.add.rectangle(x, y, cfg.ANCHO, cfg.ALTO, cfg.COLOR);
-    } else if (cfg.FORMA === 'cuadrado') {
-      enemigo = this.add.rectangle(x, y, r * 2, r * 2, cfg.COLOR);
-    } else if (cfg.FORMA === 'triangulo') {
-      enemigo = this.add.triangle(x, y, r, 0, r * 2, r * 2, 0, r * 2, cfg.COLOR);
-    } else {
-      enemigo = this.add.circle(x, y, r, cfg.COLOR);
-    }
-    if (cfg.BORDE !== undefined) enemigo.setStrokeStyle(3, cfg.BORDE);
+    // Dibujo en pixel art (src/sprites.js). Si no tiene dibujo propio,
+    // usa el del perro rival pintado con su COLOR.
+    const clave = claveSprite(tipo, SPRITE_ENEMIGO_POR_DEFECTO);
+    const enemigo = agregarSprite(this, x, y, clave);
+    enemigo.tinteBase = clave !== tipo ? cfg.COLOR : null;
+    if (enemigo.tinteBase !== null) enemigo.setTint(enemigo.tinteBase);
+    enemigo.tinte = 'normal';
     enemigo.setDepth(6);
 
     this.enemigos.add(enemigo);
-    // El "cuerpo" para choques es siempre un círculo centrado en la figura
-    enemigo.body.setCircle(r, enemigo.width / 2 - r, enemigo.height / 2 - r);
+    // El "cuerpo" para choques es siempre un círculo de RADIO centrado en el dibujo
+    ponerChoqueCircular(enemigo, r);
 
     enemigo.tipo = tipo;
     enemigo.cfg = cfg;
@@ -649,23 +655,20 @@ class GameScene extends Phaser.Scene {
     this.danarEnemigo(objetivo, dano);
   }
 
-  // Dibuja un arco hacia el enemigo que se desvanece (amarillo y grueso si es la Mandíbula)
+  // Dientes de pixel art sobre el enemigo que se desvanecen
+  // (amarillos y más grandes si es la Mandíbula de hierro)
   mostrarMordida(objetivo, fuerte) {
-    const angulo = Phaser.Math.Angle.Between(this.perro.x, this.perro.y, objetivo.x, objetivo.y);
-    const radioArco = this.base.RADIO + 18;
-
-    const arco = this.add.graphics({ x: this.perro.x, y: this.perro.y });
-    arco.setDepth(20);
-    arco.lineStyle(fuerte ? 9 : 5, fuerte ? COLOR_HUESO : COLOR_BLANCO, 1);
-    arco.beginPath();
-    arco.arc(0, 0, radioArco, angulo - 0.7, angulo + 0.7);
-    arco.strokePath();
+    const escala = fuerte ? ESCALA_PIXEL + 1 : ESCALA_PIXEL;
+    const dientes = this.add.image(objetivo.x, objetivo.y, 'mordida', 0).setScale(escala);
+    dientes.setDepth(20);
+    if (fuerte) dientes.setTint(COLOR_HUESO);
 
     this.tweens.add({
-      targets: arco,
+      targets: dientes,
       alpha: 0,
+      scale: escala * 0.7, // se "cierran" mientras desaparecen
       duration: fuerte ? 350 : 200,
-      onComplete: () => arco.destroy()
+      onComplete: () => dientes.destroy()
     });
   }
 
@@ -675,17 +678,13 @@ class GameScene extends Phaser.Scene {
     const radio = this.radioLadrido();
     const dano = this.danoLadrido();
 
-    // Onda blanca que se expande
-    const onda = this.add.graphics({ x: this.perro.x, y: this.perro.y });
+    // Onda blanca pixelada que se expande
+    const onda = this.add.image(this.perro.x, this.perro.y, texturaOnda(this, radio));
     onda.setDepth(5);
-    onda.lineStyle(4, COLOR_BLANCO, 0.9);
-    onda.strokeCircle(0, 0, radio);
-    onda.fillStyle(COLOR_BLANCO, 0.12);
-    onda.fillCircle(0, 0, radio);
-    onda.setScale(0.2);
+    onda.setScale(ESCALA_PIXEL * 0.2);
     this.tweens.add({
       targets: onda,
-      scale: 1,
+      scale: ESCALA_PIXEL,
       alpha: 0,
       duration: 350,
       onComplete: () => onda.destroy()
@@ -708,9 +707,8 @@ class GameScene extends Phaser.Scene {
   // ---------------- Huesos y experiencia ----------------
 
   soltarHueso(x, y) {
-    const t = CONFIG.HUESO_TAMANO;
-    const hueso = this.add.rectangle(x, y, t, t, COLOR_HUESO);
-    hueso.setStrokeStyle(1, 0x8a6d00);
+    const hueso = agregarSprite(this, x, y, 'hueso');
+    hueso.setFlipY(Math.random() < 0.5); // para que no se vean todos iguales
     hueso.setDepth(3);
     this.huesos.add(hueso);
   }
@@ -768,8 +766,8 @@ class GameScene extends Phaser.Scene {
 
     this.eligiendo = true;
     this.physics.pause();
+    this.anims.pauseAll(); // todos quietos mientras eliges
     this.perro.setAlpha(1);
-    if (this.manchas) this.manchas.setAlpha(1);
     this.actualizarHUD();
 
     // Olvidar teclas 1/2/3 que se hayan presionado antes de abrir las cartas
@@ -852,6 +850,7 @@ class GameScene extends Phaser.Scene {
     }
 
     this.physics.resume();
+    this.anims.resumeAll();
     this.actualizarHUD();
   }
 
@@ -899,8 +898,8 @@ class GameScene extends Phaser.Scene {
   terminarJuego() {
     this.gameOver = true;
     this.physics.pause();
+    this.anims.pauseAll();
     this.perro.setAlpha(1);
-    if (this.manchas) this.manchas.setAlpha(1);
     this.flechas.clear();
     this.avisos.clear();
     this.jaula.clear();
@@ -960,7 +959,7 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(12, 20, 'Lomito Survivor - v0.5', estilo)
+    this.add.text(12, 20, 'Lomito Survivor - v0.6', estilo)
       .setScrollFactor(0).setDepth(1000);
 
     this.barraVida = this.add.graphics().setScrollFactor(0).setDepth(1000);
