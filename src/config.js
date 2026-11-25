@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.18';
+const VERSION_JUEGO = '0.18.1';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -978,6 +978,34 @@ const CONFIG = {
     TITULO_PIXEL: 7,              // tamaño de cada cuadrito del título "LOMITO SURVIVOR"
     LADRIDO_CADA_MS: [2200, 3800], // el perro ladra cada este rato (al azar entre los dos números)
     ESPERA_MS: 350                // no acepta toques antes de este rato (para no saltarla sin querer)
+  },
+
+  // ---------------------------------------------------------------
+  //  MENÚ DE PAUSA (src/pausa.js). Medidas en px del juego (960 x 540).
+  //  En celular, a los márgenes del panel se les suma lo que MOVIL.MARGEN_HUD
+  //  tiene de más sobre el de PC (así el panel no toca los bordes ni la muesca).
+  // ---------------------------------------------------------------
+  PAUSA: {
+    MARGEN_X: 30,               // espacio entre el panel y los bordes izquierdo y derecho de la pantalla
+    MARGEN_Y: 14,               // espacio entre el panel y los bordes de arriba y abajo
+    PESTANA_ANCHO: 140,         // ancho máximo de cada pestaña (se achican si no caben)
+    PESTANA_ESPACIO: 6,         // espacio entre una pestaña y la siguiente
+
+    // Pestaña Stats: tarjetas (Perro, Ataques, Árbol de habilidades, Partida)
+    STATS: {
+      COLUMNAS_ESPACIO: 16,     // espacio entre las dos columnas de tarjetas
+      TARJETA_ESPACIO: 10,      // espacio entre una tarjeta y la de abajo
+      TARJETA_RELLENO: 10,      // espacio entre el borde de la tarjeta y su texto
+      TARJETA_ALFA: 0.35,       // qué tan oscuro es el fondo de la tarjeta (0 = transparente, 1 = negro)
+      TITULO_TAMANO: 16,        // tamaño de letra del título de cada tarjeta
+      NOMBRE_TAMANO: 14,        // tamaño de letra del nombre y el valor de cada fila
+      DETALLE_TAMANO: 12,       // tamaño de letra del desglose (la línea gris de abajo)
+      FILA_ESPACIO: 6,          // espacio entre una fila y la siguiente
+      ESPACIO_BOTONES: 10,      // espacio libre entre el contenido y los botones de abajo
+      SCROLL_RUEDA: 0.6,        // cuánto baja con cada movimiento de la rueda del mouse
+      SCROLL_TECLA: 40,         // cuánto baja con cada flecha arriba/abajo
+      BARRA_ANCHO: 5            // ancho de la barra de scroll (solo aparece si el contenido no cabe)
+    }
   },
 
   // ---------------------------------------------------------------

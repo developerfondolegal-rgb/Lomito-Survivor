@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.18** — mapa más grande (la plaza ahora mide el doble) y dos mapas nuevos: Terminal de buses y Feria libre, cada uno con sus ultra raros.
+Versión actual: **v0.18.1** — pestaña Stats de la pausa rediseñada (tarjetas Perro, Ataques, Árbol de habilidades y Partida, con scroll) y el aviso del jefe dice a qué mapa llegó. (v0.18: la plaza el doble de grande, Terminal de buses y Feria libre.)
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -794,7 +794,7 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/instintos.js` — nombres y frases de las cartas de instintos, y sus íconos (12 x 12) para el menú de pausa y las cartas de evolución.
 - `src/ataques.js` — Rasguño, Escarbar, las evoluciones de ataque (textos, carta dorada y lo que hacen), el curao al volante (aviso, bocina, atropello y la tecla V) y la fila Ataques de la pausa.
 - `src/sinergias.js` — las sinergias: nombre, frase, qué pide cada una y cómo se calcula su bonus.
-- `src/pausa.js` — el menú de pausa: panel, pestañas (incluidas Desafíos y Colección) y botones.
+- `src/pausa.js` — el menú de pausa: panel, pestañas (Stats en tarjetas con scroll, Desafíos, Colección...) y botones. Sus medidas están en `CONFIG.PAUSA` (`src/config.js`).
 - `src/coleccionables.js` — los ultra raros coleccionables: nombres, frases, dibujos, a qué mapa pertenecen, guardado en el navegador, peluche, aviso grande y la tecla C.
 - `src/tactil.js` — el celular: detecta pantallas táctiles, joystick, botones Sprint y Pausa, pantalla completa (y aviso en iPhone), altura visible real, margen del HUD, aviso "Gira el celular", letra mínima y límites de rendimiento.
 - `src/huesitos.js` — los huesitos: cuánto se gana en la partida, el desglose y el guardado en el navegador.

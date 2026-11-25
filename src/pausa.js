@@ -27,7 +27,9 @@ function abrirPausa(escena) {
 
   // Olvidar teclas presionadas antes de abrir (si no, actuarían al instante)
   const teclado = Phaser.Input.Keyboard;
-  [escena.teclaR, escena.teclaM, escena.cursors.left, escena.cursors.right].forEach((t) => teclado.JustDown(t));
+  [escena.teclaR, escena.teclaM, escena.cursors.left, escena.cursors.right,
+    escena.cursors.up, escena.cursors.down].forEach((t) => teclado.JustDown(t));
+  escena.scrollStats = 0;         // la pestaña Stats empieza arriba
 
   dibujarPausa(escena);
 }
@@ -49,6 +51,8 @@ function salirDePausa(escena) {
 }
 
 function borrarPausa(escena) {
+  (escena.limpiezaPausa || []).forEach((quitar) => quitar()); // rueda y arrastre del scroll
+  escena.limpiezaPausa = [];
   (escena.capaPausa || []).forEach((obj) => obj.destroy());
   escena.capaPausa = [];
 }
@@ -69,12 +73,17 @@ function actualizarPausa(escena, pidioPausa) {
     cambiarPestana(escena, -1);
   } else if (teclado.JustDown(escena.cursors.right)) {
     cambiarPestana(escena, 1);
+  } else if (teclado.JustDown(escena.cursors.up) && escena.moverScrollPausa) {
+    escena.moverScrollPausa(-CONFIG.PAUSA.STATS.SCROLL_TECLA);
+  } else if (teclado.JustDown(escena.cursors.down) && escena.moverScrollPausa) {
+    escena.moverScrollPausa(CONFIG.PAUSA.STATS.SCROLL_TECLA);
   }
 }
 
 function cambiarPestana(escena, paso) {
   const n = PESTANAS_PAUSA.length;
   escena.pestanaPausa = ((escena.pestanaPausa || 0) + paso + n) % n;
+  escena.scrollStats = 0;
   borrarPausa(escena);
   dibujarPausa(escena);
 }
@@ -87,14 +96,17 @@ function dibujarPausa(escena) {
   const capa = [];
   escena.capaPausa = capa;
   const pestana = escena.pestanaPausa || 0;
+  escena.moverScrollPausa = null;   // solo la pestaña Stats tiene scroll
 
   capa.push(escena.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.6));
 
-  // Marco principal
-  const px = 30;
-  const py = 14;
-  const pw = w - 60;
-  const ph = h - 28;
+  // Marco principal (en celular se aleja un poco más de los bordes: MOVIL.MARGEN_HUD)
+  const e = margenExtra();
+  const P = CONFIG.PAUSA;
+  const px = P.MARGEN_X + e;
+  const py = P.MARGEN_Y + e / 2;
+  const pw = w - px * 2;
+  const ph = h - py * 2;
   const marco = escena.add.graphics();
   marcoPixel(marco, px, py, pw, ph, PAUSA_BORDE, PAUSA_FONDO);
   capa.push(marco);
@@ -104,9 +116,9 @@ function dibujarPausa(escena) {
   capa.push(textoPausa(escena, px + pw - 18, py + 26, ayuda, 12, '#9e9e9e')
     .setOrigin(1, 0.5));
 
-  // Pestañas
-  const anchoP = 140;
-  const sepP = 146;
+  // Pestañas (se achican si no caben en el panel)
+  const sepP = Math.min(P.PESTANA_ANCHO + P.PESTANA_ESPACIO, (pw - 24) / PESTANAS_PAUSA.length);
+  const anchoP = sepP - P.PESTANA_ESPACIO;
   const inicioP = w / 2 - ((PESTANAS_PAUSA.length - 1) * sepP) / 2;
   PESTANAS_PAUSA.forEach((nombre, i) => {
     const cx = inicioP + i * sepP;
@@ -121,7 +133,9 @@ function dibujarPausa(escena) {
   });
 
   // Contenido de la pestaña
-  const area = { x: px + 26, y: py + 92, ancho: pw - 52 };
+  const yb = py + ph - 32;           // centro de los botones de abajo
+  const altoBoton = modoTactil() ? 40 : 34;
+  const area = { x: px + 26, y: py + 92, ancho: pw - 52, abajo: yb - altoBoton / 2 - P.STATS.ESPACIO_BOTONES };
   if (pestana === 0) pestanaStats(escena, capa, area);
   else if (pestana === 1) pestanaInventario(escena, capa, area);
   else if (pestana === 2) pestanaFusiones(escena, capa, area);
@@ -130,7 +144,6 @@ function dibujarPausa(escena) {
   else pestanaColeccion(escena, capa, area);
 
   // Botones de abajo
-  const yb = py + ph - 32;
   botonPausa(escena, capa, w / 2 - 230, yb, 200, 'Continuar', () => cerrarPausa(escena));
   botonPausa(escena, capa, w / 2, yb, 200, modoTactil() ? 'Reiniciar' : 'Reiniciar (R)', () => {
     salirDePausa(escena);
@@ -340,64 +353,170 @@ function calcularStats(escena) {
   if (arb('XP')) xp.push('Árbol +' + pct(arb('XP')));
   stats.push({ nombre: 'Experiencia extra', valor: '+' + Math.round(xpExtra * 100) + '%', partes: xp });
 
-  // Ataques: Ladrido, Rasguño, Escarbar y evoluciones de la raza (src/ataques.js)
-  stats.push(statsAtaques(e));
-
-  // Árbol de habilidades: lo que no aparece en los otros stats y las especiales (★)
-  const partesArbol = partesArbolStats(e);
-  stats.push({
-    nombre: 'Árbol de habilidades',
-    valor: mejorasCompradas(e.razaId) + ' / ' + ramasDeRaza(e.razaId).length * ARBOL_NODOS + ' mejoras',
-    partes: partesArbol.length ? partesArbol : ['Sin mejoras: se compran con huesitos en el menú (Árbol)']
-  });
-
   return stats;
 }
 
-function pestanaStats(escena, capa, area) {
-  const stats = calcularStats(escena);
-  const anchoCol = area.ancho / 2 - 14;
-  const paso = 52;
-
-  // 6 stats a la izquierda, el resto a la derecha.
-  // En la derecha cada stat empieza debajo del anterior (Ataques y Árbol pueden ocupar varias líneas)
-  let abajoDerecha = area.y + 4;
-  stats.forEach((s, i) => {
-    const col = i < 6 ? 0 : 1;
-    const fila = i < 6 ? i : i - 6;
-    const x = area.x + col * (anchoCol + 28);
-    const y = col === 0 ? area.y + 4 + fila * paso : (fila === 0 ? area.y + 4 : abajoDerecha);
-    capa.push(textoPausa(escena, x, y, s.nombre, 15, '#ffe082', true));
-    capa.push(textoPausa(escena, x + 175, y, s.valor, 15, '#ffffff', true));
-    const partes = textoPausa(escena, x, y + 20, s.partes.join('  ·  '), 12, '#b0bec5', false, anchoCol);
-    capa.push(partes);
-    if (col === 1) abajoDerecha = Math.max(y + paso, partes.y + partes.height + 10);
-  });
-
-  // Datos de la partida, abajo a la derecha (debajo del último stat de esa columna)
+// Tarjetas de la pestaña Stats. Cada fila: { nombre, valor, detalle, color, apagado }
+function seccionesStats(escena) {
   const e = escena;
-  const x = area.x + anchoCol + 28;
-  let y = abajoDerecha + 6;
-  const fase = datosFase(Math.max(0, e.faseActual)).NOMBRE;
-  const lineas = [
-    ['Nivel', e.nivel + '   (' + numeroPausa(e.xp) + ' / ' + e.xpParaSubir() + ' huesos para el siguiente)'],
-    ['Tiempo jugado', e.formatearTiempo(e.tiempoSobrevivido)],
-    ['Hora de la noche', horaDeLaNoche(e.tiempoSobrevivido) + (fase ? '  ·  ' + fase : '')],
-    ['Enemigos derrotados', String(e.derrotados)]
-  ];
-  if (e.jefeAparecido) lineas.push([NOMBRE_JEFE, e.jefeDerrotado ? 'derrotado' : 'sigue vivo']);
-  // Si el árbol ocupa mucho, las líneas se juntan un poco para no tapar los botones de abajo
-  const limite = escena.scale.height - 72;
-  const pasoLinea = Math.max(18, Math.min(24, (limite - y) / lineas.length));
-  const g = escena.add.graphics();
-  g.fillStyle(0x000000, 0.3);
-  g.fillRect(x - 8, y - 6, anchoCol + 8, lineas.length * pasoLinea + 8);
-  capa.push(g);
-  lineas.forEach(([nombre, valor]) => {
-    capa.push(textoPausa(escena, x, y, nombre, 15, '#90caf9', true));
-    capa.push(textoPausa(escena, x + 175, y, valor, 15, '#ffffff'));
-    y += pasoLinea;
+  const stats = calcularStats(e);
+
+  // Perro: raza, nivel, vida, velocidad, daño (y el resto de sus números)
+  const perro = [
+    { nombre: 'Raza', valor: e.textosRaza.nombre, detalle: 'Poder: ' + sinTeclas(e.textosRaza.poder || 'ninguno') },
+    { nombre: 'Nivel', valor: String(e.nivel), detalle: numeroPausa(e.xp) + ' / ' + e.xpParaSubir() + ' huesos para el siguiente' }
+  ].concat(stats.map((st) => ({ nombre: st.nombre, valor: st.valor, detalle: st.partes.join('  ·  ') })));
+
+  // Ataques: cada uno con su nivel y su evolución (src/ataques.js)
+  const ataques = filasAtaquesStats(e).map((a) => ({
+    nombre: a.nombre, valor: a.valor, apagado: a.apagado,
+    detalle: a.detalle + (a.evolucion ? '\n' + a.evolucion : ''),
+    colorDetalle: a.evolucionLograda ? '#ffcc80' : null
+  }));
+
+  // Árbol de habilidades: las mejoras compradas de cada rama (src/arbol.js)
+  const arbol = ramasDeRaza(e.razaId).map((rama) => {
+    const n = nivelRama(e.razaId, rama.id);
+    const activos = rama.nodos.slice(0, n).map((nodo, i) => (i === ARBOL_NODOS - 1 ? '★ ' : '') + nodo.nombre);
+    return {
+      nombre: rama.nombre, valor: n + ' / ' + ARBOL_NODOS, apagado: n === 0,
+      color: '#' + rama.color.toString(16).padStart(6, '0'),
+      detalle: activos.length ? activos.join('  ·  ') : 'Sin mejoras en esta rama'
+    };
   });
+  const efectos = partesArbolStats(e).filter((t) => t.indexOf('★') !== 0);
+  if (efectos.length) arbol.push({ nombre: 'Efectos extra', valor: '', detalle: efectos.join('  ·  ') });
+  if (mejorasCompradas(e.razaId) === 0) {
+    arbol.push({ nombre: 'Sin mejoras', valor: '', detalle: 'Se compran con huesitos en el menú (Árbol)', apagado: true });
+  }
+
+  // Partida: tiempo, enemigos, huesitos y mapa
+  const fase = datosFase(Math.max(0, e.faseActual)).NOMBRE;
+  const partida = [
+    { nombre: 'Tiempo jugado', valor: e.formatearTiempo(e.tiempoSobrevivido) },
+    { nombre: 'Hora de la noche', valor: horaDeLaNoche(e.tiempoSobrevivido) + (fase ? '  ·  ' + fase : '') },
+    { nombre: 'Enemigos derrotados', valor: String(e.derrotados) },
+    { nombre: 'Huesitos', valor: String(huesitosDePartida(e)), detalle: 'Se suman a tu total al terminar la partida' },
+    { nombre: 'Mapa', valor: buscarMapa(e.mapaId).nombre }
+  ];
+  if (e.jefeAparecido) partida.push({ nombre: NOMBRE_JEFE, valor: e.jefeDerrotado ? 'derrotado' : 'sigue vivo' });
+
+  return {
+    izquierda: [{ titulo: 'Perro', color: '#ffe082', filas: perro }],
+    derecha: [
+      { titulo: 'Ataques', color: '#ffab40', filas: ataques },
+      { titulo: 'Árbol de habilidades', color: '#9ccc65', filas: arbol },
+      { titulo: 'Partida', color: '#90caf9', filas: partida }
+    ]
+  };
+}
+
+// Pestaña Stats: dos columnas de tarjetas. Cada texto se mide antes de poner
+// el siguiente, así nada se monta. Si no cabe, se puede bajar con la rueda
+// del mouse, arrastrando con el dedo o con las flechas arriba/abajo.
+// Los tamaños y márgenes están en src/config.js (PAUSA.STATS).
+function pestanaStats(escena, capa, area) {
+  const S = CONFIG.PAUSA.STATS;
+  const secciones = seccionesStats(escena);
+  const vista = { x: area.x - 6, y: area.y, ancho: area.ancho + 12, alto: area.abajo - area.y };
+  const anchoCol = (area.ancho - S.COLUMNAS_ESPACIO) / 2;
+  const contenido = []; // { obj, y } = objeto y su "y" sin scroll
+  const poner = (obj) => { contenido.push({ obj, y: obj.y }); return obj; };
+
+  // Dibuja una tarjeta y devuelve dónde termina (su "y" de abajo)
+  const tarjeta = (x, y, sec) => {
+    const r = S.TARJETA_RELLENO;
+    const adentro = anchoCol - r * 2;
+    const fondo = poner(escena.add.graphics({ x: 0, y }));
+    let yy = y + r;
+    poner(textoPausa(escena, x + r, yy, sec.titulo, S.TITULO_TAMANO, sec.color, true));
+    yy += S.TITULO_TAMANO + 10;
+    const linea = yy - 5; // línea bajo el título
+    sec.filas.forEach((f) => {
+      const colorNombre = f.apagado ? '#8a8a99' : (f.color || '#ffe082');
+      const nombre = poner(textoPausa(escena, x + r, yy, f.nombre, S.NOMBRE_TAMANO, colorNombre, true));
+      let abajo = yy + nombre.height;
+      if (f.valor) {
+        const valor = poner(textoPausa(escena, x + anchoCol - r, yy, f.valor, S.NOMBRE_TAMANO,
+          f.apagado ? '#8a8a99' : '#ffffff', true).setOrigin(1, 0));
+        // Si el valor no cabe al lado del nombre, va en la línea de abajo
+        if (nombre.width + valor.width + 12 > adentro) {
+          valor.y = abajo;
+          contenido[contenido.length - 1].y = abajo;
+          abajo += valor.height;
+        }
+      }
+      if (f.detalle) {
+        const det = poner(textoPausa(escena, x + r, abajo + 1, f.detalle, S.DETALLE_TAMANO,
+          f.apagado ? '#77778a' : (f.colorDetalle || '#b0bec5'), false, adentro));
+        abajo = det.y + det.height;
+      }
+      yy = abajo + S.FILA_ESPACIO;
+    });
+    const fin = yy - S.FILA_ESPACIO + r;
+    fondo.fillStyle(0x000000, S.TARJETA_ALFA).fillRect(x, 0, anchoCol, fin - y);
+    fondo.lineStyle(2, 0xffffff, 0.12).strokeRect(x, 0, anchoCol, fin - y);
+    fondo.fillStyle(0xffffff, 0.15).fillRect(x + r, linea - y, adentro, 1);
+    return fin;
+  };
+
+  const columna = (x, lista) => {
+    let y = area.y;
+    lista.forEach((sec) => { y = tarjeta(x, y, sec) + S.TARJETA_ESPACIO; });
+    return y - S.TARJETA_ESPACIO;
+  };
+  const abajo = Math.max(
+    columna(area.x, secciones.izquierda),
+    columna(area.x + anchoCol + S.COLUMNAS_ESPACIO, secciones.derecha)
+  );
+
+  // Recorte: solo se ve lo que está dentro de la "ventana" de la pestaña
+  const recorte = escena.make.graphics({ add: false });
+  recorte.fillStyle(0xffffff).fillRect(vista.x, vista.y, vista.ancho, vista.alto);
+  const mascara = recorte.createGeometryMask();
+  capa.push(recorte);
+  contenido.forEach((c) => { c.obj.setMask(mascara); capa.push(c.obj); });
+
+  // Scroll (solo si el contenido no cabe)
+  const maximo = Math.max(0, abajo - (vista.y + vista.alto));
+  const barra = escena.add.graphics();
+  capa.push(barra);
+  const aplicar = () => {
+    escena.scrollStats = Phaser.Math.Clamp(escena.scrollStats || 0, 0, maximo);
+    contenido.forEach((c) => { c.obj.y = c.y - escena.scrollStats; });
+    barra.clear();
+    if (maximo <= 0) return;
+    const altoBarra = Math.max(24, vista.alto * vista.alto / (vista.alto + maximo));
+    const yBarra = vista.y + (vista.alto - altoBarra) * (escena.scrollStats / maximo);
+    const xBarra = vista.x + vista.ancho - S.BARRA_ANCHO;
+    barra.fillStyle(0xffffff, 0.12).fillRect(xBarra, vista.y, S.BARRA_ANCHO, vista.alto);
+    barra.fillStyle(PAUSA_DORADO, 0.8).fillRect(xBarra, yBarra, S.BARRA_ANCHO, altoBarra);
+  };
+  aplicar();
+  if (maximo <= 0) return;
+
+  escena.moverScrollPausa = (paso) => { escena.scrollStats = (escena.scrollStats || 0) + paso; aplicar(); };
+  const dentro = (p) => p.x >= vista.x && p.x <= vista.x + vista.ancho && p.y >= vista.y && p.y <= vista.y + vista.alto;
+  const rueda = (puntero, objetos, dx, dy) => { if (dentro(puntero)) escena.moverScrollPausa(dy * S.SCROLL_RUEDA); };
+  let arrastre = null;
+  const bajar = (p) => { if (dentro(p)) arrastre = { y: p.y, scroll: escena.scrollStats || 0 }; };
+  const mover = (p) => {
+    if (!arrastre || !p.isDown) return;
+    escena.scrollStats = arrastre.scroll - (p.y - arrastre.y);
+    aplicar();
+  };
+  const soltar = () => { arrastre = null; };
+  escena.input.on('wheel', rueda);
+  escena.input.on('pointerdown', bajar);
+  escena.input.on('pointermove', mover);
+  escena.input.on('pointerup', soltar);
+  escena.limpiezaPausa = (escena.limpiezaPausa || []).concat([() => {
+    escena.input.off('wheel', rueda);
+    escena.input.off('pointerdown', bajar);
+    escena.input.off('pointermove', mover);
+    escena.input.off('pointerup', soltar);
+    escena.moverScrollPausa = null;
+  }]);
 }
 
 // ---------------- Pestaña "Instintos y objetos" ----------------

@@ -6,6 +6,8 @@
 //                los ultra raros y el último mapa elegido lo usan)
 //   nombre:      el que se ve en la pantalla de mapas
 //   descripcion: una frase corta para la carta del mapa
+//   lugar:       cómo se nombra el mapa dentro de una frase ("Un perro enorme
+//                llegó a la plaza", "...a la terminal", "...a la feria")
 //   paleta:      colores del suelo y de los obstáculos (formato 0xRRGGBB
 //                o '#rrggbb' para las líneas pintadas en el suelo)
 //   obstaculos:  tipos de obstáculos que tiene (se muestran en la carta)
@@ -28,6 +30,7 @@ const MAPAS = [
   {
     id: 'plaza',
     nombre: 'La plaza',
+    lugar: 'la plaza',
     descripcion: 'Pasto, pileta y autos estacionados. El barrio de siempre, ahora el doble de grande.',
     obstaculos: ['árboles', 'bancas', 'basureros', 'autos', 'pileta'],
     ultraRaros: ['chalequito', 'sweater', 'peluche', 'mantita', 'capa', 'antifaz',
@@ -56,6 +59,7 @@ const MAPAS = [
   {
     id: 'terminal',
     nombre: 'Terminal de buses',
+    lugar: 'la terminal',
     descripcion: 'Andenes largos y buses estacionados. Cuidado, que los micros no avisan.',
     obstaculos: ['buses', 'bancas', 'basureros'],
     ultraRaros: ['boleto', 'jockey'],
@@ -92,6 +96,7 @@ const MAPAS = [
   {
     id: 'feria',
     nombre: 'Feria libre',
+    lugar: 'la feria',
     descripcion: 'Corridas de puestos, toldos y cajones. Huele a cilantro y a pelea.',
     obstaculos: ['puestos', 'toldos', 'cajones'],
     ultraRaros: ['yapa', 'carro'],

@@ -458,7 +458,7 @@ class GameScene extends Phaser.Scene {
     this.jefeDerrotado = false;   // si aparece otro con la tecla J, hay que derrotarlo también
     this.jefeAparecidoEn = this.tiempoSobrevivido;
     this.jefe = crearJefe(this);
-    this.mostrarAvisoGrande('¡' + NOMBRE_JEFE + '!', 'Un perro enorme llegó a la plaza', '#ff5252');
+    this.mostrarAvisoGrande('¡' + NOMBRE_JEFE + '!', 'Un perro enorme llegó a ' + buscarMapa(this.mapaId).lugar, '#ff5252'); // "lugar" en src/mapas.js
     this.cameras.main.shake(400, 0.008);
   }
 

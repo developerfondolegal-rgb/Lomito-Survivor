@@ -897,39 +897,50 @@ function tocarBocina(escena, veces) {
 // ---------------------------------------------------------------
 //  Para la pestaña Stats de la pausa
 // ---------------------------------------------------------------
-function statsAtaques(escena) {
+// Una fila por ataque: { nombre, valor (nivel), detalle, evolucion, apagado }.
+// La evolución de la raza va en la fila del ataque que transforma:
+// la de un instinto de ataque (Ladrido) va en ese ataque; las demás, en el
+// poder de la raza (Mandíbula, Sprint) o, si no tiene poder activo, en la Mordida.
+function filasAtaquesStats(escena) {
   const e = escena;
+  const max = CONFIG.INSTINTO_NIVEL_MAX;
   const s = (ms) => numeroPausa(ms / 1000, 2) + ' s';
-  const partes = [];
-  let secundarios = 0;
+  const filas = [];
+
+  filas.push({ id: 'mordida', nombre: 'Mordida', valor: 'siempre',
+    detalle: numeroPausa(e.danoMordida()) + ' de daño cada ' + s(e.intervaloMordida()) + ' a ' + e.alcanceMordida() + ' px' });
+
+  if (e.poderEsperaTotal > 0) {
+    filas.push({ id: 'poder', nombre: sinTeclas(e.textosRaza.poder || 'Poder'), valor: 'poder',
+      detalle: 'Se recarga en ' + s(e.poderEsperaTotal) });
+  }
+
   const nvL = e.instintos.ladrido || 0;
-  if (nvL > 0) {
-    secundarios++;
-    partes.push('Ladrido Nv ' + nvL + ': ' + numeroPausa(e.danoLadrido()) + ' de daño en ' + Math.round(e.radioLadrido()) + ' px cada ' + s(e.intervaloLadrido()));
-  }
+  filas.push({ id: 'ladrido', nombre: 'Ladrido', valor: nvL ? 'Nv ' + nvL + ' / ' + max : 'sin aprender', apagado: !nvL,
+    detalle: nvL ? numeroPausa(e.danoLadrido()) + ' de daño en ' + Math.round(e.radioLadrido()) + ' px cada ' + s(e.intervaloLadrido())
+      : 'Sale como instinto al subir de nivel' });
+
   const nvR = e.instintos.rasguno || 0;
-  if (nvR > 0) {
-    secundarios++;
-    const d = datosRasguno(nvR);
-    partes.push('Rasguño Nv ' + nvR + ': ' + numeroPausa(d.dano) + ' de daño en abanico de ' + Math.round(d.angulo) + '° cada ' + s(d.cadaMs));
-  }
+  const r = datosRasguno(Math.max(1, nvR));
+  filas.push({ id: 'rasguno', nombre: 'Rasguño', valor: nvR ? 'Nv ' + nvR + ' / ' + max : 'sin aprender', apagado: !nvR,
+    detalle: nvR ? numeroPausa(r.dano) + ' de daño en abanico de ' + Math.round(r.angulo) + '° cada ' + s(r.cadaMs)
+      : 'Sale como instinto al subir de nivel' });
+
   const nvE = e.instintos.escarbar || 0;
-  if (nvE > 0) {
-    secundarios++;
-    const d = datosEscarbar(nvE);
-    partes.push('Escarbar Nv ' + nvE + ': ' + d.terrones + (d.terrones > 1 ? ' terrones' : ' terrón') + ' de ' + numeroPausa(d.dano) +
-      ', frena ' + Math.round(CONFIG.ATAQUES.ESCARBAR.LENTITUD * 100) + '% por ' + s(d.frenoMs) + ', cada ' + s(d.cadaMs));
-  }
-  if (secundarios === 0) partes.push('Solo mordida (Ladrido, Rasguño y Escarbar salen como instintos)');
+  const d = datosEscarbar(Math.max(1, nvE));
+  filas.push({ id: 'escarbar', nombre: 'Escarbar', valor: nvE ? 'Nv ' + nvE + ' / ' + max : 'sin aprender', apagado: !nvE,
+    detalle: nvE ? d.terrones + (d.terrones > 1 ? ' terrones' : ' terrón') + ' de ' + numeroPausa(d.dano) + ', frena ' +
+      Math.round(CONFIG.ATAQUES.ESCARBAR.LENTITUD * 100) + '% por ' + s(d.frenoMs) + ', cada ' + s(d.cadaMs)
+      : 'Sale como instinto al subir de nivel' });
+
+  // Evoluciones de la raza: a qué fila van
   evolucionesDeRaza(e.razaId).forEach((evo) => {
+    const c = cfgEvolucion(evo.id);
+    let destino = filas.find((f) => f.id === c.INSTINTO) || filas.find((f) => f.id === 'poder') || filas[0];
     const est = estadoEvolucion(e, evo);
     const como = tieneEvolucion(e, evo.id) ? 'lograda' : est.listo ? 'lista (sale al subir de nivel)' : 'falta ' + est.progreso;
-    partes.push('★ ' + evo.nombre + ': ' + como);
+    destino.evolucion = (destino.evolucion ? destino.evolucion + '  ·  ' : '') + '★ Evolución ' + evo.nombre + ': ' + como;
+    destino.evolucionLograda = destino.evolucionLograda || tieneEvolucion(e, evo.id);
   });
-  const evos = nombresEvoluciones(e).length;
-  return {
-    nombre: 'Ataques',
-    valor: 'Mordida + ' + secundarios + (secundarios === 1 ? ' extra' : ' extras') + (evos ? ' · ★' : ''),
-    partes
-  };
+  return filas;
 }
