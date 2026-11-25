@@ -142,9 +142,10 @@ class BienvenidaScene extends Phaser.Scene {
   // "¡Guau!" sobre el chow chow
   ladrar() {
     const chow = this.portada.chow;
-    const t = this.add.text(chow.x + chow.displayWidth * 0.35, chow.y - chow.displayHeight - 4, '¡Guau!', {
+    // a la izquierda de la cabeza (arriba al medio sale el corazón del gesto de cariño)
+    const t = this.add.text(chow.x - chow.displayWidth * 0.3, chow.y - chow.displayHeight * 0.8, '¡Guau!', {
       fontFamily: FUENTE, fontSize: '22px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
-    }).setOrigin(0, 1).setAngle(-8);
+    }).setOrigin(1, 1).setAngle(8);
     this.tweens.add({ targets: t, y: t.y - 26, alpha: 0, duration: 900, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
   }
 }

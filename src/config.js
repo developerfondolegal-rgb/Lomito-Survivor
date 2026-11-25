@@ -1110,22 +1110,28 @@ const CONFIG = {
   //  Los "_MS" son milisegundos; los que van entre [ ] son [mínimo, máximo] al azar.
   // ---------------------------------------------------------------
   PORTADA: {
-    PIXEL: 5,                   // tamaño de cada cuadrito de los perros (5 = el shar pei mide 34 × 5 = 170 px de alto)
-    VEREDA_Y: 0.8,              // a qué altura de la pantalla está la vereda donde se paran (0.8 = 80% hacia abajo)
-    CHOW_X: 0.36,               // dónde está el chow chow (a la izquierda)
-    SHARPEI_X: 0.64,            // dónde está el shar pei (a la derecha)
+    PIXEL: 6,                   // tamaño de cada cuadrito de los perros (6 = el shar pei sentado mide unos 34 × 6 = 204 px)
+    VEREDA_Y: 0.8,              // a qué altura de la pantalla está la vereda donde se sientan (0.8 = 80% hacia abajo)
+    PAREJA_X: 0.5,              // dónde va la pareja de perros (0.5 = al centro)
+    SOLAPE: 2,                  // cuántos cuadritos se juntan los hombros (más = más apretados)
 
     // Chow chow
     COLA_MS: 110,               // cuánto dura cada posición del meneo de la cola (más chico = cola más rápida)
     JADEO_MS: 260,              // cada cuánto alarga y acorta la lengua al jadear (nunca la mete)
+    OREJA_CADA_MS: [5000, 9000], // cada cuánto mueve una oreja
+    OREJA_MS: 350,              // cuánto dura el movimiento de la oreja
 
     // Shar pei
     RESPIRA_MS: 2400,           // cuánto dura una respiración completa (sube y baja)
     PARPADEO_CADA_MS: [2500, 5500], // cada cuánto parpadea
     PARPADEO_DURA_MS: 160,      // cuánto dura el parpadeo
-    BABA_LARGO: 6,              // largo del hilo de baba (en cuadritos)
+    BABA_LARGO: 5,              // largo del hilo de baba (en cuadritos)
     BABA_VAIVEN_MS: 1800,       // cuánto demora la baba en ir y volver
     BABA_ANGULO: 0.35,          // cuánto se balancea la baba (0 = cuelga derecho)
+
+    // Gesto de cariño: se miran un momento, el shar pei se arrima y sale un corazoncito
+    CARINO_CADA_MS: [7000, 12000], // cada cuánto
+    CARINO_MS: 1200,            // cuánto rato se miran
 
     // Fondo
     ESTRELLAS: 70,              // estrellas quietas

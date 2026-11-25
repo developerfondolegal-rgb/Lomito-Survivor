@@ -1,36 +1,40 @@
 // ===============================================================
 //  PORTADA: la escena animada de la pantalla de bienvenida
 //  (src/scenes/BienvenidaScene.js): una calle de noche con faroles,
-//  basureros, edificios con ventanas, estrellas y luna, y dos perros:
-//  un chow chow (izquierda) y un shar pei (derecha).
+//  basureros, edificios con ventanas, estrellas y luna, y dos perros
+//  sentados uno al lado del otro, como hermanos: un chow chow negro
+//  (izquierda) y un shar pei canela (derecha).
 //
-//  Los perros son pixel art hecho en código, con las mismas reglas que
-//  los dibujos de src/sprites.js: grillas de letras, borde K casi negro,
-//  C/c/L = color, sombra y luz. Aquí las grillas se ARMAN con formas
-//  (óvalos y rectángulos), se les pone el borde K solo y después se
-//  agregan los detalles (ojos, arrugas, lengua...). Cada cuadro de la
-//  animación se arma igual, así todos calzan.
+//  Estilo de los perros: pixel art chibi (cabeza grande, cuerpo chico
+//  y redondo, patas cortas), colores planos (base + sombra + brillo),
+//  contorno de 1 cuadrito del tono de cada perro y ojos simples con
+//  brillo blanco. Se arman en código, por capas (cola, cuerpo, patas,
+//  orejas, cabeza, hocico): cada capa lleva su propio contorno, así las
+//  partes se separan solas y las formas quedan limpias.
+//  Cada cuadro de la animación se arma igual, así todos calzan.
 //
 //  Los números (tamaño, posiciones, velocidades) están en src/config.js,
 //  sección PORTADA.
 // ===============================================================
 
-// Colores de cada perro (formato 0xRRGGBB). K y W vienen de COLORES_COMUNES (src/sprites.js)
+// Colores de cada perro (formato 0xRRGGBB). W (blanco) viene de COLORES_COMUNES (src/sprites.js)
 const COLORES_CHOW = {
-  N: 0x241d1b, // pelo negro
-  n: 0x4a362a, // reflejos café oscuro
-  h: 0x6e4b31, // brillo café (bordes con luz)
-  T: 0x3b2d26, // cola (un poco más café para que se separe del lomo)
-  O: 0xd9a86c, // ojo cerrado y contento (rayita clara)
+  N: 0x151515, // negro casi puro (base)
+  s: 0x09090b, // sombra
+  b: 0x2c2f3a, // brillo gris azulado (volumen del pelo)
+  O: 0x5c6478, // contorno gris azulado más claro (para que se separe del fondo de noche)
+  E: 0x7a5236, // ojos café
+  Z: 0x000000, // nariz
   P: 0x6a58b4, // lengua morada-azulada
-  p: 0x9688d6  // brillo de la lengua
+  p: 0x9a8ce0  // brillo de la lengua
 };
 const COLORES_SHARPEI = {
-  C: 0xd29a5c, // canela / dorado
-  c: 0x9c6a35, // arrugas y sombra
-  L: 0xeabf88, // luz
-  Z: 0xb3736a, // nariz rosada-café
-  M: 0x7a4a2a  // boca
+  C: 0xd29a5c, // canela (base)
+  c: 0xa36d38, // sombra y arrugas
+  L: 0xf0c890, // brillo / hocico
+  D: 0x5c3818, // contorno café oscuro
+  E: 0x2a1a10, // ojos
+  Z: 0xb3736a  // nariz rosada-café
 };
 
 // ---------------------------------------------------------------
@@ -67,239 +71,262 @@ function lienzoPixel(ancho, alto) {
       const pasos = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
       for (let k = 0; k <= pasos; k++) L.pon(x0 + (x1 - x0) * k / pasos, y0 + (y1 - y0) * k / pasos, letra);
     },
-    // Cambia una letra por otra solo donde ya hay esa letra
-    cambiar(x, y, de, a) { if (L.ver(x, y) === de) L.pon(x, y, a); },
-    // Borde K alrededor de todo lo pintado (como en los sprites del juego)
-    contorno() {
+    // Triángulo relleno (para orejas)
+    triangulo(ax, ay, bx, by, cx, cy, letra) {
+      const minX = Math.floor(Math.min(ax, bx, cx)), maxX = Math.ceil(Math.max(ax, bx, cx));
+      const minY = Math.floor(Math.min(ay, by, cy)), maxY = Math.ceil(Math.max(ay, by, cy));
+      const lado = (px, py, x1, y1, x2, y2) => (px - x2) * (y1 - y2) - (x1 - x2) * (py - y2);
+      for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
+        const d1 = lado(x, y, ax, ay, bx, by), d2 = lado(x, y, bx, by, cx, cy), d3 = lado(x, y, cx, cy, ax, ay);
+        const neg = d1 < 0 || d2 < 0 || d3 < 0, pos = d1 > 0 || d2 > 0 || d3 > 0;
+        if (!(neg && pos)) L.pon(x, y, letra);
+      }
+    },
+    // Contorno de 1 cuadrito alrededor de todo lo pintado
+    contorno(letra) {
       const nuevos = [];
       for (let y = 0; y < alto; y++) {
         for (let x = 0; x < ancho; x++) {
           if (m[y][x] !== '.') continue;
           const vecino = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => {
             const v = L.ver(x + a, y + b);
-            return v !== '.' && v !== 'K';
+            return v !== '.' && v !== letra;
           });
           if (vecino) nuevos.push([x, y]);
         }
       }
-      nuevos.forEach(([x, y]) => { m[y][x] = 'K'; });
+      nuevos.forEach(([x, y]) => { m[y][x] = letra; });
     },
-    // Luz en los bordes de arriba: cada cuadrito de "base" que tiene borde K encima pasa a "luz"
-    luzArriba(base, luz) {
-      for (let y = 1; y < alto; y++) {
-        for (let x = 0; x < ancho; x++) {
-          if (m[y][x] === base && m[y - 1][x] === 'K') m[y][x] = luz;
-        }
+    // Copia encima todo lo pintado de otro lienzo del mismo tamaño
+    pegar(otro) {
+      for (let y = 0; y < alto; y++) for (let x = 0; x < ancho; x++) {
+        const v = otro.ver(x, y);
+        if (v !== '.') m[y][x] = v;
       }
+    },
+    // Brillo arriba y sombra abajo (1 cuadrito pegado al contorno): da volumen sin degradados
+    volumen(base, brillo, sombra, borde) {
+      const cambios = [];
+      for (let y = 1; y < alto - 1; y++) for (let x = 0; x < ancho; x++) {
+        if (m[y][x] !== base) continue;
+        if (brillo && m[y - 1][x] === borde) cambios.push([x, y, brillo]);
+        else if (sombra && m[y + 1][x] === borde) cambios.push([x, y, sombra]);
+      }
+      cambios.forEach(([x, y, l]) => { m[y][x] = l; });
     },
     filas() { return m.map((fila) => fila.join('')); }
   };
   return L;
 }
 
+// El contorno de afuera de toda la silueta pasa a "exterior"; las líneas de
+// adentro (entre partes) se quedan con el color "interior", más suave
+function bordeExterior(L, interior, exterior) {
+  const cambiar = [];
+  for (let y = 0; y < L.alto; y++) for (let x = 0; x < L.ancho; x++) {
+    if (L.ver(x, y) !== interior) continue;
+    if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => L.ver(x + a, y + b) === '.') ||
+        x === 0 || y === 0 || x === L.ancho - 1 || y === L.alto - 1) cambiar.push([x, y]);
+  }
+  cambiar.forEach(([x, y]) => L.pon(x, y, exterior));
+}
+
+// Dibuja una parte en una capa aparte, le pone su contorno y la pega encima
+function capaPixel(L, borde, dibujar) {
+  const t = lienzoPixel(L.ancho, L.alto);
+  dibujar(t);
+  t.contorno(borde);
+  L.pegar(t);
+}
+
 // ---------------------------------------------------------------
-//  CHOW CHOW: cuerpo de lado mirando a la derecha y cabeza de frente
-//  (melena de león alrededor de la cara). 40 x 27 cuadritos.
-//  cola: 0 a 3 (posición del meneo) · lengua: 0 = corta, 1 = larga (jadeo)
-//  La lengua está SIEMPRE afuera: al jadear solo se alarga y se acorta.
+//  CHOW CHOW sentado, de frente. 32 x 30 cuadritos.
+//  cola: 0 a 3 (meneo) · lengua: 0 = corta, 1 = larga (jadeo; SIEMPRE afuera)
+//  mira: 1 = mira al shar pei (gesto de cariño) · oreja: 1 = mueve la oreja
 // ---------------------------------------------------------------
-const MELENA_CHOW = { x: 29, y: 10, r: 8.5 };  // centro y radio de la melena
-const CARA_CHOW = { x: 29, y: 10.5, rx: 5.2, ry: 4.8 }; // la cara negra, dentro de la melena
+const CHOW_ANCHO = 34;
+const CHOW_CUERPO = { izq: 0, der: 29 }; // dónde empieza y termina (para juntarlo con el shar pei)
 
-function dibujoChow(cola, lengua) {
-  const L = lienzoPixel(40, 27);
-  const meneo = [-1, 0, 1, 0][cola % 4];
-  const M = MELENA_CHOW;
-  const C = CARA_CHOW;
+function dibujoChow(cola, lengua, mira, oreja) {
+  const L = lienzoPixel(CHOW_ANCHO, 30);
+  const I = 's';   // líneas de adentro (entre partes): sombra
+  const o = 2;     // todo corrido 2 a la derecha (a la izquierda queda la cola)
+  const mx = [0, -0.7, 0, 0.7][cola % 4];
+  const my = [0, -0.5, -1, -0.5][cola % 4];
 
-  // Cola plumosa enroscada sobre el lomo: círculos en espiral desde el anca
-  // (la punta se mueve más que la base al menear)
-  const espiral = [[8, 10, 2.6], [7.5, 7.2, 2.8], [9.5, 4.8, 2.8], [12.5, 4, 2.6], [15, 5.2, 2.3], [15.5, 7.6, 1.8]];
-  espiral.forEach(([cx, cy, r]) => L.elipse(cx + meneo * (11 - cy) / 5, cy, r, r, 'T'));
-
-  // Patas cortas y gruesas (las de atrás, más oscuras)
-  L.rect(13, 20, 3, 6, 'n');
-  L.rect(29, 20, 3, 6, 'n');
-  L.rect(8, 19, 4, 7, 'N');
-  L.rect(24, 19, 4, 7, 'N');
-
-  // Cuerpo, "pantalones" peludos y pecho
-  L.elipse(18, 15, 10.5, 5.5, 'N');
-  L.elipse(9.5, 16, 4.5, 5, 'N');
-  L.elipse(26, 16, 5, 5.5, 'N');
-
-  // Orejitas chicas y redondeadas (arriba de la melena, a cada lado)
-  L.elipse(23.5, 2.2, 1.7, 1.7, 'N');
-  L.elipse(34.5, 2.2, 1.7, 1.7, 'N');
-
-  // Melena de león: círculo grande café con mechones en el borde
-  L.elipse(M.x, M.y, M.r, M.r, 'n');
-  for (let a = 0; a < 360; a += 20) {
-    const r = Phaser.Math.DegToRad(a);
-    L.pon(M.x + Math.cos(r) * (M.r + 1), M.y + Math.sin(r) * (M.r + 1), 'n');
-  }
-
-  L.contorno();
-
-  // ---- Detalles ----
-  // Mechones más oscuros en la melena (rayitas desde la cara hacia afuera)
-  for (let y = 0; y < 27; y++) {
-    for (let x = 0; x < 40; x++) {
-      const ang = Math.round(Math.atan2(y - M.y, x - M.x) / (Math.PI / 8));
-      if (Math.hypot(x - M.x, y - M.y) > C.rx + 1.5 && ang % 3 === 0) L.cambiar(x, y, 'n', 'N');
-    }
-  }
-  // Pelo del cuerpo y de la cola: rayitas cortas
-  for (let y = 0; y < 27; y++) {
-    for (let x = 0; x < 40; x++) {
-      if (y % 3 === 0 && (x + y) % 7 < 2) L.cambiar(x, y, 'N', 'n');
-      if ((x + y * 2) % 5 === 0) L.cambiar(x, y, 'T', 'n');
-    }
-  }
-  L.luzArriba('N', 'h');          // reflejos café donde le da la luz (arriba)
-  L.luzArriba('n', 'h');
-  L.luzArriba('T', 'h');
-
-  // Cara negra al centro de la melena
-  L.elipse(C.x, C.y, C.rx, C.ry, 'N');
-  // Orejas por dentro
-  L.pon(23.5, 2.5, 'h'); L.pon(34.5, 2.5, 'h');
-  // Ojitos cerrados y contentos (arquitos claros)
-  [[25, 9], [31, 9]].forEach(([x, y]) => {
-    L.pon(x, y, 'O'); L.pon(x + 1, y - 1, 'O'); L.pon(x + 2, y, 'O');
+  // Cola plumosa enroscada: se asoma grande por el lado izquierdo, arriba del lomo
+  capaPixel(L, I, (t) => {
+    t.elipse(5.5 + mx, 18.5 + my, 4, 3.6, 'N');
+    t.elipse(3.6 + mx * 1.5, 14.6 + my, 2.6, 2.4, 'N');
   });
-  // Hocico corto (un poco más claro) y nariz negra brillante
-  L.elipse(29, 13, 2.6, 1.6, 'n');
-  L.rect(28, 11, 3, 2, 'K');
-  L.pon(28, 11, 'h');
-  // Boca abierta y lengua morada-azulada colgando (siempre afuera; jadeando se alarga)
-  L.pon(27, 14, 'K'); L.pon(31, 14, 'K');
-  const largo = lengua ? 6 : 5;
-  for (let k = 0; k < largo; k++) {
-    const ancho = k === largo - 1 ? 1 : 3;
-    for (let x = 0; x < ancho; x++) L.pon(28 + x + (ancho === 1 ? 1 : 0), 14 + k, 'P');
-  }
-  // borde de la lengua (para que se note sobre el pelo)
-  for (let k = 0; k <= largo; k++) {
-    [27, 31].forEach((x) => { if (L.ver(x, 14 + k) !== 'P') L.pon(x, 14 + k, 'K'); });
-  }
-  L.pon(28, 14 + largo - 1, 'K'); L.pon(30, 14 + largo - 1, 'K'); L.pon(29, 14 + largo, 'K');
-  L.pon(28, 15, 'p'); L.pon(28, 16, 'p');   // brillo
-  L.pon(29, 15, 'K');                        // rayita del medio de la lengua
+  // espiral de la cola (brillo)
+  L.linea(3 + mx * 1.5, 15 + my, 5 + mx, 17 + my, 'b');
+  L.linea(5 + mx, 17 + my, 7 + mx, 18 + my, 'b');
+
+  // Cuerpo chico y redondo, con los muslos a los lados
+  capaPixel(L, I, (t) => {
+    t.elipse(o + 15, 22.5, 8, 6, 'N');
+    t.elipse(o + 8.5, 25.5, 3.6, 3, 'N');
+    t.elipse(o + 21.5, 25.5, 3.6, 3, 'N');
+  });
+  // Patitas de adelante: cortas y redondas
+  capaPixel(L, I, (t) => {
+    t.elipse(o + 12, 26.2, 2.3, 2.3, 'N');
+    t.elipse(o + 18, 26.2, 2.3, 2.3, 'N');
+  });
+  // Orejitas chicas y redondas (la izquierda se mueve en el gesto de cariño)
+  capaPixel(L, I, (t) => {
+    t.elipse(o + 8 - oreja * 0.8, 3.6 - oreja, 2, 2, 'N');
+    t.elipse(o + 22, 3.6, 2, 2, 'N');
+  });
+  // Melena de león: bien redonda, con 3 mechones marcados (cachetes y copete)
+  capaPixel(L, I, (t) => {
+    t.elipse(o + 15, 12, 10, 8.6, 'N');
+    t.elipse(o + 5, 15, 2, 2.2, 'N');
+    t.elipse(o + 25, 15, 2, 2.2, 'N');
+    t.elipse(o + 15, 3.2, 2.4, 1.3, 'N');
+  });
+  bordeExterior(L, I, 'O');
+  L.volumen('N', 'b', 's', 'O');
+  // La cara, dentro de la melena: un anillo gris azulado la separa del pelo
+  capaPixel(L, 'b', (t) => t.elipse(o + 15, 13.4, 5.4, 4.4, 'N'));
+  // Hocico corto
+  capaPixel(L, 'b', (t) => t.elipse(o + 15, 15.7, 2.5, 1.4, 'N'));
+
+  // Ojos simples con brillo (miran al shar pei en el gesto de cariño)
+  [[o + 11, 11.5], [o + 18, 11.5]].forEach(([x, y]) => {
+    L.rect(x + mira, y, 2, 2, 'E');
+    L.pon(x + mira, y, 'W');
+  });
+  // Nariz negra con brillo
+  L.rect(o + 14, 14, 3, 1, 'Z'); L.pon(o + 15, 15, 'Z'); L.pon(o + 14, 14, 'b');
+  // Boca alegre y la lengua morada colgando (siempre afuera; al jadear se alarga)
+  L.pon(o + 13, 16, 's'); L.pon(o + 17, 16, 's');
+  const largo = lengua ? 4 : 3;
+  capaPixel(L, 's', (t) => {
+    t.rect(o + 14, 16, 3, largo, 'P');
+    t.pon(o + 15, 16 + largo, 'P');
+  });
+  L.pon(o + 14, 17, 'p');
   return L.filas();
 }
 
 // ---------------------------------------------------------------
-//  SHAR PEI (mira a la izquierda). 44 x 36 cuadritos.
-//  respira: 0 = abajo, 1 = arriba (todo menos las patas sube 1)
-//  ojo: 0 = abierto, 1 = cerrado (parpadeo)
+//  SHAR PEI sentado, de frente, con la cabeza inclinada hacia el chow chow.
+//  36 x 38 cuadritos.
+//  respira: 1 = inspira (cuerpo y cabeza suben 1) · ojo: 1 = cerrado (parpadeo)
+//  mira: 1 = mira al chow chow y se le acerca un poquito (gesto de cariño)
 // ---------------------------------------------------------------
-const BOCA_SHARPEI = { x: 3, y: 19 }; // comisura de la boca (de ahí cuelga la baba)
+const SHARPEI_CUERPO = { izq: 6, der: 30, centro: 18 };
 
-function dibujoSharpei(respira, ojo) {
-  const L = lienzoPixel(44, 36);
-  const d = respira ? -1 : 0;
-  const o = 2; // corre todo 2 cuadritos a la derecha (espacio para el borde)
+// Comisura de la boca (de ahí cuelga la baba), según la pose
+function bocaSharpei(respira, mira) {
+  return { x: 16 - mira + 3, y: 19 - respira };
+}
 
-  // Patas gruesas (no se mueven al respirar)
-  L.rect(o + 30, 28, 3, 6, 'c');
-  L.rect(o + 11, 28, 3, 6, 'c');
-  L.rect(o + 26, 27, 4, 7, 'C');
-  L.rect(o + 6, 27, 4, 7, 'C');
+function dibujoSharpei(respira, ojo, mira) {
+  const L = lienzoPixel(36, 38);
+  const I = 'c';   // líneas de adentro: sombra canela
+  const r = respira;
+  const hx = 16 - mira;    // la cabeza va corrida hacia el chow chow (más en el gesto de cariño)
 
-  // Colita enroscada arriba
-  L.elipse(o + 36, 15 + d, 2.2, 2.2, 'C');
-  L.elipse(o + 34.5, 17 + d, 2, 2, 'C');
+  // Colita enroscada asomándose a la derecha
+  capaPixel(L, I, (t) => {
+    t.elipse(29.5, 23 - r, 2.3, 2.3, 'C');
+    t.elipse(30.5, 20.8 - r, 1.3, 1.3, 'C');
+  });
+  // Cuerpo chico y redondo (al inspirar crece un poquito hacia arriba) y los muslos
+  capaPixel(L, I, (t) => {
+    t.elipse(18, 28 - r * 0.5, 9, 7.5 + r * 0.5, 'C');
+    t.elipse(10, 32.5, 3.8, 3.2, 'C');
+    t.elipse(26, 32.5, 3.8, 3.2, 'C');
+  });
+  // Patitas de adelante: cortas y redondas
+  capaPixel(L, I, (t) => {
+    t.elipse(14.5, 34, 2.4, 2.4, 'C');
+    t.elipse(21.5, 34, 2.4, 2.4, 'C');
+  });
+  // Cabeza grande y cuadrada, con la papada que cuelga a los lados (hocico de hipopótamo)
+  capaPixel(L, I, (t) => {
+    t.elipse(hx, 12 - r, 9.5, 8, 'C');
+    t.elipse(hx - 7.5, 17 - r, 3, 3.4, 'C');
+    t.elipse(hx + 7.5, 17 - r, 3, 3.4, 'C');
+  });
+  bordeExterior(L, I, 'D');
+  L.volumen('C', 'L', null, 'D');   // solo brillo arriba (las sombras son las líneas de adentro)
+  // Hocico ancho y abultado
+  capaPixel(L, 'c', (t) => t.elipse(hx, 17.5 - r, 6, 3.5, 'L'));
+  // Orejas chicas dobladas hacia adelante: triangulitos en el borde de la cabeza que apuntan a los ojos
+  capaPixel(L, 'D', (t) => {
+    t.triangulo(hx - 9, 5 - r, hx - 4, 4 - r, hx - 6, 8 - r, 'c');
+    t.triangulo(hx + 9, 5 - r, hx + 4, 4 - r, hx + 6, 8 - r, 'c');
+  });
 
-  // Cuerpo y cuello lleno de pliegues
-  L.elipse(o + 22, 22 + d, 13, 7, 'C');
-  L.elipse(o + 12, 19 + d, 6.5, 7.5, 'C');
-
-  // Cabeza grande y cuadrada
-  L.elipse(o + 11, 11 + d, 9, 8, 'C');
-  L.rect(o + 4, 6 + d, 14, 10, 'C');
-
-  // Hocico ancho tipo hipopótamo (abultado)
-  L.elipse(o + 4, 15 + d, 5, 4.5, 'L');
-  L.elipse(o + 8, 16 + d, 3.5, 3.5, 'L');
-
-  L.contorno();
-
-  // ---- Detalles ----
-  L.luzArriba('C', 'L');
-
-  // Orejita chica doblada hacia adelante
-  L.rect(o + 14, 4 + d, 4, 2, 'c');
-  L.pon(o + 14, 6 + d, 'c'); L.pon(o + 15, 6 + d, 'c');
-  L.linea(o + 13, 7 + d, o + 16, 7 + d, 'K');
-  L.pon(o + 18, 5 + d, 'K'); L.pon(o + 17, 6 + d, 'K');
-
-  // Muchas arrugas en la frente (curvas, como un acordeón)
-  const arco = (x0, x1, y, alto) => {
-    const mitad = Math.round((x0 + x1) / 2);
-    L.linea(o + x0, y + alto + d, o + mitad, y + d, 'c');
-    L.linea(o + mitad, y + d, o + x1, y + alto + d, 'c');
+  // Arrugas: 2 en la frente y 2 pliegues en el cuello (líneas simples)
+  const arco = (x0, x1, y, curva) => {
+    L.linea(x0, y + curva, hx, y, 'c');
+    L.linea(hx, y, x1, y + curva, 'c');
   };
-  arco(5, 14, 3, 1);
-  arco(4, 14, 5, 1);
-  arco(4, 9, 7, 1);
-  arco(11, 15, 7, 1);
-  // Arrugas de la cara (alrededor del ojo y sobre el hocico)
-  L.linea(o + 6, 12 + d, o + 9, 13 + d, 'c');
-  L.linea(o + 12, 11 + d, o + 15, 13 + d, 'c');
-  L.linea(o + 10, 14 + d, o + 13, 16 + d, 'c');
+  arco(hx - 3, hx + 3, 6 - r, 1);
+  arco(hx - 2, hx + 2, 8 - r, 1);
+  arco(hx - 4, hx + 4, 22.5 - r, -1);
+  arco(hx - 3, hx + 3, 24.5 - r, -1);
 
-  // Ojo caído y tierno (párpado que baja hacia afuera)
-  if (ojo) {
-    L.linea(o + 7, 10 + d, o + 10, 10 + d, 'K');      // cerrado: una rayita
-  } else {
-    L.pon(o + 8, 10 + d, 'K'); L.pon(o + 9, 10 + d, 'K');
-    L.pon(o + 8, 11 + d, 'K'); L.pon(o + 9, 11 + d, 'W');
-    L.pon(o + 7, 9 + d, 'c'); L.pon(o + 8, 9 + d, 'c'); L.pon(o + 9, 9 + d, 'c');
-  }
-  L.pon(o + 10, 10 + d, 'c'); L.pon(o + 10, 11 + d, 'c');  // el párpado cae hacia afuera
-
-  // Nariz rosada-café grande en la punta del hocico
-  L.rect(o - 1, 11 + d, 3, 2, 'Z');
-  L.pon(o - 1, 11 + d, 'L');
-  L.pon(o, 13 + d, 'K');
-
-  // Boca y belfos (labios caídos)
-  L.linea(o, 16 + d, o + 7, 17 + d, 'M');
-  L.linea(o + 1, 18 + d, o + 7, 19 + d, 'c');
-
-  // Pliegues gruesos del cuello (papada en capas) y uno en el hombro
-  arco(8, 16, 19, -1);
-  arco(7, 17, 21, -1);
-  arco(8, 16, 23, -1);
-  L.linea(o + 18, 18 + d, o + 19, 23 + d, 'c');
-  L.linea(o + 33, 18 + d, o + 33, 21 + d, 'c');
+  // Ojos caídos y tiernos: achinados, con brillo, y un párpado gordo que cae hacia afuera
+  [[hx - 5, -1], [hx + 3, 1]].forEach(([x, lado]) => {
+    const y = 12 - r;
+    const ex = x - mira;   // al mirar al chow chow, los ojos se corren a la izquierda
+    // párpado: rayita arriba del ojo que baja hacia el lado de afuera
+    L.linea(x - 1, y, x + 2, y, 'c');
+    L.pon(lado < 0 ? x - 2 : x + 3, y + 1, 'c');
+    if (ojo) {
+      L.linea(ex, y + 1, ex + 1, y + 1, 'c');     // cerrado
+    } else {
+      L.pon(ex, y + 1, 'E'); L.pon(ex + 1, y + 1, 'E');
+      L.pon(ex + (lado < 0 ? 1 : 0), y + 1, 'W');  // brillo
+      L.pon(ex, y + 2, 'E'); L.pon(ex + 1, y + 2, 'E');
+    }
+  });
+  // Nariz rosada-café con brillo
+  L.rect(hx - 1, 15 - r, 3, 2, 'Z');
+  L.pon(hx - 1, 15 - r, 'L');
+  // Boca simple y alegre
+  L.pon(hx, 17 - r, 'c');
+  L.linea(hx - 3, 18 - r, hx - 1, 19 - r, 'c');
+  L.linea(hx + 1, 19 - r, hx + 3, 18 - r, 'c');
+  L.pon(hx, 18 - r, 'c');
   return L.filas();
 }
+
+// Cuadro de cada pose dentro de la textura
+function cuadroChow(cola, lengua, mira, oreja) { return ((oreja * 2 + mira) * 2 + lengua) * 4 + cola; }
+function cuadroSharpei(respira, ojo, mira) { return (mira * 2 + ojo) * 2 + respira; }
 
 // Crea las texturas de los dos perros (solo la primera vez)
 function crearTexturasPortada(escena) {
   if (!escena.textures.exists('portada_chow')) {
     const cuadros = [];
-    for (let lengua = 0; lengua < 2; lengua++) for (let cola = 0; cola < 4; cola++) cuadros.push(dibujoChow(cola, lengua));
+    for (let oreja = 0; oreja < 2; oreja++) for (let mira = 0; mira < 2; mira++)
+      for (let lengua = 0; lengua < 2; lengua++) for (let cola = 0; cola < 4; cola++) cuadros.push(dibujoChow(cola, lengua, mira, oreja));
     crearTexturaPixel(escena, 'portada_chow', { colores: COLORES_CHOW, cuadros });
   }
   if (!escena.textures.exists('portada_sharpei')) {
     const cuadros = [];
-    for (let ojo = 0; ojo < 2; ojo++) for (let respira = 0; respira < 2; respira++) cuadros.push(dibujoSharpei(respira, ojo));
+    for (let mira = 0; mira < 2; mira++) for (let ojo = 0; ojo < 2; ojo++)
+      for (let respira = 0; respira < 2; respira++) cuadros.push(dibujoSharpei(respira, ojo, mira));
     crearTexturaPixel(escena, 'portada_sharpei', { colores: COLORES_SHARPEI, cuadros });
   }
 }
 
 // ---------------------------------------------------------------
 //  La portada completa. Devuelve un objeto con actualizar(tiempo) y
-//  los datos de los perros (para poner el "¡Guau!" encima).
+//  los perros (para poner el "¡Guau!" encima).
 // ---------------------------------------------------------------
 function crearPortada(escena) {
   const P = CONFIG.PORTADA;
   const w = escena.scale.width;
   const h = escena.scale.height;
-  const suelo = Math.round(h * P.VEREDA_Y);   // donde están las patas de los perros
+  const suelo = Math.round(h * P.VEREDA_Y);   // donde están sentados los perros
   const azar = new Phaser.Math.RandomDataGenerator(['portada']);
 
   dibujarCieloPortada(escena, suelo, azar);
@@ -308,68 +335,124 @@ function crearPortada(escena) {
   crearFarolesPortada(escena, suelo);
   dibujarBasurerosPortada(escena, suelo);
 
-  // Los perros (con su sombra)
+  // Los dos perros juntos, hombro con hombro, centrados en PAREJA_X
   crearTexturasPortada(escena);
   const px = P.PIXEL;
-  const sombra = escena.add.graphics();
-  const chow = escena.add.sprite(Math.round(w * P.CHOW_X), suelo, 'portada_chow', 0)
-    .setOrigin(0.5, 1).setScale(px);
-  const sharpei = escena.add.sprite(Math.round(w * P.SHARPEI_X), suelo, 'portada_sharpei', 0)
-    .setOrigin(0.5, 1).setScale(px);
-  // el shar pei tiene una fila vacía abajo: se baja 1 cuadrito para que las patas toquen la vereda
-  sharpei.y += px;
-  sombra.fillStyle(0x000000, 0.35);
-  sombra.fillEllipse(chow.x, suelo, chow.displayWidth * 0.8, px * 3);
-  sombra.fillEllipse(sharpei.x, suelo, sharpei.displayWidth * 0.8, px * 3);
+  const anchoChow = CHOW_ANCHO;
+  const anchoSharpei = 36;
+  // distancia entre los centros de las texturas para que se toquen (SOLAPE = cuántos cuadritos se juntan)
+  const entre = (CHOW_CUERPO.der - anchoChow / 2) + (anchoSharpei / 2 - SHARPEI_CUERPO.izq) - P.SOLAPE;
+  const izqTotal = CHOW_CUERPO.izq - anchoChow / 2;                  // borde izquierdo del chow (desde su centro)
+  const derTotal = entre + (SHARPEI_CUERPO.der - anchoSharpei / 2);   // borde derecho del shar pei (desde el centro del chow)
+  const xChow = Math.round(w * P.PAREJA_X - ((izqTotal + derTotal) / 2) * px);
+  const xSharpei = xChow + entre * px;
+  // las texturas tienen 1 fila libre abajo del contorno: se bajan 1 cuadrito para tocar la vereda
+  const yBase = suelo + px;
 
+  // Luz suave de farol detrás del chow chow (para que lo negro no se pierda en la noche)
+  const luz = escena.add.graphics();
+  const yLuz = suelo - 16 * px;
+  [[22, 0.05], [17, 0.06], [12, 0.07]].forEach(([r, a]) => luz.fillStyle(0xffd27a, a).fillCircle(xChow, yLuz, r * px));
+
+  // Sombras elípticas oscuras bajo cada perro
+  const sombra = escena.add.graphics();
+  sombra.fillStyle(0x000000, 0.45);
+  sombra.fillEllipse(xChow, suelo - px * 0.5, 22 * px, 3 * px);
+  sombra.fillEllipse(xSharpei, suelo - px * 0.5, 25 * px, 3 * px);
+
+  // El shar pei va delante: apoya el hombro y la cabeza hacia el chow chow
+  const chow = escena.add.sprite(xChow, yBase, 'portada_chow', 0).setOrigin(0.5, 1).setScale(px);
+  const sharpei = escena.add.sprite(xSharpei, yBase, 'portada_sharpei', 0).setOrigin(0.5, 1).setScale(px);
   const baba = escena.add.graphics();
+  const corazon = escena.add.graphics();
+
   const portada = {
     chow, sharpei, suelo,
     proximoParpadeo: 0,
     parpadeoHasta: 0,
+    proximoCarino: 0,
+    carinoHasta: 0,
+    proximaOreja: 0,
+    orejaHasta: 0,
     actualizar(tiempo) {
-      // Chow chow: mueve la cola y jadea (la lengua nunca se mete del todo)
+      const entre2 = (rango) => tiempo + Phaser.Math.Between(rango[0], rango[1]);
+      if (this.proximoParpadeo === 0) {
+        this.proximoParpadeo = entre2(P.PARPADEO_CADA_MS);
+        this.proximoCarino = entre2(P.CARINO_CADA_MS);
+        this.proximaOreja = entre2(P.OREJA_CADA_MS);
+      }
+
+      // Gesto de cariño: se miran un momento (el shar pei se acerca un poquito) y sale un corazón
+      if (tiempo >= this.proximoCarino) {
+        this.carinoHasta = tiempo + P.CARINO_MS;
+        this.proximoCarino = entre2(P.CARINO_CADA_MS);
+        this.orejaHasta = tiempo + P.OREJA_MS;     // el chow chow también mueve la oreja
+        corazonPortada(escena, corazon, (xChow + xSharpei) / 2, suelo - 33 * px, px);
+      }
+      if (tiempo >= this.proximaOreja) {            // y a veces mueve la oreja solo
+        this.orejaHasta = tiempo + P.OREJA_MS;
+        this.proximaOreja = entre2(P.OREJA_CADA_MS);
+      }
+      const mira = tiempo < this.carinoHasta ? 1 : 0;
+      const oreja = tiempo < this.orejaHasta ? 1 : 0;
+
+      // Chow chow: mueve la cola y jadea (la lengua nunca se mete)
       const cola = Math.floor(tiempo / P.COLA_MS) % 4;
       const lengua = Math.floor(tiempo / P.JADEO_MS) % 2;
-      chow.setFrame(lengua * 4 + cola);
+      chow.setFrame(cuadroChow(cola, lengua, mira, oreja));
 
       // Shar pei: respira y parpadea cada tanto
       const respira = Math.sin(tiempo / P.RESPIRA_MS * Math.PI * 2) > 0 ? 1 : 0;
-      if (this.proximoParpadeo === 0) this.proximoParpadeo = tiempo + Phaser.Math.Between(P.PARPADEO_CADA_MS[0], P.PARPADEO_CADA_MS[1]);
       if (tiempo >= this.proximoParpadeo) {
         this.parpadeoHasta = tiempo + P.PARPADEO_DURA_MS;
-        this.proximoParpadeo = tiempo + Phaser.Math.Between(P.PARPADEO_CADA_MS[0], P.PARPADEO_CADA_MS[1]);
+        this.proximoParpadeo = entre2(P.PARPADEO_CADA_MS);
       }
       const ojo = tiempo < this.parpadeoHasta ? 1 : 0;
-      sharpei.setFrame(ojo * 2 + respira);
+      sharpei.setFrame(cuadroSharpei(respira, ojo, mira));
 
       // Hilo de baba que cuelga de la boca del shar pei y se balancea
-      dibujarBaba(baba, sharpei, respira, tiempo, px);
+      dibujarBaba(baba, sharpei, bocaSharpei(respira, mira), tiempo, px);
     }
   };
   return portada;
 }
 
+// Corazoncito de pixel art que sube y se desvanece (gesto de cariño)
+function corazonPortada(escena, g, x, y, px) {
+  const forma = ['.KK.KK.', 'KRRKRRK', 'KRRRRRK', '.KRRRK.', '..KRK..', '...K...'];
+  const colores = { K: 0x5c1a2a, R: 0xff6b8a };
+  const p = Math.max(2, Math.round(px * 0.8));
+  escena.tweens.killTweensOf(g);
+  g.clear().setPosition(0, 0).setAlpha(1);
+  forma.forEach((fila, fy) => {
+    for (let fx = 0; fx < fila.length; fx++) {
+      const l = fila[fx];
+      if (l === '.') continue;
+      g.fillStyle(colores[l], 1).fillRect(x + (fx - 3.5) * p, y + fy * p, p, p);
+    }
+  });
+  escena.tweens.add({ targets: g, y: -6 * px, alpha: 0, delay: 300, duration: CONFIG.PORTADA.CARINO_MS + 400 });
+}
+
 // Hilo de baba: una cadenita de cuadritos que cuelga de la comisura y se mece (péndulo suave)
-function dibujarBaba(g, sharpei, respira, tiempo, px) {
+function dibujarBaba(g, sharpei, boca, tiempo, px) {
   const P = CONFIG.PORTADA;
   g.clear();
   const izq = sharpei.x - sharpei.displayWidth / 2;
   const arriba = sharpei.y - sharpei.displayHeight;
-  const x0 = izq + BOCA_SHARPEI.x * px;
-  const y0 = arriba + (BOCA_SHARPEI.y - respira) * px;
+  const x0 = izq + (boca.x + 0.5) * px;
+  const y0 = arriba + (boca.y + 1) * px;
   // el largo cambia un poquito (se estira y se encoge)
   const largo = P.BABA_LARGO + Math.round(Math.sin(tiempo / (P.BABA_VAIVEN_MS * 1.7)) * 0.8);
   const angulo = Math.sin(tiempo / P.BABA_VAIVEN_MS * Math.PI * 2) * P.BABA_ANGULO;
   for (let k = 0; k < largo; k++) {
     const t = (k + 1) / largo;
     const x = Math.round((x0 + Math.sin(angulo) * k * px * t) / px) * px;
-    const y = y0 + k * px;
-    g.fillStyle(0xd8eefc, k === largo - 1 ? 0.95 : 0.7).fillRect(x - px / 2, y, px, px);
+    g.fillStyle(0xd8eefc, 0.75).fillRect(x - px / 2, y0 + k * px, px, px);
   }
   // gotita en la punta, más gordita
   const xf = Math.round((x0 + Math.sin(angulo) * (largo - 1) * px) / px) * px;
-  g.fillStyle(0xffffff, 0.9).fillRect(xf - px / 2, y0 + largo * px, px, px * 0.8);
+  g.fillStyle(0xffffff, 0.95).fillRect(xf - px / 2 - 1, y0 + largo * px, px + 2, px);
 }
 
 // ---------------------------------------------------------------

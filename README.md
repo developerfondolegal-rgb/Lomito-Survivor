@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.19.1** — portada animada en pixel art: un chow chow y un shar pei en una calle de noche (`src/portada.js`, números en `CONFIG.PORTADA`). v0.19: **mucho más difícil**: el perro empieza con 25% menos vida, los enemigos pegan y aguantan más a medida que avanza la noche, más enemigos en la 2ª mitad, el curao al volante viene el doble de seguido (y de a 2 o 3 autos al final), la nueva **jauría**, dificultad por mapa, un enemigo propio en cada mapa y mapas que se desbloquean. (v0.18.1: Stats rediseñada; v0.18: mapas nuevos.)
+Versión actual: **v0.19.1** — portada animada en pixel art chibi: un chow chow y un shar pei sentados juntos en una calle de noche (`src/portada.js`, números en `CONFIG.PORTADA`). v0.19: **mucho más difícil**: el perro empieza con 25% menos vida, los enemigos pegan y aguantan más a medida que avanza la noche, más enemigos en la 2ª mitad, el curao al volante viene el doble de seguido (y de a 2 o 3 autos al final), la nueva **jauría**, dificultad por mapa, un enemigo propio en cada mapa y mapas que se desbloquean. (v0.18.1: Stats rediseñada; v0.18: mapas nuevos.)
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -472,7 +472,7 @@ A los **9 minutos** (05:12 en el reloj) llega un perro enorme y oscuro con colla
 
 ### Pantalla de bienvenida
 
-Es lo primero que aparece al abrir el juego: el título **LOMITO SURVIVOR** en pixel art y la portada animada (`src/portada.js`): un **chow chow** negro (mueve la cola, jadea con la lengua morada siempre afuera y a veces ladra) y un **shar pei** canela (respira, parpadea y le cuelga un hilo de baba que se balancea) en una calle de noche con faroles que titilan, basureros, edificios con ventanas que se prenden y apagan, estrellas y luna, y una **frase perruna al azar** (distinta a la de la vez anterior). Si ya entraste con Google, te saluda: *"¡Guau, bienvenido de vuelta, [apodo]!"*. Toca la pantalla o presiona cualquier tecla para ir a la pantalla de inicio.
+Es lo primero que aparece al abrir el juego: el título **LOMITO SURVIVOR** en pixel art y la portada animada (`src/portada.js`): un **chow chow** negro y un **shar pei** canela sentados hombro con hombro, como hermanos, en estilo chibi. El chow chow mueve la cola, jadea con la lengua morada siempre afuera, a veces mueve una oreja y ladra; el shar pei respira, parpadea y le cuelga un hilo de baba que se balancea. Cada tanto se miran un momento y sale un corazoncito. Todo en una calle de noche con faroles que titilan, basureros, edificios con ventanas que se prenden y apagan, estrellas y luna, y una **frase perruna al azar** (distinta a la de la vez anterior). Si ya entraste con Google, te saluda: *"¡Guau, bienvenido de vuelta, [apodo]!"*. Toca la pantalla o presiona cualquier tecla para ir a la pantalla de inicio.
 
 Las frases, el texto de abajo, el tamaño del título y cada cuánto ladra el perro están en `src/config.js`, sección `BIENVENIDA`. Puedes agregar o cambiar frases.
 
