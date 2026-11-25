@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.18.1';
+const VERSION_JUEGO = '0.19';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -22,10 +22,31 @@ const CONFIG = {
   //  mapa están en src/mapas.js. Aquí van los números.
   //  En todos los mapas: si no caben todas las cosas, se ponen las que quepan.
   // ---------------------------------------------------------------
+  // ---------------------------------------------------------------
+  //  DIFICULTAD (v0.19): un solo número para afinar todo el juego.
+  //  Multiplica la vida, el daño y la cantidad de enemigos (también la
+  //  del jefe), el daño de los eventos peligrosos (curao al volante y
+  //  jauría) y qué tan seguido llegan, en TODOS los mapas.
+  //  1 = normal · 1.2 = 20% más difícil · 0.8 = 20% más fácil
+  //  La dificultad de cada mapa está en MAPAS (más abajo), en DIFICULTAD.
+  // ---------------------------------------------------------------
+  DIFICULTAD: {
+    MULTIPLICADOR_GLOBAL: 1.0
+  },
+
   MAPA_SEMILLA: 'lomito',       // cambia este texto para que las cosas salgan en otros lugares (todos los mapas)
   MAPAS: {
     INICIAL: 'plaza',           // mapa marcado la primera vez que se abre la pantalla de mapas
     GUARDADO: 'lomitoSurvivor_mapa', // nombre del guardado en el navegador del último mapa elegido
+    // Mapas desbloqueados y noches sobrevividas en cada mapa (v0.19). No lo cambies o se "pierde" el progreso
+    GUARDADO_DESBLOQUEO: 'lomitoSurvivor_mapas',
+
+    // En cada mapa (v0.19):
+    //  DIFICULTAD: multiplicadores del mapa. VIDA, DANO y CANTIDAD de enemigos,
+    //              y EVENTOS = qué tan seguido llegan el curao y la jauría (1.35 = 35% más).
+    //              Se multiplican con DIFICULTAD.MULTIPLICADOR_GLOBAL (arriba).
+    //  DESBLOQUEO: qué hay que hacer para poder elegirlo (sin DESBLOQUEO = siempre disponible).
+    //              MAPA: en qué mapa hay que sobrevivir · NOCHES: cuántas noches
 
     // La plaza (el mapa de siempre, ahora el doble de ancho y de alto)
     plaza: {
@@ -38,7 +59,8 @@ const CONFIG = {
       FAROL_CADA: 350,          // distancia entre faroles a lo largo de los caminos
       AUTOS: 40,                // estacionados en la calle de los bordes
       SENDEROS_POR_PRADO: 2,    // senderos de tierra en cada uno de los 4 prados
-      ULTRA_MULTIPLICADOR: 1    // probabilidad de ultra raros en este mapa (1 = normal, 2 = el doble)
+      ULTRA_MULTIPLICADOR: 1,   // probabilidad de ultra raros en este mapa (1 = normal, 2 = el doble)
+      DIFICULTAD: { VIDA: 1.0, DANO: 1.0, CANTIDAD: 1.0, EVENTOS: 1.0 } // el mapa base
     },
 
     // Terminal de buses: andenes con buses estacionados
@@ -56,7 +78,9 @@ const CONFIG = {
       BASUREROS: 18,            // al lado de las bancas (sueltan comida)
       FAROLES: 48,              // sobre los andenes
       FAROL_CADA: 380,          // distancia entre faroles en un andén
-      ULTRA_MULTIPLICADOR: 1
+      ULTRA_MULTIPLICADOR: 1,
+      DIFICULTAD: { VIDA: 1.35, DANO: 1.35, CANTIDAD: 1.35, EVENTOS: 1.35 },
+      DESBLOQUEO: { MAPA: 'plaza', NOCHES: 1 }    // sobrevivir 1 noche en la plaza
     },
 
     // Feria libre: corridas de puestos con toldos y cajones
@@ -75,7 +99,9 @@ const CONFIG = {
       FAROLES: 44,              // en los pasillos entre corridas
       FAROL_CADA: 420,          // distancia entre faroles en un pasillo
       MANCHAS: 160,             // cartones y hojas de lechuga tirados en el suelo (solo adorno)
-      ULTRA_MULTIPLICADOR: 1
+      ULTRA_MULTIPLICADOR: 1,
+      DIFICULTAD: { VIDA: 1.7, DANO: 1.7, CANTIDAD: 1.7, EVENTOS: 1.7 },
+      DESBLOQUEO: { MAPA: 'terminal', NOCHES: 1 } // sobrevivir 1 noche en la terminal
     }
   },
 
@@ -92,7 +118,7 @@ const CONFIG = {
   LUZ_PERRO_RADIO: 150,         // pequeña luz alrededor del perro para no perderlo de vista
 
   // Comida (cura un poco de vida; solo se come si te falta vida)
-  COMIDA_CURA: 15,              // vida que recupera cada comida
+  COMIDA_CURA: 11,              // vida que recupera cada comida (antes 15; v0.19: -25%)
   COMIDA_CADA_MS: 12000,        // cada cuánto aparece comida en algún lugar cerca del perro
   COMIDA_DISTANCIA: 550,        // qué tan lejos del perro puede aparecer
   COMIDA_MAXIMA: 8,             // máximo de comida en el suelo a la vez
@@ -101,7 +127,7 @@ const CONFIG = {
 
   // Agua de la pileta (cura si el perro está pegado a ella)
   AGUA_CURA: 1,                 // vida que recupera...
-  AGUA_CURA_CADA_MS: 500,       // ...cada este tiempo
+  AGUA_CURA_CADA_MS: 670,       // ...cada este tiempo (antes 500; v0.19: cura 25% menos)
   AGUA_DISTANCIA: 15,           // qué tan pegado a la pileta tiene que estar
 
   // Enemigos rodeando obstáculos
@@ -131,7 +157,7 @@ const CONFIG = {
     // Quiltro (mestizo): equilibrado y resistente
     quiltro: {
       COLOR: 0x8b5a2b,          // café
-      VIDA: 110,
+      VIDA: 82,                 // antes 110 (v0.19: -25%)
       VELOCIDAD: 220,
       MORDIDA_DANO: 10,
       MORDIDA_CADA_MS: 1000,
@@ -141,13 +167,13 @@ const CONFIG = {
       PODER: 'calle',
       PODER_ESPERA_MS: 0,
       CALLE_CURA: 1,            // poder "Calle": vida que recupera...
-      CALLE_CURA_CADA_MS: 2000  // ...cada este tiempo
+      CALLE_CURA_CADA_MS: 2670  // ...cada este tiempo (antes 2000; v0.19: cura 25% menos)
     },
 
     // Pitbull: lento, mucha vida y mordida fuerte
     pitbull: {
       COLOR: 0x6b7f99,          // gris azulado
-      VIDA: 160,
+      VIDA: 120,                // antes 160 (v0.19: -25%)
       VELOCIDAD: 175,
       MORDIDA_DANO: 16,
       MORDIDA_CADA_MS: 1150,
@@ -163,7 +189,7 @@ const CONFIG = {
     // Galgo: muy rápido y frágil
     galgo: {
       COLOR: 0xe8d5b0,          // beige claro
-      VIDA: 70,
+      VIDA: 52,                 // antes 70 (v0.19: -25%)
       VELOCIDAD: 290,
       MORDIDA_DANO: 9,
       MORDIDA_CADA_MS: 1000,
@@ -179,7 +205,7 @@ const CONFIG = {
     // Beagle: mordida débil pero gran olfato
     beagle: {
       COLOR: 0xf5f5f0,          // blanco
-      VIDA: 90,
+      VIDA: 68,                 // antes 90 (v0.19: -25%)
       VELOCIDAD: 225,
       MORDIDA_DANO: 7,
       MORDIDA_CADA_MS: 900,
@@ -216,6 +242,7 @@ const CONFIG = {
   //  MAXIMO: máximo de este enemigo a la vez (opcional)
   //  COMPORTAMIENTO: cómo se mueve: 'perseguir', 'zigzag',
   //                  'embestida' o 'atrapar'
+  //  MAPAS: (opcional) ids de los mapas donde aparece. Sin MAPAS = en todos.
   // ---------------------------------------------------------------
   ENEMIGOS: {
     // Perro rival: el enemigo básico
@@ -293,6 +320,59 @@ const CONFIG = {
       COMPORTAMIENTO: 'atrapar',
       ATRAPA_MS: 1500,          // cuánto tiempo te deja quieto
       RECARGA_MS: 4000          // después de atraparte, cuánto espera para poder atraparte de nuevo
+    },
+
+    // --- Enemigos propios de cada mapa (v0.19) ---
+
+    // Palomas (solo en la plaza): bandadas que revolotean en zigzag. Débiles pero molestas
+    paloma: {
+      COLOR: 0x8e9aaf,          // gris paloma
+      RADIO: 10,
+      VIDA: 6,
+      VELOCIDAD: 150,
+      DANO: 3,
+      HUESOS: 1,
+      DESDE_SEGUNDOS: 75,
+      PESO: 1.5,
+      COMPORTAMIENTO: 'zigzag',
+      ZIGZAG_GRADOS: 40,
+      ZIGZAG_CADA_MS: 700,
+      GRUPO_MIN: 4,             // llegan de a 4...
+      GRUPO_MAX: 6,             // ...hasta 6 juntas
+      MAPAS: ['plaza']
+    },
+
+    // Auxiliar de micro (solo en la terminal): embiste más fuerte y más lejos que el Drogadicto
+    auxiliar: {
+      COLOR: 0xf9a825,          // chaleco amarillo
+      RADIO: 18,
+      VIDA: 55,
+      VELOCIDAD: 95,
+      DANO: 14,
+      HUESOS: 3,
+      DESDE_SEGUNDOS: 100,
+      PESO: 2.5,
+      COMPORTAMIENTO: 'embestida',
+      DISTANCIA_EMBESTIDA: 330,
+      AVISO_MS: 650,
+      EMBESTIDA_VELOCIDAD: 600,
+      EMBESTIDA_MS: 600,
+      DESCANSO_MS: 800,
+      MAPAS: ['terminal']
+    },
+
+    // Quiltro bravo (solo en la feria): un perro rival más grande, rápido y fuerte, con collar de púas
+    bravo: {
+      COLOR: 0x5d4037,          // café oscuro
+      RADIO: 18,
+      VIDA: 45,
+      VELOCIDAD: 135,
+      DANO: 9,
+      HUESOS: 2,
+      DESDE_SEGUNDOS: 40,
+      PESO: 4,
+      COMPORTAMIENTO: 'perseguir',
+      MAPAS: ['feria']
     }
   },
 
@@ -432,17 +512,23 @@ const CONFIG = {
     ACTIVO: true,               // false = nunca aparece
     // Qué tan seguido viene en cada fase de la noche (mismo orden que NOCHE.FASES):
     // 0 = no viene, 1 = normal, 2 = el doble de seguido
-    FRECUENCIA_POR_FASE: [0, 1, 1.5, 2],
-    ESPERA_MIN_MS: 40000,       // con frecuencia 1, entre un auto y otro pasan entre 40 s...
-    ESPERA_MAX_MS: 70000,       // ...y 70 s (al azar). Se divide por la frecuencia de la fase
-    AVISO_MS: 2000,             // cuánto antes avisa
+    // (también se multiplica por DIFICULTAD.EVENTOS del mapa y por MULTIPLICADOR_GLOBAL)
+    FRECUENCIA_POR_FASE: [0.6, 1, 1.5, 2], // antes [0, 1, 1.5, 2]: ahora también puede venir en el Anochecer (desde DESDE_SEGUNDOS)
+    DESDE_SEGUNDOS: 90,         // nunca viene antes de este segundo (nuevo en v0.19)
+    ESPERA_MIN_MS: 20000,       // con frecuencia 1, entre un auto y otro pasan entre 20 s... (antes 40000; v0.19: el doble de seguido)
+    ESPERA_MAX_MS: 35000,       // ...y 35 s (al azar). Se divide por la frecuencia (antes 70000)
+    // Cuántos autos vienen juntos en cada fase, desde lados distintos: [mínimo, máximo]
+    AUTOS_POR_FASE: [[1, 1], [1, 1], [1, 2], [2, 3]], // nuevo en v0.19 (antes siempre 1)
+    DESVIO_EXTRA_MAX: 260,      // los autos de más pasan hasta esta distancia del perro (te cierran el paso)
+    SEPARACION_AUTOS_MS: 350,   // cuando vienen varios, cada uno sale este rato después del anterior
+    AVISO_MS: 2000,             // cuánto antes avisa (igual que antes)
     VELOCIDAD: 1000,            // qué tan rápido va (el Galgo corre 290)
     INCLINACION_GRADOS: 15,     // no entra siempre derecho: se tuerce hasta esto
     DESVIO_MAX: 80,             // pasa a esta distancia (al azar) del lugar donde estabas en el aviso
     ZIGZAG_PROBABILIDAD: 0.5,   // probabilidad de que vaya zigzagueando
     ZIGZAG_AMPLITUD: 45,        // cuánto se va hacia los lados al zigzaguear (px)
     ZIGZAG_CADA_MS: 600,        // cuánto demora cada vaivén
-    DANO: 35,                   // daño si te pega
+    DANO: 45,                   // daño si te pega (antes 35; v0.19: +30%). Se multiplica por MULTIPLICADOR_GLOBAL
     EMPUJE: 750,                // qué tan fuerte te empuja...
     EMPUJE_MS: 280,             // ...y cuánto dura el empujón
     INVULNERABLE_MS: 1000,      // tiempo sin recibir daño después del atropello
@@ -454,11 +540,42 @@ const CONFIG = {
   },
 
   // ---------------------------------------------------------------
+  //  LA JAURÍA (nuevo en v0.19, src/ataques.js): una estampida de perros
+  //  cruza la pantalla en fila por un carril. Antes avisa: carril amarillo,
+  //  texto y flecha. Si te pilla hace mucho daño; para esquivarla hay que
+  //  salirse del carril. No daña a los otros enemigos.
+  //  Tecla de prueba: E (estampida)
+  // ---------------------------------------------------------------
+  JAURIA: {
+    ACTIVO: true,               // false = nunca aparece
+    DESDE_SEGUNDOS: 120,        // nunca viene antes de este segundo
+    // Qué tan seguido viene en cada fase (como el curao). Se multiplica por
+    // DIFICULTAD.EVENTOS del mapa y por MULTIPLICADOR_GLOBAL
+    FRECUENCIA_POR_FASE: [0.7, 1, 1.4, 1.8],
+    ESPERA_MIN_MS: 30000,       // con frecuencia 1, entre una jauría y otra pasan entre 30 s...
+    ESPERA_MAX_MS: 50000,       // ...y 50 s (al azar)
+    AVISO_MS: 1800,             // cuánto antes avisa
+    PERROS_POR_FASE: [7, 9, 11, 14], // cuántos perros corren en cada carril
+    CARRILES_POR_FASE: [1, 1, 2, 2], // cuántos carriles a la vez (desde lados distintos)
+    ANCHO_CARRIL: 120,          // ancho del carril por donde corren (px)
+    DESVIO_MAX: 60,             // el carril pasa a esta distancia (al azar) de donde estabas en el aviso
+    DESVIO_EXTRA_MAX: 240,      // los carriles extra pasan hasta esta distancia
+    VELOCIDAD: 620,             // qué tan rápido corren
+    SEPARACION: 46,             // distancia entre un perro y el siguiente en la fila
+    DANO: 30,                   // daño si te pillan (una sola vez por jauría). Se multiplica por MULTIPLICADOR_GLOBAL
+    EMPUJE: 520,                // qué tan fuerte te empujan...
+    EMPUJE_MS: 220,             // ...y cuánto dura el empujón
+    INVULNERABLE_MS: 900,       // tiempo sin recibir daño después
+    ESPERA_TRAS_CURAO_MS: 4000  // si hay un curao en camino, la jauría espera este rato (para no venir encima)
+  },
+
+  // ---------------------------------------------------------------
   //  OBJETOS
   //  Caen a veces de los enemigos (además de los huesos). Pasa encima
   //  para recogerlos. Los nombres, frases y dibujos están en src/objetos.js
   // ---------------------------------------------------------------
-  OBJETO_PROBABILIDAD: 0.03,    // probabilidad de que un enemigo suelte objeto (0.03 = 3 de cada 100)
+  OBJETO_PROBABILIDAD: 0.021,   // probabilidad de que un enemigo suelte objeto (0.021 = 2,1 de cada 100)
+                                // (antes 0.03; v0.19: -30%)
   OBJETO_NIVEL_MAX: 3,          // nivel máximo de cada objeto
   INVENTARIO_MAX: 6,            // cuántos objetos distintos puedes llevar
   OBJETO_RECOGER: 22,           // qué tan cerca tienes que pasar para recogerlo (se suma al RADIO del perro)
@@ -625,9 +742,9 @@ const CONFIG = {
   //  partidas, con cualquier raza. Sus nombres, frases y dibujos están
   //  en src/coleccionables.js
   // ---------------------------------------------------------------
-  ULTRA_PROBABILIDAD_ENEMIGO: 0.0005, // enemigo normal: 5 de cada 10.000 sueltan uno
-  ULTRA_PROBABILIDAD_ELITE: 0.04,     // élite: 4 de cada 100
-  ULTRA_PROBABILIDAD_JEFE: 0.35,      // Jefe de la Plaza: 35 de cada 100
+  ULTRA_PROBABILIDAD_ENEMIGO: 0.00025, // enemigo normal: 2,5 de cada 10.000 sueltan uno (antes 0.0005; v0.19: la mitad)
+  ULTRA_PROBABILIDAD_ELITE: 0.02,     // élite: 2 de cada 100 (antes 0.04; v0.19: la mitad)
+  ULTRA_PROBABILIDAD_JEFE: 0.175,     // Jefe de la Plaza: 17,5 de cada 100 (antes 0.35; v0.19: la mitad)
   ULTRA_DESAFIOS: ['aguanta', 'caceria'], // estos desafíos SIEMPRE dan un ultra raro al cumplirlos
                                           // (además de su recompensa normal). Ids de DESAFIOS
   ULTRA_RECOGER: 24,                  // qué tan cerca tienes que pasar para recogerlo (se suma al RADIO del perro)
@@ -706,11 +823,16 @@ const CONFIG = {
     //  APARICION: el tiempo entre enemigos se multiplica por esto (0.7 = salen más seguido)
     //  VIDA: la vida de los enemigos nuevos se multiplica por esto (1.5 = 50% más vida)
     //  VELOCIDAD: la velocidad de los enemigos nuevos se multiplica por esto
+    //  DANO: el daño que hacen los enemigos nuevos se multiplica por esto (nuevo en v0.19)
+    //  v0.19: curva más dura. La 1ª fase (0:00 a 2:30) queda igual que antes; al final
+    //  de la noche los enemigos hacen +60% de daño y tienen +40% de vida comparado con v0.18.
+    //  También salen más seguido en la 2ª mitad de la noche (+40% de enemigos).
+    //  Valores anteriores (v0.18): APARICION 1 / 0.85 / 0.7 / 0.6 · VIDA 1 / 1.25 / 1.5 / 1.8 · sin DANO (= 1)
     FASES: [
-      { HORA: 22, NOMBRE: 'Anochecer',      APARICION: 1,    VIDA: 1,    VELOCIDAD: 1 },
-      { HORA: 0,  NOMBRE: 'Medianoche',     APARICION: 0.85, VIDA: 1.25, VELOCIDAD: 1.05 },
-      { HORA: 2,  NOMBRE: 'Madrugada',      APARICION: 0.7,  VIDA: 1.5,  VELOCIDAD: 1.1 },
-      { HORA: 4,  NOMBRE: 'Antes del alba', APARICION: 0.6,  VIDA: 1.8,  VELOCIDAD: 1.15 }
+      { HORA: 22, NOMBRE: 'Anochecer',      APARICION: 1,    VIDA: 1,    VELOCIDAD: 1,    DANO: 1 },
+      { HORA: 0,  NOMBRE: 'Medianoche',     APARICION: 0.85, VIDA: 1.41, VELOCIDAD: 1.05, DANO: 1.2 },  // VIDA antes 1.25 (+13%)
+      { HORA: 2,  NOMBRE: 'Madrugada',      APARICION: 0.5,  VIDA: 1.9,  VELOCIDAD: 1.1,  DANO: 1.4 },  // APARICION antes 0.7 (÷1.4), VIDA antes 1.5 (+27%)
+      { HORA: 4,  NOMBRE: 'Antes del alba', APARICION: 0.43, VIDA: 2.52, VELOCIDAD: 1.15, DANO: 1.6 }   // APARICION antes 0.6 (÷1.4), VIDA antes 1.8 (+40%)
     ]
   },
 

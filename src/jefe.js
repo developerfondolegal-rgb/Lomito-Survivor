@@ -84,8 +84,10 @@ function crearJefe(escena) {
   jefe.tipo = 'jefe';
   jefe.cfg = { DANO: J.DANO, HUESOS: J.HUESOS, VELOCIDAD: J.VELOCIDAD, COMPORTAMIENTO: 'jefe' };
   jefe.radio = J.RADIO;
-  jefe.vida = J.VIDA;
-  jefe.vidaMax = J.VIDA;
+  // Dificultad del mapa y global (src/mapas.js): más vida y más daño
+  jefe.vida = J.VIDA * factorDificultad(escena.mapaId, 'VIDA');
+  jefe.vidaMax = jefe.vida;
+  jefe.multDano = factorDificultad(escena.mapaId, 'DANO');
   jefe.velocidad = J.VELOCIDAD;
   jefe.elite = false;
   jefe.borde = null;

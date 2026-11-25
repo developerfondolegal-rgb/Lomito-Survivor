@@ -13,7 +13,11 @@
 //   obstaculos:  tipos de obstáculos que tiene (se muestran en la carta)
 //   ultraRaros:  ids de los ultra raros que SOLO caen en este mapa
 //                (sus textos y dibujos están en src/coleccionables.js)
-//   desbloqueado: true = se puede elegir (por ahora todos)
+//   dificultad:  multiplicadores de VIDA, DANO y CANTIDAD de enemigos y de
+//                EVENTOS (curao y jauría). Los números están en src/config.js,
+//                MAPAS.<id>.DIFICULTAD (plaza 1, terminal 1.35, feria 1.7)
+//   El desbloqueo (qué hay que hacer para poder elegirlo) también está en
+//   src/config.js: MAPAS.<id>.DESBLOQUEO. Se guarda en el navegador.
 //
 //  El tamaño y las cantidades (cuántos buses, puestos, faroles...) y la
 //  probabilidad de los ultra raros de cada mapa están en src/config.js,
@@ -35,7 +39,7 @@ const MAPAS = [
     obstaculos: ['árboles', 'bancas', 'basureros', 'autos', 'pileta'],
     ultraRaros: ['chalequito', 'sweater', 'peluche', 'mantita', 'capa', 'antifaz',
       'antipulgas', 'lentes', 'zapatilla', 'panuelo', 'cascabel', 'gorro'],
-    desbloqueado: true,
+    dificultad: CONFIG.MAPAS.plaza.DIFICULTAD,
     paleta: {
       fondo: 0x2f5a2a,          // color de la miniatura en la pantalla de mapas
       baldosa: [0x6b6864, 0x5f5c58, 0x5f5c58], junta: 0x4a4744,
@@ -63,7 +67,7 @@ const MAPAS = [
     descripcion: 'Andenes largos y buses estacionados. Cuidado, que los micros no avisan.',
     obstaculos: ['buses', 'bancas', 'basureros'],
     ultraRaros: ['boleto', 'jockey'],
-    desbloqueado: true,
+    dificultad: CONFIG.MAPAS.terminal.DIFICULTAD,
     paleta: {
       fondo: 0x2c2c30,
       vereda: [0x6b6864, 0x5f5c58, 0x5f5c58], junta: 0x4a4744,
@@ -100,7 +104,7 @@ const MAPAS = [
     descripcion: 'Corridas de puestos, toldos y cajones. Huele a cilantro y a pelea.',
     obstaculos: ['puestos', 'toldos', 'cajones'],
     ultraRaros: ['yapa', 'carro'],
-    desbloqueado: true,
+    dificultad: CONFIG.MAPAS.feria.DIFICULTAD,
     paleta: {
       fondo: 0x3a3a40,
       vereda: [0x6b6864, 0x5f5c58, 0x5f5c58], junta: 0x4a4744,
@@ -162,16 +166,103 @@ function aplicarTamanoMapa(id) {
   CONFIG.MAPA_ALTO = cfg.ALTO;
 }
 
-// Último mapa elegido (se guarda en el navegador; si no se puede, se usa el inicial)
+// Último mapa elegido (se guarda en el navegador; si no se puede, o si está
+// bloqueado, se usa el inicial)
 function mapaGuardado() {
   try {
     const id = window.localStorage.getItem(CONFIG.MAPAS.GUARDADO);
-    if (id && CONFIG.MAPAS[id]) return id;
+    if (id && CONFIG.MAPAS[id] && mapaDesbloqueado(id)) return id;
   } catch (e) { /* sin guardado: no pasa nada */ }
   return buscarMapa(CONFIG.MAPAS.INICIAL).id;
 }
 function guardarMapaElegido(id) {
   try { window.localStorage.setItem(CONFIG.MAPAS.GUARDADO, id); } catch (e) { /* no pasa nada */ }
+}
+
+// ---------------- Dificultad (v0.19) ----------------
+
+// Multiplicador global (CONFIG.DIFICULTAD.MULTIPLICADOR_GLOBAL)
+function multiplicadorGlobal() {
+  const g = CONFIG.DIFICULTAD && CONFIG.DIFICULTAD.MULTIPLICADOR_GLOBAL;
+  return typeof g === 'number' && g > 0 ? g : 1;
+}
+
+// Multiplicadores del mapa (sin el global). Si falta alguno, vale 1
+function dificultadMapa(id) {
+  const d = buscarMapa(id).dificultad || {};
+  const num = (x) => (typeof x === 'number' && x > 0 ? x : 1);
+  return { VIDA: num(d.VIDA), DANO: num(d.DANO), CANTIDAD: num(d.CANTIDAD), EVENTOS: num(d.EVENTOS) };
+}
+
+// Multiplicador final de la partida: mapa × global. clave: 'VIDA', 'DANO', 'CANTIDAD' o 'EVENTOS'
+function factorDificultad(mapaId, clave) {
+  return dificultadMapa(mapaId)[clave] * multiplicadorGlobal();
+}
+
+// ---------------- Desbloqueo de mapas (v0.19) ----------------
+// Se guarda en el navegador (CONFIG.MAPAS.GUARDADO_DESBLOQUEO) como
+// { noches: { plaza: 2, terminal: 0 }, todos: false }
+//  noches: noches sobrevividas en cada mapa (sin teclas de prueba)
+//  todos:  true si se usó la tecla de prueba U en la pantalla de mapas
+
+function datosDesbloqueo() {
+  try {
+    const d = JSON.parse(window.localStorage.getItem(CONFIG.MAPAS.GUARDADO_DESBLOQUEO) || '{}') || {};
+    return { noches: d.noches && typeof d.noches === 'object' ? d.noches : {}, todos: !!d.todos };
+  } catch (e) {
+    return { noches: {}, todos: false };
+  }
+}
+
+function guardarDesbloqueo(datos) {
+  try { window.localStorage.setItem(CONFIG.MAPAS.GUARDADO_DESBLOQUEO, JSON.stringify(datos)); } catch (e) { /* no pasa nada */ }
+}
+
+// ¿Se desbloqueó jugando (sin la tecla U)?
+function desbloqueadoJugando(id, datos) {
+  const req = (CONFIG.MAPAS[id] || {}).DESBLOQUEO;
+  if (!req || !req.MAPA) return true;
+  const d = datos || datosDesbloqueo();
+  return (Number(d.noches[req.MAPA]) || 0) >= (req.NOCHES || 1);
+}
+
+function mapaDesbloqueado(id) {
+  const d = datosDesbloqueo();
+  return d.todos || desbloqueadoJugando(id, d);
+}
+
+// true si el mapa solo está abierto gracias a la tecla de prueba U
+// (esas partidas no van al ranking)
+function mapaAbiertoConPrueba(id) {
+  const d = datosDesbloqueo();
+  return d.todos && !desbloqueadoJugando(id, d);
+}
+
+// Qué hay que hacer para desbloquearlo, por ejemplo "Sobrevive 1 noche en la plaza"
+function textoDesbloqueo(id) {
+  const req = (CONFIG.MAPAS[id] || {}).DESBLOQUEO;
+  if (!req || !req.MAPA) return '';
+  const n = req.NOCHES || 1;
+  const hechas = Math.min(n, Number(datosDesbloqueo().noches[req.MAPA]) || 0);
+  return 'Sobrevive ' + n + (n === 1 ? ' noche' : ' noches') + ' en ' + buscarMapa(req.MAPA).lugar +
+    (n > 1 ? ' (' + hechas + ' / ' + n + ')' : '');
+}
+
+// Al ganar una partida (sin teclas de prueba): suma la noche y devuelve
+// los mapas que se acaban de desbloquear
+function registrarNocheSobrevivida(id) {
+  const antes = listaMapas().filter((m) => !desbloqueadoJugando(m.id)).map((m) => m.id);
+  const d = datosDesbloqueo();
+  d.noches[id] = (Number(d.noches[id]) || 0) + 1;
+  guardarDesbloqueo(d);
+  return antes.filter((m) => desbloqueadoJugando(m, d));
+}
+
+// Tecla de prueba U (pantalla de mapas): abre todos los mapas
+function desbloquearTodosPrueba() {
+  const d = datosDesbloqueo();
+  d.todos = true;
+  guardarDesbloqueo(d);
 }
 
 // Multiplicador de probabilidad de ultra raros del mapa (config.js)

@@ -18,5 +18,9 @@ const ENEMIGOS = [
   { id: 'manada',     nombre: 'Manada',      descripcion: 'Perritos rojizos chicos. Llegan en grupo, rápidos y débiles.' },
   { id: 'borracho',   nombre: 'Borracho',    descripcion: 'Persona con botella. Lento, zigzaguea, aguanta mucho y pega fuerte.' },
   { id: 'drogadicto', nombre: 'Drogadicto',  descripcion: 'Persona encorvada verde pálido. Se detiene, avisa con una línea y embiste.' },
-  { id: 'perrera',    nombre: 'Perrera',     descripcion: 'Persona de uniforme azul con lazo. No hace daño, pero te deja atrapado un momento.' }
+  { id: 'perrera',    nombre: 'Perrera',     descripcion: 'Persona de uniforme azul con lazo. No hace daño, pero te deja atrapado un momento.' },
+  // Propios de cada mapa (v0.19; en qué mapa salen: MAPAS en src/config.js)
+  { id: 'paloma',     nombre: 'Palomas',     descripcion: 'Bandada de palomas de la plaza. Revolotean en zigzag y picotean.' },
+  { id: 'auxiliar',   nombre: 'Auxiliar de micro', descripcion: 'Chaleco amarillo y jockey. Grita "¡suba, suba!" y embiste lejos y fuerte.' },
+  { id: 'bravo',      nombre: 'Quiltro bravo', descripcion: 'Perro café oscuro con collar de púas. Más grande, rápido y fuerte que el rival.' }
 ];

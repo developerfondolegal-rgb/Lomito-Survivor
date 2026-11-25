@@ -2,6 +2,8 @@
 // Flechas ← → para moverse, Enter o Espacio para jugar, teclas 1, 2, 3...
 // para elegir directo, Esc para volver. Con el mouse: clic en un mapa.
 // En celular: toca un mapa.
+// Los mapas bloqueados se ven con candado y dicen qué hay que hacer (src/mapas.js).
+// Tecla de prueba U: desbloquea todos los mapas (esas partidas no van al ranking).
 // La lista de mapas, sus nombres y colores están en src/mapas.js;
 // sus tamaños y cantidades, en src/config.js (sección MAPAS).
 // (FUENTE viene de MenuScene.js; marcoPixel, de src/pausa.js; botonPantalla, de src/tactil.js)
@@ -14,6 +16,7 @@ class MapaScene extends Phaser.Scene {
   // Recibe la raza elegida en la pantalla de inicio
   init(datos) {
     this.razaId = (datos && datos.raza) || Object.keys(CONFIG.RAZAS)[0];
+    this.avisoInicial = (datos && datos.aviso) || '';
   }
 
   create() {
@@ -38,6 +41,16 @@ class MapaScene extends Phaser.Scene {
     this.crearCartas();
     this.marcar(this.indice);
 
+    // Aviso abajo (por ejemplo, al tocar un mapa bloqueado)
+    this.textoAviso = this.add.text(w / 2, h - 62 - e / 2, '', {
+      fontFamily: FUENTE, fontSize: '15px', color: '#ffab91', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
+    }).setOrigin(0.5);
+    if (!modoTactil() && this.mapas.some((m) => !mapaDesbloqueado(m.id))) {
+      this.add.text(w - 10, 6, 'Prueba: U desbloquea todos los mapas (no van al ranking)', {
+        fontFamily: FUENTE, fontSize: '11px', color: '#777777'
+      }).setOrigin(1, 0);
+    }
+
     const yb = h - 26 - e / 2;
     botonPantalla(this, w / 2 - 130, yb, 200, 34, 'Volver' + (modoTactil() ? '' : ' (Esc)'), 0xffd54f,
       () => this.scene.start('MenuScene'));
@@ -51,8 +64,16 @@ class MapaScene extends Phaser.Scene {
     this.teclaEnter = this.input.keyboard.addKey('ENTER');
     this.teclaEspacio = this.input.keyboard.addKey('SPACE');
     this.teclaEsc = this.input.keyboard.addKey('ESC');
+    this.teclaU = this.input.keyboard.addKey('U'); // prueba: desbloquear todos los mapas
     const nombresTeclas = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
     this.teclas = this.mapas.map((_, i) => this.input.keyboard.addKey(nombresTeclas[i]));
+    if (this.avisoInicial) this.avisar(this.avisoInicial, '#ffcc80');
+  }
+
+  avisar(texto, color) {
+    this.tweens.killTweensOf(this.textoAviso);
+    this.textoAviso.setText(texto).setColor(color || '#ffab91').setAlpha(1);
+    this.tweens.add({ targets: this.textoAviso, alpha: 0, delay: 2600, duration: 600 });
   }
 
   update() {
@@ -61,6 +82,11 @@ class MapaScene extends Phaser.Scene {
     if (J(this.cursors.right) || J(this.teclaD)) this.mover(1);
     if (J(this.teclaEnter) || J(this.teclaEspacio)) this.jugar(this.indice);
     if (J(this.teclaEsc)) this.scene.start('MenuScene');
+    if (J(this.teclaU) && this.mapas.some((m) => !mapaDesbloqueado(m.id))) {
+      desbloquearTodosPrueba();
+      this.scene.restart({ raza: this.razaId, aviso: 'Prueba: todos los mapas desbloqueados (no van al ranking)' });
+      return;
+    }
     this.teclas.forEach((t, i) => { if (J(t)) this.jugar(i); });
   }
 
@@ -69,7 +95,7 @@ class MapaScene extends Phaser.Scene {
     let i = this.indice;
     for (let k = 0; k < n; k++) { // salta los bloqueados
       i = (i + paso + n) % n;
-      if (this.mapas[i].desbloqueado !== false) break;
+      if (mapaDesbloqueado(this.mapas[i].id)) break;
     }
     this.marcar(i);
   }
@@ -87,7 +113,11 @@ class MapaScene extends Phaser.Scene {
   jugar(i) {
     const mapa = this.mapas[i];
     if (!mapa || this.empezando) return;
-    if (mapa.desbloqueado === false) return; // por ahora todos vienen desbloqueados
+    if (!mapaDesbloqueado(mapa.id)) { // bloqueado: dice qué hay que hacer
+      this.avisar('🔒 ' + mapa.nombre + ': ' + textoDesbloqueo(mapa.id) + ' para desbloquearlo');
+      this.cameras.main.shake(120, 0.004);
+      return;
+    }
     this.empezando = true;
     guardarMapaElegido(mapa.id);
     this.scene.start('GameScene', { raza: this.razaId, mapa: mapa.id });
@@ -107,7 +137,7 @@ class MapaScene extends Phaser.Scene {
     this.mapas.forEach((mapa, i) => {
       const cx = inicioX + i * separacion;
       const cfg = CONFIG.MAPAS[mapa.id];
-      const bloqueado = mapa.desbloqueado === false;
+      const bloqueado = !mapaDesbloqueado(mapa.id);
 
       const fondo = this.add.rectangle(cx, arriba + alto / 2, ancho, alto, 0x2b2b3a).setStrokeStyle(3, 0x888899)
         .setInteractive({ useHandCursor: !bloqueado });
@@ -127,7 +157,10 @@ class MapaScene extends Phaser.Scene {
       const yMini = arriba + 28;
       const g = this.add.graphics();
       dibujarMiniaturaMapa(g, mapa.id, cx - anchoMini / 2, yMini, anchoMini, altoMini);
-      if (bloqueado) g.fillStyle(0x000000, 0.6).fillRect(cx - anchoMini / 2, yMini, anchoMini, altoMini);
+      if (bloqueado) {
+        g.fillStyle(0x000000, 0.7).fillRect(cx - anchoMini / 2, yMini, anchoMini, altoMini);
+        dibujarCandado(g, cx, yMini + altoMini / 2 + 6);
+      }
 
       // Textos
       let y = yMini + altoMini + 8;
@@ -138,8 +171,17 @@ class MapaScene extends Phaser.Scene {
         y += t.height + espacio;
         return t;
       };
-      poner(mapa.nombre + (bloqueado ? '  🔒' : ''), { fontSize: '22px', color: '#ffe082', fontStyle: 'bold' }, 4);
-      poner(mapa.descripcion, { fontSize: '13px', color: '#ffffff', fontStyle: 'italic' }, 6);
+      poner(mapa.nombre, { fontSize: '22px', color: bloqueado ? '#9e9e9e' : '#ffe082', fontStyle: 'bold' }, 4);
+      if (bloqueado) {
+        poner('BLOQUEADO: ' + textoDesbloqueo(mapa.id) + ' para desbloquearlo',
+          { fontSize: '13px', color: '#ffab91', fontStyle: 'bold' }, 6);
+      } else {
+        poner(mapa.descripcion, { fontSize: '13px', color: '#ffffff', fontStyle: 'italic' }, 6);
+      }
+      const dif = dificultadMapa(mapa.id);
+      const nivelDif = Math.max(dif.VIDA, dif.DANO, dif.CANTIDAD);
+      poner('Dificultad: ' + (nivelDif <= 1 ? 'normal' : '×' + numeroPausa(nivelDif, 2)),
+        { fontSize: '12px', color: nivelDif >= 1.5 ? '#ff8a80' : nivelDif > 1 ? '#ffcc80' : '#c5e1a5', fontStyle: 'bold' }, 2);
       poner('Obstáculos: ' + mapa.obstaculos.join(', '), { fontSize: '12px', color: '#cfd8dc' }, 2);
       poner('Tamaño: ' + cfg.ANCHO + ' × ' + cfg.ALTO, { fontSize: '12px', color: '#9e9e9e' }, 6);
 
@@ -159,4 +201,20 @@ class MapaScene extends Phaser.Scene {
       this.cartas.push({ fondo, flecha });
     });
   }
+}
+
+// Candado dorado de pixel art (mapas bloqueados)
+function dibujarCandado(g, x, y) {
+  g.lineStyle(6, 0x000000, 1);
+  g.beginPath();
+  g.arc(x, y - 8, 12, Math.PI, 0, false);
+  g.strokePath();
+  g.lineStyle(4, 0xffd54f, 1);
+  g.beginPath();
+  g.arc(x, y - 8, 12, Math.PI, 0, false);
+  g.strokePath();
+  g.fillStyle(0x000000, 1).fillRect(x - 19, y - 10, 38, 30);
+  g.fillStyle(0xffd54f, 1).fillRect(x - 17, y - 8, 34, 26);
+  g.fillStyle(0xc49a00, 1).fillRect(x - 17, y + 12, 34, 6);
+  g.fillStyle(0x000000, 1).fillRect(x - 3, y - 2, 6, 6).fillRect(x - 1, y + 3, 2, 8);
 }

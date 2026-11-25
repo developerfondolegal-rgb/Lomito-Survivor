@@ -455,6 +455,144 @@ const SPRITES = {
   },
 
   // ---------------------------------------------------------------
+  //  ENEMIGOS PROPIOS DE CADA MAPA (v0.19)
+  // ---------------------------------------------------------------
+
+  // Palomas (plaza): G = plumas, g = ala oscura, N = cuello verde tornasol,
+  // O = ojo naranjo, B = pico, P = patas rosadas. El 2º cuadro aletea
+  paloma: {
+    colores: { G: 0x9aa5b8, g: 0x5f6b80, N: 0x5aa88a, O: 0xff8f00, B: 0x424242, P: 0xe57373 },
+    animacion: 9,
+    cuadros: [
+      [
+        '................',
+        '................',
+        '................',
+        '................',
+        '..........KKK...',
+        '.........KGGGK..',
+        '.........KGOGKBK',
+        '.........KNNNK..',
+        '...KKKKKKKNNNK..',
+        '..KgggGGGGGGGK..',
+        '.KggggGGGGGGK...',
+        '..KKgggGGGGK....',
+        '....KKKKKKK.....',
+        '......P..P......',
+        '......PP.PP.....',
+        '................'
+      ],
+      [
+        '................',
+        '................',
+        '................',
+        '................',
+        '..........KKK...',
+        '..KK.....KGGGK..',
+        '..KgK....KGOGKBK',
+        '...KgK...KNNNK..',
+        '....KgKKKKNNNK..',
+        '...KGGgGGGGGGK..',
+        '..KGGGGGGGGGK...',
+        '...KKGGGGGGK....',
+        '....KKKKKKK.....',
+        '......P..P......',
+        '......PP.PP.....',
+        '................'
+      ]
+    ]
+  },
+
+  // Auxiliar de micro (terminal): jockey rojo, chaleco amarillo con franja reflectante
+  // H = jockey, S = piel, Y = chaleco, y = sombra, w = franja reflectante, P = pantalón
+  auxiliar: {
+    colores: { H: 0xc62828, S: 0xc68642, Y: 0xf9a825, y: 0xc17900, w: 0xe0e0e0, P: 0x37474f },
+    animacion: 6,
+    cuadros: [
+      [
+        '.....KKKKK......',
+        '....KHHHHHK.....',
+        '....KHHHHHHKK...',
+        '....KSSSSSK.....',
+        '....KSSSKSK.....',
+        '....KSSSSK......',
+        '...KKYYYYKK.....',
+        '..KYYwwYYYK.....',
+        '..KYYYYYYYSK....',
+        '..KyYYYYYYK.....',
+        '...KYwwwYK......',
+        '...KPPPPPK......',
+        '..KPPKKPPK......',
+        '..KPK..KPK......',
+        '.KPK....KPK.....',
+        '.KKK....KKKK....'
+      ],
+      [
+        '.....KKKKK......',
+        '....KHHHHHK.....',
+        '....KHHHHHHKK...',
+        '....KSSSSSK.....',
+        '....KSSSKSK.....',
+        '....KSSSSK......',
+        '...KKYYYYKK.....',
+        '..KYYwwYYYK.....',
+        '..KYYYYYYYSK....',
+        '..KyYYYYYYK.....',
+        '...KYwwwYK......',
+        '...KPPPPPK......',
+        '...KPPPPK.......',
+        '....KPPK........',
+        '....KPPK........',
+        '....KKKKK.......'
+      ]
+    ]
+  },
+
+  // Quiltro bravo (feria): perro café oscuro con collar de púas (Z)
+  bravo: {
+    colores: { C: 0x5d4037, c: 0x3e2723, L: 0x8d6e63, Z: 0x9e9e9e },
+    animacion: 8,
+    cuadros: [
+      [
+        '................',
+        '................',
+        '................',
+        '..K.......K.K...',
+        '.KCK.....KCKCK..',
+        '.KCK.....KCCCCK.',
+        '..KCK....KCWCCCK',
+        '..KCK....KCCCKWK',
+        '...KCKKKKKZWZKK.',
+        '...KCCCCCCCCCK..',
+        '...KCCCCCCCCCK..',
+        '...KcLLLLLLLcK..',
+        '...KcK.....KcK..',
+        '..KcK.......KcK.',
+        '..KK........KK..',
+        '................'
+      ],
+      [
+        '................',
+        '................',
+        '................',
+        '..K.......K.K...',
+        '.KCK.....KCKCK..',
+        '.KCK.....KCCCCK.',
+        '..KCK....KCWCCCK',
+        '..KCK....KCCCKWK',
+        '...KCKKKKKZWZKK.',
+        '...KCCCCCCCCCK..',
+        '...KCCCCCCCCCK..',
+        '...KcLLLLLLLcK..',
+        '....KcK..KcK....',
+        '....KcK..KcK....',
+        '....KK...KK.....',
+        '................'
+      ]
+    ]
+  },
+
+  // ---------------------------------------------------------------
   //  OBJETOS Y EFECTOS (dibujos más chicos, con 1 solo cuadro)
   // ---------------------------------------------------------------
 

@@ -59,7 +59,9 @@ class GameScene extends Phaser.Scene {
     this.nivelesPendientes = 0;
     this.derrotados = 0;
     this.derrotadosPorTipo = {};
-    this.partidaDePrueba = false; // true si se usó alguna tecla de prueba: no va al ranking (src/online.js)
+    // true si se usó alguna tecla de prueba: no va al ranking (src/online.js).
+    // También si el mapa solo está abierto por la tecla U de la pantalla de mapas (src/mapas.js)
+    this.partidaDePrueba = mapaAbiertoConPrueba(this.mapaId);
     Object.keys(CONFIG.ENEMIGOS).forEach((id) => { this.derrotadosPorTipo[id] = 0; });
     iniciarHuesitos(this);        // huesitos de la partida (src/huesitos.js)
     this.esperaMordida = 0;
@@ -166,6 +168,7 @@ class GameScene extends Phaser.Scene {
     this.teclaX = this.input.keyboard.addKey('X'); // modo de prueba: empieza un desafío al azar
     this.teclaC = this.input.keyboard.addKey('C'); // modo de prueba: un ultra raro coleccionable
     this.teclaV = this.input.keyboard.addKey('V'); // modo de prueba: viene el curao al volante
+    this.teclaE = this.input.keyboard.addKey('E'); // modo de prueba: viene la jauría (estampida)
     this.teclaP = this.input.keyboard.addKey('P');   // menú de pausa
     this.teclaEsc = this.input.keyboard.addKey('ESC'); // menú de pausa
     this.teclasCartas = [
@@ -294,6 +297,11 @@ class GameScene extends Phaser.Scene {
       this.partidaDePrueba = true;
       pruebaCurao(this);
     }
+    // Modo de prueba: la jauría viene al tiro (src/ataques.js)
+    if (Phaser.Input.Keyboard.JustDown(this.teclaE) && !this.amaneciendo) {
+      this.partidaDePrueba = true;
+      pruebaJauria(this);
+    }
 
     // Zonas especiales: en cuál está el perro (antes de moverlo, por el barro)
     actualizarZonas(this);
@@ -322,8 +330,10 @@ class GameScene extends Phaser.Scene {
     this.actualizarNoche(delta);
     if (this.gameOver) return;
 
-    // El curao al volante (src/ataques.js): puede atropellarte y terminar la partida
+    // El curao al volante y la jauría (src/ataques.js): pueden terminar la partida
     actualizarCurao(this, delta);
+    if (this.gameOver) return;
+    actualizarJauria(this, delta);
     if (this.gameOver) return;
 
     // Enemigo élite cada cierto tiempo (al amanecer ya no llegan más)
@@ -972,7 +982,14 @@ class GameScene extends Phaser.Scene {
     let multiplicador = datosFase(faseDeLaNoche(this.tiempoSobrevivido)).APARICION;
     if (this.jefeVivo()) multiplicador *= CONFIG.JEFE.APARICION_MIENTRAS;
     multiplicador *= multiplicadorAparicionDesafio(this); // desafío "Aguanta": más enemigos
+    multiplicador /= factorDificultad(this.mapaId, 'CANTIDAD'); // dificultad del mapa y global (src/mapas.js)
     return Math.max(CONFIG.APARICION_MINIMA_MS, intervalo) * multiplicador;
+  }
+
+  // ¿Este tipo de enemigo aparece en el mapa de la partida? (MAPAS en config.js; sin MAPAS = en todos)
+  enemigoDelMapa(id) {
+    const mapas = CONFIG.ENEMIGOS[id] && CONFIG.ENEMIGOS[id].MAPAS;
+    return !mapas || mapas.includes(this.mapaId);
   }
 
   // Cuántos enemigos de un tipo hay ahora en el mapa
@@ -985,6 +1002,7 @@ class GameScene extends Phaser.Scene {
     const segundos = this.tiempoSobrevivido / 1000;
     const disponibles = Object.keys(CONFIG.ENEMIGOS).filter((id) => {
       const cfg = CONFIG.ENEMIGOS[id];
+      if (!this.enemigoDelMapa(id)) return false;
       if (segundos < (cfg.DESDE_SEGUNDOS || 0)) return false;
       if (cfg.MAXIMO !== undefined && this.contarTipo(id) >= cfg.MAXIMO) return false;
       return (cfg.PESO || 0) > 0;
@@ -1053,9 +1071,11 @@ class GameScene extends Phaser.Scene {
     enemigo.tipo = tipo;
     enemigo.cfg = cfg;
     enemigo.radio = r;
-    // La fase de la noche les da más vida y velocidad
+    // La fase de la noche les da más vida, daño y velocidad; el mapa y
+    // DIFICULTAD.MULTIPLICADOR_GLOBAL, más vida y daño (src/mapas.js)
     const fase = datosFase(faseDeLaNoche(this.tiempoSobrevivido));
-    enemigo.vida = cfg.VIDA * (elite ? CONFIG.ELITE_VIDA : 1) * fase.VIDA;
+    enemigo.vida = cfg.VIDA * (elite ? CONFIG.ELITE_VIDA : 1) * fase.VIDA * factorDificultad(this.mapaId, 'VIDA');
+    enemigo.multDano = (fase.DANO || 1) * factorDificultad(this.mapaId, 'DANO');
     enemigo.velocidad = cfg.VELOCIDAD * fase.VELOCIDAD;
     enemigo.huyendoHasta = 0;     // huyendo del Aullido hasta este momento
     enemigo.empujadoHasta = 0;
@@ -1077,7 +1097,7 @@ class GameScene extends Phaser.Scene {
   // Modo de prueba (tecla T): un enemigo de cada tipo alrededor del perro.
   // Estos enemigos no sueltan huesos ni cuentan en el Game Over.
   modoPrueba() {
-    const tipos = Object.keys(CONFIG.ENEMIGOS);
+    const tipos = Object.keys(CONFIG.ENEMIGOS).filter((id) => this.enemigoDelMapa(id));
     tipos.forEach((tipo, i) => {
       const angulo = (i / tipos.length) * Math.PI * 2;
       const x = Phaser.Math.Clamp(this.perro.x + Math.cos(angulo) * 220, 20, CONFIG.MAPA_ANCHO - 20);
@@ -1090,7 +1110,8 @@ class GameScene extends Phaser.Scene {
   // tipo que ya esté apareciendo. Siempre suelta un objeto raro o mejor.
   aparecerElite() {
     const segundos = this.tiempoSobrevivido / 1000;
-    const tipos = Object.keys(CONFIG.ENEMIGOS).filter((id) => segundos >= (CONFIG.ENEMIGOS[id].DESDE_SEGUNDOS || 0));
+    const tipos = Object.keys(CONFIG.ENEMIGOS).filter((id) =>
+      this.enemigoDelMapa(id) && segundos >= (CONFIG.ENEMIGOS[id].DESDE_SEGUNDOS || 0));
     if (tipos.length === 0) return;
     const tipo = Phaser.Math.RND.pick(tipos);
     const pos = this.posicionFueraDePantalla();
@@ -1946,8 +1967,9 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
+    // Fase de la noche, mapa y dificultad global (multDano se calcula al aparecer)
     // Collar viejo: menos daño por nivel. Cuero de calle: la mitad si está activo.
-    let dano = cfg.DANO * Math.max(0, 1 - this.nivelObjeto('collar') * CONFIG.OBJETOS.collar.MENOS_DANO);
+    let dano = cfg.DANO * (enemigo.multDano || 1) * Math.max(0, 1 - this.nivelObjeto('collar') * CONFIG.OBJETOS.collar.MENOS_DANO);
     if (this.fusiones.cuero && ahora < this.cueroHasta) dano *= CONFIG.FUSIONES.cuero.MULTIPLICADOR;
     // Zona peligrosa: el doble de daño
     if (this.efectoZona.peligro) dano *= CONFIG.ZONAS.peligro.DANO_MULTIPLICADOR || 1;
@@ -2063,6 +2085,16 @@ class GameScene extends Phaser.Scene {
     // Ranking online (src/online.js): se envía solo, arriba a la derecha dice cómo le fue
     this.enviarAlRanking(victoria);
 
+    // Desbloqueo de mapas (src/mapas.js): solo cuentan las noches sin teclas de prueba
+    if (victoria && !this.partidaDePrueba) {
+      const nuevos = registrarNocheSobrevivida(this.mapaId);
+      if (nuevos.length > 0) {
+        this.add.text(cx, 488, '🔓 ¡Desbloqueaste ' + nuevos.map((id) => buscarMapa(id).nombre).join(' y ') + '!', {
+          fontFamily: FUENTE, fontSize: '20px', color: '#9ccc65', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(2001);
+      }
+    }
+
 
     lineas.forEach((l) => {
       const estilo = { fontFamily: FUENTE, fontSize: l.tam, color: l.color, fontStyle: l.negrita ? 'bold' : 'normal', align: 'center' };
@@ -2134,9 +2166,9 @@ class GameScene extends Phaser.Scene {
 
   // Tipos de enemigo con nombre (src/enemigos.js) y números (config.js)
   listaEnemigos() {
-    const conNombre = ENEMIGOS.filter((e) => CONFIG.ENEMIGOS[e.id]);
+    const conNombre = ENEMIGOS.filter((e) => CONFIG.ENEMIGOS[e.id] && this.enemigoDelMapa(e.id));
     const sinNombre = Object.keys(CONFIG.ENEMIGOS)
-      .filter((id) => !ENEMIGOS.some((e) => e.id === id))
+      .filter((id) => !ENEMIGOS.some((e) => e.id === id) && this.enemigoDelMapa(id))
       .map((id) => ({ id, nombre: id }));
     return conNombre.concat(sinNombre);
   }

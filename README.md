@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.18.1** — pestaña Stats de la pausa rediseñada (tarjetas Perro, Ataques, Árbol de habilidades y Partida, con scroll) y el aviso del jefe dice a qué mapa llegó. (v0.18: la plaza el doble de grande, Terminal de buses y Feria libre.)
+Versión actual: **v0.19** — **mucho más difícil**: el perro empieza con 25% menos vida, los enemigos pegan y aguantan más a medida que avanza la noche, más enemigos en la 2ª mitad, el curao al volante viene el doble de seguido (y de a 2 o 3 autos al final), la nueva **jauría**, dificultad por mapa, un enemigo propio en cada mapa y mapas que se desbloquean. (v0.18.1: Stats rediseñada; v0.18: mapas nuevos.)
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -49,7 +49,7 @@ El juego se ajusta solo a la parte visible de la pantalla (sin la barra del nave
 | Árbol de habilidades | Toca una pestaña de raza, toca una mejora para ver qué hace, **Comprar**, **Reiniciar árbol de …** (pide confirmar) y **Volver** |
 | Rincón de apuestas | Toca el juego, tu número o bajo/alto, **−** y **+** para el monto, "Huesitos guardados" o "1 copia de un coleccionable", **Tirar** y **Seguir jugando** / **Salir** |
 
-Las teclas de prueba (T, Y, U, J, K, Z, X, C, V, H) no tienen versión táctil.
+Las teclas de prueba (T, Y, U, J, K, Z, X, C, V, E, H) no tienen versión táctil.
 
 **Probar los controles táctiles en el PC:** abre `index.html?tactil=1` (o en Chrome usa F12 → ícono de celular "Toggle device toolbar" y elige un Android en horizontal). Con `?tactil=0` se quitan aunque la pantalla sea táctil.
 
@@ -91,10 +91,12 @@ Las teclas de prueba (T, Y, U, J, K, Z, X, C, V, H) no tienen versión táctil.
 | Modo de prueba: empieza un desafío al azar | **X** |
 | Modo de prueba: un ultra raro coleccionable al azar cerca del perro | **C** |
 | Modo de prueba: viene el curao al volante al tiro | **V** |
+| Modo de prueba: viene la jauría al tiro | **E** |
+| Modo de prueba: desbloquear todos los mapas (pantalla de mapas) | **U** |
 
 No hay botón para atacar: el perro muerde solo.
 
-### Modo de prueba (teclas T, Y, U, J, K, Z, X, C y V)
+### Modo de prueba (teclas T, Y, U, J, K, Z, X, C, V y E; U en la pantalla de mapas)
 
 - **T**: aparece un enemigo de cada tipo en un círculo alrededor del perro (la Manada aparece como grupo completo). Sirve para ver cómo se mueve cada enemigo sin esperar minutos. Estos enemigos **no sueltan huesos ni objetos ni cuentan** en el Game Over, pero sí hacen daño y atrapan como los normales.
 - **Y**: aparecen **4 objetos** alrededor del perro, uno de cada rareza (blanco, azul, morado y dorado). Cada vez que presionas Y salen objetos distintos, así en pocas veces tienes cada objeto en morado (épico) o dorado (legendario), que lo suben directo al nivel 3.
@@ -105,7 +107,9 @@ No hay botón para atacar: el perro muerde solo.
 - **Z**: aparecen **4 zonas especiales** alrededor del perro, una de cada tipo (miedo, peligrosa, barro y segura). Nunca encima del perro ni de la pileta. Camina a cada una para ver su aviso y su efecto. Duran lo normal (25 segundos).
 - **X**: empieza **un desafío al azar** (Búsqueda, Aguanta, Cacería o Sin morder). Si ya había uno, se cancela sin contar como fallido y empieza otro. Presiona X varias veces hasta que salga el que quieres probar.
 - **C**: aparece **un ultra raro coleccionable al azar** cerca del perro, con brillo arcoíris. Pasa encima para recogerlo: sale el aviso grande y **se guarda de verdad** en tu colección (cuenta como una copia más). Si quieres volver a empezar tu colección, usa **Borrar progreso** en el Álbum.
-- **V**: viene **el curao al volante** al tiro (con su aviso de 2 segundos). Sirve para probar el atropello, el empujón y el esquive del Galgo. Si ya hay un auto en camino, no pasa nada.
+- **V**: viene **el curao al volante** al tiro (con su aviso de 2 segundos). Sirve para probar el atropello, el empujón y el esquive del Galgo. Vienen los autos de la fase actual (1 al principio; 2 o 3 Antes del alba). Si ya hay un auto en camino, no pasa nada.
+- **E**: viene **la jauría** al tiro (con su aviso). Los perros y carriles son los de la fase actual. Si ya hay una en camino, no pasa nada.
+- **U en la pantalla de mapas**: **desbloquea todos los mapas** (se guarda en el navegador). Las partidas en un mapa abierto así **no van al ranking**, igual que con las otras teclas de prueba. Para volver a bloquearlos, borra `lomitoSurvivor_mapas` del almacenamiento del navegador (F12 → Application → Local Storage).
 
 - **H** (en la pantalla de inicio): **+100 huesitos guardados**, para probar el Rincón de apuestas sin jugar mucho. Se guardan de verdad; para volver a 0 usa **Borrar progreso** en el Álbum (ojo: también borra la colección).
 
@@ -148,7 +152,11 @@ Con las otras razas (no Quiltro), los enemigos sueltan hueso 3 de cada 4 veces.
 
 ### Los mapas
 
-Después de elegir la raza aparece la pantalla **Elige el mapa** (flechas ← → y Enter, clic, teclas 1 a 3, o tocar en el celular; Esc vuelve). El último mapa elegido queda marcado para la próxima vez. Por ahora todos vienen desbloqueados.
+Después de elegir la raza aparece la pantalla **Elige el mapa** (flechas ← → y Enter, clic, teclas 1 a 3, o tocar en el celular; Esc vuelve). El último mapa elegido queda marcado para la próxima vez.
+
+**Desbloqueo:** al principio solo está **La plaza**. La **Terminal de buses** se desbloquea al **sobrevivir 1 noche en la plaza**, y la **Feria libre** al **sobrevivir 1 noche en la terminal** (las partidas con teclas de prueba no cuentan). Los mapas bloqueados se ven oscuros, con **candado**, y dicen qué hay que hacer. Se guarda en el navegador.
+
+**Dificultad por mapa:** cada mapa es más difícil que el anterior. Multiplica la vida, el daño y la cantidad de enemigos y qué tan seguido llegan el curao y la jauría: plaza **×1**, terminal **×1,35**, feria **×1,7** (`src/config.js`, `MAPAS.<mapa>.DIFICULTAD`). El jefe también tiene más vida y pega más fuerte. Cada mapa tiene además su **enemigo propio**: **Palomas** en la plaza, **Auxiliar de micro** en la terminal y **Quiltro bravo** en la feria.
 
 | Mapa | Tamaño | Obstáculos | Ultra raros propios |
 |---|---|---|---|
@@ -188,6 +196,11 @@ Al inicio solo hay perros rivales. Los demás se van sumando con el tiempo:
 | **Borracho** | persona con camisa naranja, nariz roja y una botella | Lento, camina zigzagueando, mucha vida y golpe fuerte | 1:30 | 3 |
 | **Drogadicto** | persona encorvada con polerón verde pálido | Se acerca, se queda quieto parpadeando con una **línea verde** que avisa hacia dónde va, y embiste muy rápido en línea recta. ¡Sal de la línea! | 2:30 | 3 |
 | **Perrera** | persona con uniforme azul, gorra y un palo con lazo | No hace daño, pero si te toca te deja **atrapado 1,5 segundos** (aparece una jaula azul). Después se ve transparente un rato y no puede volver a atraparte. Aparece poco (máximo 2 a la vez) | 3:30 | 5 |
+| **Palomas** (solo plaza) | palomas grises con cuello verde que aletean | Bandadas de 4 a 6 que revolotean en zigzag. Débiles, pero molestan | 1:15 | 1 |
+| **Auxiliar de micro** (solo terminal) | jockey rojo y chaleco amarillo reflectante | Como el Drogadicto, pero embiste más lejos, más rápido y más fuerte | 1:40 | 3 |
+| **Quiltro bravo** (solo feria) | perro café oscuro con collar de púas | Un perro rival más rápido, con más vida y más daño | 0:40 | 2 |
+
+**v0.19: los enemigos se ponen más duros durante la noche.** En el Anochecer (0:00 a 2:30) son como antes; después tienen más vida y pegan más: Antes del alba, **+60% de daño y +40% de vida** comparado con v0.18. En la 2ª mitad de la noche llegan **40% más enemigos**.
 
 Los poderes de las razas, los instintos y el Ladrido funcionan contra todos. La Mandíbula de hierro del Pitbull también los aturde. El Sprint del Galgo evita que la Perrera te atrape.
 
@@ -269,12 +282,16 @@ En la pausa, la fila **Ataques** de **Stats** dice cuánto falta para la evoluci
 
 ### El curao al volante
 
-De vez en cuando un **auto cruza la plaza a toda velocidad** (desde la Medianoche, cada 40 a 70 segundos; más seguido en la Madrugada y aún más Antes del alba). Antes avisa durante **2 segundos**: el borde de la pantalla parpadea en rojo (más grueso por el lado por donde entra), suena una **bocina**, aparece el texto **"¡Viene un curao al volante!"**, una **flecha** marca por dónde entra y una **franja roja** muestra por dónde va a pasar. Apunta a donde estabas al sonar la bocina, así que **si te mueves, lo esquivas**. A veces va zigzagueando.
+Seguido un **auto cruza la plaza a toda velocidad** (desde el minuto 1:30, cada 20 a 35 segundos en la Medianoche; más seguido en la Madrugada y aún más Antes del alba, y más seguido en la terminal y la feria). En la Madrugada pueden venir **2 autos** y Antes del alba **2 o 3 a la vez**, cada uno desde un lado distinto (el texto dice cuántos vienen). Antes avisa durante **2 segundos**: el borde de la pantalla parpadea en rojo (más grueso por el lado por donde entra), suena una **bocina**, aparece el texto **"¡Viene un curao al volante!"**, una **flecha** marca por dónde entra y una **franja roja** muestra por dónde va a pasar. Apunta a donde estabas al sonar la bocina, así que **si te mueves, lo esquivas**. A veces va zigzagueando.
 
-- Si te pega: **35 de daño** (se reduce igual que un golpe normal: Collar viejo, Cuero de calle, árbol…) y te empuja lejos. La Zona segura y el Antifaz también te protegen.
+- Si te pega: **45 de daño** (se reduce igual que un golpe normal: Collar viejo, Cuero de calle, árbol…) y te empuja lejos. La Zona segura y el Antifaz también te protegen.
 - **Atropella a los enemigos** que estén en su camino (incluidos los élites): ¡úsalo a tu favor! Al **Jefe** le hace 200 de daño, pero no lo mata.
 - **Galgo:** al sonar la bocina su sprint queda listo, su zona de choque es más chica y, si está en sprint cuando pasa el auto, lo esquiva por un pelo.
 - Pasa por encima de los obstáculos (pega un saltito). Al amanecer ya no vienen más.
+
+### La jauría
+
+Desde el minuto 2:00, de vez en cuando una **estampida de perros** cruza la pantalla en fila por un carril. Antes avisa durante casi 2 segundos: el texto **"¡Viene una jauría!"**, ladridos, una **flecha** en el borde por donde entran y un **carril naranjo** marcado en el suelo. Apunta a donde estabas en el aviso: **sal del carril** y no te pasa nada. Si te pillan: **30 de daño** y te arrastran. Más adelante en la noche son más perros (7 → 14) y Antes del alba vienen **2 carriles** a la vez. No llega encima de un curao. No daña a los otros enemigos. El Galgo tiene el sprint listo al sonar el aviso.
 
 ### Sinergias
 
@@ -478,7 +495,7 @@ Solo en la **versión online** (GitHub Pages). Si abres el juego con doble clic 
 - **Cambiar apodo**: con sesión, en el inicio está el botón **Cambiar apodo** (o tecla **N**), al lado de **Salir**. Abre la misma ventana, con tu apodo actual; las mismas reglas (3 a 16 caracteres, único). El nuevo apodo se ve en todas tus partidas del ranking.
 - **Puntaje**: al terminar una partida (Game Over o victoria) aparece arriba a la derecha tu **PUNTAJE**. Si tienes sesión y apodo, se **envía solo** y dice *"Puntaje enviado ✓"* o el error.
   - Puntaje = segundos × 10 + nivel × 50 + enemigos × 5 + 2000 si derrotaste al jefe + 3000 si amaneció (sobreviviste la noche). Los números están en `src/config.js`, sección `ONLINE`, `PUNTAJE`.
-  - **Las partidas donde usaste teclas de prueba (T, Y, U, J, K, Z, X, C) no se envían**: la pantalla final dice *"Partida de prueba: no se envía al ranking"*.
+  - **Las partidas donde usaste teclas de prueba (T, Y, U, J, K, Z, X, C, V, E), y las partidas en un mapa abierto con la tecla U de la pantalla de mapas, no se envían**: la pantalla final dice *"Partida de prueba: no se envía al ranking"*.
 - **Ranking** (botón o tecla **L**): top 20 **General** (la mejor partida de cada jugador) o por **raza**, en dos columnas (1-10 y 11-20). Los encabezados salen una sola vez sobre cada columna que tiene partidas. Tu fila se ve destacada en amarillo y abajo sale **tu posición** aunque no estés en el top 20. ⚔ = derrotó al jefe, ☀ = sobrevivió la noche.
 
 #### Preparar la base de datos (una sola vez)
@@ -772,7 +789,9 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 
 - `ATAQUES.RASGUNO` y `ATAQUES.ESCARBAR`: números del nivel 1 (cada cuánto, daño, alcance, ángulo, terrones, freno). Los que terminan en `_EXTRA` o `_MENOS` se suman (o restan) en cada nivel después del 1.
 - `ATAQUES.EVOLUCIONES`: una por raza. `RAZA`, `INSTINTO` (debe estar en nivel 5) y `OBJETO` / `OBJETO_NIVEL` dicen qué pide; el resto son sus números (los `DANO` que dicen "× mordida" se multiplican por tu daño de mordida). Los nombres y frases están al principio de `src/ataques.js`.
-- `CURAO`: `ACTIVO` (false = nunca viene), `FRECUENCIA_POR_FASE` (0 = no viene en esa fase, 2 = el doble de seguido), `ESPERA_MIN_MS` / `ESPERA_MAX_MS`, `AVISO_MS`, `VELOCIDAD`, `DESVIO_MAX` (qué tan cerca de ti pasa), zigzag, `DANO` / `EMPUJE` al perro, `DANO_ENEMIGOS` y `DANO_JEFE`, lo del Galgo (`GALGO_MARGEN`, `GALGO_SPRINT_LISTO`) y `BOCINA_VOLUMEN` (0 = sin sonido).
+- `DIFICULTAD.MULTIPLICADOR_GLOBAL`: un solo número para afinar todo (1 = normal, 1.2 = 20% más difícil). Multiplica la vida, el daño y la cantidad de enemigos y del jefe, el daño de los eventos y qué tan seguido llegan.
+- `JAURIA`: frecuencia por fase, perros y carriles por fase, ancho del carril, velocidad, daño, empujón y aviso.
+- `CURAO`: `ACTIVO` (false = nunca viene), `AUTOS_POR_FASE` (cuántos autos juntos), `DESDE_SEGUNDOS`, `FRECUENCIA_POR_FASE` (0 = no viene en esa fase, 2 = el doble de seguido), `ESPERA_MIN_MS` / `ESPERA_MAX_MS`, `AVISO_MS`, `VELOCIDAD`, `DESVIO_MAX` (qué tan cerca de ti pasa), zigzag, `DANO` / `EMPUJE` al perro, `DANO_ENEMIGOS` y `DANO_JEFE`, lo del Galgo (`GALGO_MARGEN`, `GALGO_SPRINT_LISTO`) y `BOCINA_VOLUMEN` (0 = sin sonido).
 
 ### Nombres, dibujos y parejas de fusión (`src/objetos.js`)
 
@@ -792,7 +811,7 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
 - `src/instintos.js` — nombres y frases de las cartas de instintos, y sus íconos (12 x 12) para el menú de pausa y las cartas de evolución.
-- `src/ataques.js` — Rasguño, Escarbar, las evoluciones de ataque (textos, carta dorada y lo que hacen), el curao al volante (aviso, bocina, atropello y la tecla V) y la fila Ataques de la pausa.
+- `src/ataques.js` — Rasguño, Escarbar, las evoluciones de ataque (textos, carta dorada y lo que hacen), el curao al volante (aviso, bocina, atropello, varios autos y la tecla V), la jauría (tecla E) y la fila Ataques de la pausa.
 - `src/sinergias.js` — las sinergias: nombre, frase, qué pide cada una y cómo se calcula su bonus.
 - `src/pausa.js` — el menú de pausa: panel, pestañas (Stats en tarjetas con scroll, Desafíos, Colección...) y botones. Sus medidas están en `CONFIG.PAUSA` (`src/config.js`).
 - `src/coleccionables.js` — los ultra raros coleccionables: nombres, frases, dibujos, a qué mapa pertenecen, guardado en el navegador, peluche, aviso grande y la tecla C.
