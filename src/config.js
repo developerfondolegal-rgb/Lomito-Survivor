@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.16.1';
+const VERSION_JUEGO = '0.17';
 
 const CONFIG = {
   // Tamaño del mapa (en píxeles)
@@ -284,6 +284,118 @@ const CONFIG = {
   LADRIDO_DANO_EXTRA: 4,        // daño extra en cada nivel
   LADRIDO_EMPUJE: 350,          // qué tan fuerte empuja a los enemigos
   LADRIDO_EMPUJE_MS: 250,       // cuánto dura el empujón
+
+  // ---------------------------------------------------------------
+  //  ATAQUES: ataques secundarios nuevos y evoluciones de ataque.
+  //  Los textos y el código están en src/ataques.js.
+  //  Todo se ve en la pausa, pestaña Stats ("Ataques").
+  //
+  //  Rasguño y Escarbar son instintos (salen como cartas, hasta Nv 5).
+  //  Cada número "_EXTRA" o "_MENOS" se suma (o resta) en cada nivel
+  //  después del 1.
+  // ---------------------------------------------------------------
+  ATAQUES: {
+    // "Rasguño": zarpazo en abanico hacia el enemigo más cercano
+    RASGUNO: {
+      CADA_MS: 1800,            // cada cuánto rasguña en el nivel 1
+      CADA_MENOS_MS: 150,       // cada nivel rasguña esta cantidad de ms antes
+      DANO: 6,                  // daño en el nivel 1...
+      DANO_EXTRA: 3,            // ...y daño extra en cada nivel
+      ALCANCE: 105,             // qué tan lejos llega el zarpazo (px)
+      ALCANCE_EXTRA: 10,
+      ANGULO: 90,               // qué tan abierto es el abanico (grados)
+      ANGULO_EXTRA: 15
+    },
+
+    // "Escarbar": lanza terrones que dañan y frenan a los enemigos
+    ESCARBAR: {
+      CADA_MS: 2800,            // cada cuánto escarba en el nivel 1
+      CADA_MENOS_MS: 250,
+      TERRONES: 1,              // terrones por vez en el nivel 1...
+      TERRON_CADA_NIVELES: 2,   // ...y 1 terrón más cada 2 niveles (Nv 3 = 2, Nv 5 = 3)
+      DANO: 5,                  // daño de cada terrón en el nivel 1...
+      DANO_EXTRA: 3,            // ...y daño extra en cada nivel
+      VELOCIDAD: 450,           // qué tan rápido vuela el terrón
+      ALCANCE: 380,             // a qué distancia busca enemigos
+      RADIO: 30,                // tamaño de la zona donde cae (daña y frena a todos los que estén ahí)
+      LENTITUD: 0.5,            // cuánto frena (0.5 = los enemigos van a la mitad de velocidad)
+      FRENO_MS: 1500,           // cuánto dura el freno en el nivel 1...
+      FRENO_EXTRA_MS: 250       // ...y cuánto más en cada nivel
+    },
+
+    // EVOLUCIONES: cuando el INSTINTO está en su nivel máximo y tienes el
+    // OBJETO en OBJETO_NIVEL (o más), al subir de nivel aparece una carta
+    // dorada "EVOLUCIÓN" que transforma el ataque de esa RAZA.
+    //  RAZA: id de RAZAS   INSTINTO: id de src/instintos.js   OBJETO: id de OBJETOS
+    // Los "DANO" que dicen "× mordida" se multiplican por tu daño de mordida.
+    EVOLUCIONES: {
+      // Quiltro: "Mordida callejera": la mordida rebota a otros enemigos
+      rebote: {
+        RAZA: 'quiltro', INSTINTO: 'colmillos', OBJETO: 'caracu', OBJETO_NIVEL: 1,
+        REBOTES: 3,             // a cuántos enemigos más salta
+        DISTANCIA: 170,         // qué tan lejos puede saltar (px)
+        DANO: 0.75              // cada salto hace esta parte del daño del anterior (0.75 = 75%)
+      },
+      // Pitbull: "Agarre de pitbull": la Mandíbula de hierro sujeta y sacude;
+      // al soltarlo, golpe en área
+      sacudida: {
+        RAZA: 'pitbull', INSTINTO: 'colmillos', OBJETO: 'collar', OBJETO_NIVEL: 1,
+        AGARRE_MS: 1200,        // cuánto rato lo tiene sujeto
+        SACUDIDA_CADA_MS: 300,  // cada cuánto lo sacude...
+        SACUDIDA_DANO: 0.4,     // ...con este daño (× mordida)
+        EXPLOSION_RADIO: 110,   // tamaño del golpe en área al soltarlo
+        EXPLOSION_DANO: 1.5,    // daño del golpe en área (× mordida)
+        EXPLOSION_EMPUJE: 400,  // qué tan fuerte empuja
+        ESPERA_MS: 1500         // tiempo mínimo entre un agarre y el siguiente
+      },
+      // Galgo: "Embestida de galgo": el sprint daña y aparta todo a su paso
+      embestida: {
+        RAZA: 'galgo', INSTINTO: 'mordidaRapida', OBJETO: 'pelota', OBJETO_NIVEL: 1,
+        DANO: 2,                // daño a cada enemigo que atraviesa (× mordida)
+        ANCHO: 30,              // qué tan ancho es el golpe (px a cada lado, además del cuerpo)
+        EMPUJE: 380,            // qué tan fuerte los tira hacia el lado
+        DURACION_EXTRA_MS: 120  // el sprint dura esto más
+      },
+      // Beagle: "Aullido rastreador": el ladrido marca a los enemigos
+      marca: {
+        RAZA: 'beagle', INSTINTO: 'ladrido', OBJETO: 'placa', OBJETO_NIVEL: 1,
+        MARCA_MS: 4000,         // cuánto dura la marca (mira roja)
+        DANO_EXTRA: 0.5,        // los marcados reciben 50% más daño de todo
+        RADIO_EXTRA: 30         // el ladrido llega más lejos
+      }
+    }
+  },
+
+  // ---------------------------------------------------------------
+  //  EL CURAO AL VOLANTE (src/ataques.js): un auto cruza la plaza a toda
+  //  velocidad. Antes avisa: borde rojo, bocina, texto y flecha.
+  //  Atropella también a los enemigos (¡úsalo a tu favor!).
+  //  Tecla de prueba: V
+  // ---------------------------------------------------------------
+  CURAO: {
+    ACTIVO: true,               // false = nunca aparece
+    // Qué tan seguido viene en cada fase de la noche (mismo orden que NOCHE.FASES):
+    // 0 = no viene, 1 = normal, 2 = el doble de seguido
+    FRECUENCIA_POR_FASE: [0, 1, 1.5, 2],
+    ESPERA_MIN_MS: 40000,       // con frecuencia 1, entre un auto y otro pasan entre 40 s...
+    ESPERA_MAX_MS: 70000,       // ...y 70 s (al azar). Se divide por la frecuencia de la fase
+    AVISO_MS: 2000,             // cuánto antes avisa
+    VELOCIDAD: 1000,            // qué tan rápido va (el Galgo corre 290)
+    INCLINACION_GRADOS: 15,     // no entra siempre derecho: se tuerce hasta esto
+    DESVIO_MAX: 80,             // pasa a esta distancia (al azar) del lugar donde estabas en el aviso
+    ZIGZAG_PROBABILIDAD: 0.5,   // probabilidad de que vaya zigzagueando
+    ZIGZAG_AMPLITUD: 45,        // cuánto se va hacia los lados al zigzaguear (px)
+    ZIGZAG_CADA_MS: 600,        // cuánto demora cada vaivén
+    DANO: 35,                   // daño si te pega
+    EMPUJE: 750,                // qué tan fuerte te empuja...
+    EMPUJE_MS: 280,             // ...y cuánto dura el empujón
+    INVULNERABLE_MS: 1000,      // tiempo sin recibir daño después del atropello
+    DANO_ENEMIGOS: 99999,       // daño a los enemigos que atropella (99999 = los mata, también a los élites)
+    DANO_JEFE: 200,             // daño al Jefe de la Plaza (a él no lo mata)
+    GALGO_MARGEN: 8,            // el Galgo es más difícil de atropellar: su zona de choque es 8 px más chica
+    GALGO_SPRINT_LISTO: true,   // true = al sonar la bocina, el sprint del Galgo queda listo para esquivar
+    BOCINA_VOLUMEN: 0.08        // volumen de la bocina (0 = sin sonido)
+  },
 
   // ---------------------------------------------------------------
   //  OBJETOS

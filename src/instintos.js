@@ -6,7 +6,10 @@ const INSTINTOS = [
   { id: 'patasLigeras',  nombre: 'Patas ligeras',  frase: 'Corres más rápido.' },
   { id: 'pellejoDuro',   nombre: 'Pellejo duro',   frase: 'Más vida máxima y te curas un poco.' },
   { id: 'olfato',        nombre: 'Olfato',         frase: 'Atraes los huesos desde más lejos.' },
-  { id: 'ladrido',       nombre: 'Ladrido',        frase: 'Un ladrido que daña y empuja a los enemigos cercanos.' }
+  { id: 'ladrido',       nombre: 'Ladrido',        frase: 'Un ladrido que daña y empuja a los enemigos cercanos.' },
+  // Ataques secundarios nuevos (sus números están en src/config.js, sección ATAQUES)
+  { id: 'rasguno',       nombre: 'Rasguño',        frase: 'Zarpazo en abanico al enemigo más cercano.' },
+  { id: 'escarbar',      nombre: 'Escarbar',       frase: 'Lanzas terrones que dañan y frenan enemigos.' }
 ];
 
 // ---------------------------------------------------------------
@@ -122,6 +125,42 @@ const SPRITES_INSTINTOS = {
       '...W...W....',
       '......W.....',
       '............'
+    ]]
+  },
+  // Rasguño: tres garras en diagonal (R = punta roja)
+  rasguno: {
+    colores: {},
+    cuadros: [[
+      '..........R.',
+      '......R..W..',
+      '..R..W..W...',
+      '..W..W..W...',
+      '.W..W..W....',
+      '.W..W..W....',
+      '.W..W..W....',
+      'W..W..W.....',
+      'W..W..W.....',
+      'W..W........',
+      '...W........',
+      '............'
+    ]]
+  },
+  // Escarbar: montón de tierra con terrones saltando (T = tierra, t = tierra oscura)
+  escarbar: {
+    colores: { T: 0x8d6e63, t: 0x5d4037 },
+    cuadros: [[
+      '..t......t..',
+      '.tt..t...tt.',
+      '.....tt.....',
+      '..t.........',
+      '............',
+      '............',
+      '.....TT.....',
+      '...TTTTTT...',
+      '..TTtTTTTT..',
+      '.TTTTTTtTTT.',
+      'TTtTTTTTTTtT',
+      'KKKKKKKKKKKK'
     ]]
   }
 };

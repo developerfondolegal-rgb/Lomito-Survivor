@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.16.1** — pantalla de bienvenida, cambiar apodo y arreglos del ranking.
+Versión actual: **v0.17** — evolución de ataques (una por raza), dos ataques nuevos (Rasguño y Escarbar) y el curao al volante.
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -49,7 +49,7 @@ El juego se ajusta solo a la parte visible de la pantalla (sin la barra del nave
 | Árbol de habilidades | Toca una pestaña de raza, toca una mejora para ver qué hace, **Comprar**, **Reiniciar árbol de …** (pide confirmar) y **Volver** |
 | Rincón de apuestas | Toca el juego, tu número o bajo/alto, **−** y **+** para el monto, "Huesitos guardados" o "1 copia de un coleccionable", **Tirar** y **Seguir jugando** / **Salir** |
 
-Las teclas de prueba (T, Y, U, J, K, Z, X, C, H) no tienen versión táctil.
+Las teclas de prueba (T, Y, U, J, K, Z, X, C, V, H) no tienen versión táctil.
 
 **Probar los controles táctiles en el PC:** abre `index.html?tactil=1` (o en Chrome usa F12 → ícono de celular "Toggle device toolbar" y elige un Android en horizontal). Con `?tactil=0` se quitan aunque la pantalla sea táctil.
 
@@ -90,10 +90,11 @@ Las teclas de prueba (T, Y, U, J, K, Z, X, C, H) no tienen versión táctil.
 | Modo de prueba: una zona especial de cada tipo cerca del perro | **Z** |
 | Modo de prueba: empieza un desafío al azar | **X** |
 | Modo de prueba: un ultra raro coleccionable al azar cerca del perro | **C** |
+| Modo de prueba: viene el curao al volante al tiro | **V** |
 
 No hay botón para atacar: el perro muerde solo.
 
-### Modo de prueba (teclas T, Y, U, J, K, Z, X y C)
+### Modo de prueba (teclas T, Y, U, J, K, Z, X, C y V)
 
 - **T**: aparece un enemigo de cada tipo en un círculo alrededor del perro (la Manada aparece como grupo completo). Sirve para ver cómo se mueve cada enemigo sin esperar minutos. Estos enemigos **no sueltan huesos ni objetos ni cuentan** en el Game Over, pero sí hacen daño y atrapan como los normales.
 - **Y**: aparecen **4 objetos** alrededor del perro, uno de cada rareza (blanco, azul, morado y dorado). Cada vez que presionas Y salen objetos distintos, así en pocas veces tienes cada objeto en morado (épico) o dorado (legendario), que lo suben directo al nivel 3.
@@ -104,6 +105,7 @@ No hay botón para atacar: el perro muerde solo.
 - **Z**: aparecen **4 zonas especiales** alrededor del perro, una de cada tipo (miedo, peligrosa, barro y segura). Nunca encima del perro ni de la pileta. Camina a cada una para ver su aviso y su efecto. Duran lo normal (25 segundos).
 - **X**: empieza **un desafío al azar** (Búsqueda, Aguanta, Cacería o Sin morder). Si ya había uno, se cancela sin contar como fallido y empieza otro. Presiona X varias veces hasta que salga el que quieres probar.
 - **C**: aparece **un ultra raro coleccionable al azar** cerca del perro, con brillo arcoíris. Pasa encima para recogerlo: sale el aviso grande y **se guarda de verdad** en tu colección (cuenta como una copia más). Si quieres volver a empezar tu colección, usa **Borrar progreso** en el Álbum.
+- **V**: viene **el curao al volante** al tiro (con su aviso de 2 segundos). Sirve para probar el atropello, el empujón y el esquive del Galgo. Si ya hay un auto en camino, no pasa nada.
 
 - **H** (en la pantalla de inicio): **+100 huesitos guardados**, para probar el Rincón de apuestas sin jugar mucho. Se guardan de verdad; para volver a 0 usa **Borrar progreso** en el Álbum (ojo: también borra la colección).
 
@@ -115,6 +117,11 @@ No hay botón para atacar: el perro muerde solo.
 1. Presiona **U** y en cada ronda elige **Mordida rápida** cuando aparezca. Repite U hasta que llegue a nivel 5 (deja de aparecer en las cartas).
 2. Presiona **Y** varias veces hasta que salga el **Collar viejo** morado o dorado, y pasa encima para recogerlo (queda en **MAX**).
 3. Presiona **U** otra vez: la primera carta será la **carta dorada de Frenesí**.
+
+**Cómo forzar una evolución rápido** (por ejemplo la del Quiltro, *Mordida callejera*):
+1. Juega con el **Quiltro**, presiona **U** y elige **Colmillos** en cada ronda hasta que llegue a nivel 5.
+2. Presiona **Y** hasta que salga el **Hueso de caracú** (de cualquier rareza) y recógelo.
+3. Presiona **U** otra vez: la primera carta será la **carta dorada ★ EVOLUCIÓN ★**. Cada raza tiene la suya (ver *Evolución de ataques*).
 
 Todas las teclas se pueden presionar varias veces.
 
@@ -190,6 +197,10 @@ Al subir de nivel el juego se pausa y aparecen **3 cartas al azar**. Elige una c
 | **Pellejo duro** | Más vida máxima y te cura un poco |
 | **Olfato** | Atraes los huesos desde más lejos |
 | **Ladrido** | Nuevo ataque: cada pocos segundos una onda blanca pixelada daña y empuja a los enemigos cercanos. Cada nivel ladra más seguido, más lejos y más fuerte |
+| **Rasguño** | Nuevo ataque: un zarpazo en abanico (tres garras blancas) hacia el enemigo más cercano; daña a todos los que estén dentro del abanico. Cada nivel rasguña más seguido, más fuerte, más lejos y más abierto |
+| **Escarbar** | Nuevo ataque: el perro escarba y lanza **terrones** hacia los enemigos más cercanos. Donde caen dañan y **frenan a la mitad** a los enemigos por un rato (al jefe no lo frenan). Nivel 3: 2 terrones; nivel 5: 3 terrones |
+
+Los tres ataques secundarios (Ladrido, Rasguño y Escarbar) atacan solos y no funcionan dentro de la Zona de miedo ni en el desafío "Sin morder". En la pausa, pestaña **Stats**, la fila **Ataques** muestra sus números.
 
 ### Objetos con rareza
 
@@ -230,6 +241,28 @@ Si tienes un **instinto en nivel 5** y su **objeto pareja en nivel 3**, al subir
 | **Cuero de calle** | Pellejo duro + Frazada | Después de cada golpe, recibes **la mitad de daño durante 3 segundos** (se ve un anillo café alrededor del perro) |
 
 Las fusiones logradas salen escritas encima del inventario.
+
+### Evolución de ataques
+
+Cada raza tiene una **evolución** que transforma su forma de atacar. Cuando su **instinto de ataque está en nivel 5** y tienes su **objeto** (basta con nivel 1), al subir de nivel aparece una **carta dorada ★ EVOLUCIÓN ★** (antes que las fusiones). Dice qué pide y muestra el ícono del instinto.
+
+| Raza | Evolución | Pide | Qué hace |
+|---|---|---|---|
+| **Quiltro** | **Mordida callejera** | Colmillos Nv 5 + Hueso de caracú | Cada mordida **rebota** a 3 enemigos cercanos más (un rayito amarillo los une); cada salto hace el 75% del anterior |
+| **Pitbull** | **Agarre de pitbull** | Colmillos Nv 5 + Collar viejo | La Mandíbula de hierro **sujeta** al enemigo en el hocico y lo sacude ("¡Te tengo!"); al soltarlo, golpe naranja **en área** que daña y empuja. El que tiene sujeto no te hace daño. Al jefe no lo levanta: el golpe en área sale al tiro |
+| **Galgo** | **Embestida de galgo** | Mordida rápida Nv 5 + Pelota mordida | El sprint dura un poco más y **daña y aparta** a cada enemigo que atraviesa (una vez por sprint), dejando una estela dorada |
+| **Beagle** | **Aullido rastreador** | Ladrido Nv 5 + Placa de identificación | El ladrido llega más lejos y **marca** a los enemigos con una mira roja: durante 4 s reciben **50% más daño de todo** |
+
+En la pausa, la fila **Ataques** de **Stats** dice cuánto falta para la evolución de tu raza (o si ya la tienes). Las evoluciones logradas salen con ★ junto a las fusiones, encima del inventario y en el Game Over.
+
+### El curao al volante
+
+De vez en cuando un **auto cruza la plaza a toda velocidad** (desde la Medianoche, cada 40 a 70 segundos; más seguido en la Madrugada y aún más Antes del alba). Antes avisa durante **2 segundos**: el borde de la pantalla parpadea en rojo (más grueso por el lado por donde entra), suena una **bocina**, aparece el texto **"¡Viene un curao al volante!"**, una **flecha** marca por dónde entra y una **franja roja** muestra por dónde va a pasar. Apunta a donde estabas al sonar la bocina, así que **si te mueves, lo esquivas**. A veces va zigzagueando.
+
+- Si te pega: **35 de daño** (se reduce igual que un golpe normal: Collar viejo, Cuero de calle, árbol…) y te empuja lejos. La Zona segura y el Antifaz también te protegen.
+- **Atropella a los enemigos** que estén en su camino (incluidos los élites): ¡úsalo a tu favor! Al **Jefe** le hace 200 de daño, pero no lo mata.
+- **Galgo:** al sonar la bocina su sprint queda listo, su zona de choque es más chica y, si está en sprint cuando pasa el auto, lo esquiva por un pelo.
+- Pasa por encima de los obstáculos (pega un saltito). Al amanecer ya no vienen más.
 
 ### Sinergias
 
@@ -719,6 +752,12 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `TEXTO_MINIMO`: tamaño mínimo de letra en celular (súbelo si te cuesta leer; puede encimar textos).
 - Rendimiento: `ENEMIGOS_MAXIMOS` (límite de enemigos en celular), `LIMITAR_EFECTOS_DESDE` y `EFECTOS_UNO_DE_CADA` (con muchos enemigos se muestran menos dientes de mordida y no hay sombras del sprint), `OSCURIDAD_CADA_CUADROS` (cada cuántos cuadros se redibuja la oscuridad).
 
+### Ataques, evoluciones y el curao (`src/config.js`, secciones `ATAQUES` y `CURAO`, y `src/ataques.js`)
+
+- `ATAQUES.RASGUNO` y `ATAQUES.ESCARBAR`: números del nivel 1 (cada cuánto, daño, alcance, ángulo, terrones, freno). Los que terminan en `_EXTRA` o `_MENOS` se suman (o restan) en cada nivel después del 1.
+- `ATAQUES.EVOLUCIONES`: una por raza. `RAZA`, `INSTINTO` (debe estar en nivel 5) y `OBJETO` / `OBJETO_NIVEL` dicen qué pide; el resto son sus números (los `DANO` que dicen "× mordida" se multiplican por tu daño de mordida). Los nombres y frases están al principio de `src/ataques.js`.
+- `CURAO`: `ACTIVO` (false = nunca viene), `FRECUENCIA_POR_FASE` (0 = no viene en esa fase, 2 = el doble de seguido), `ESPERA_MIN_MS` / `ESPERA_MAX_MS`, `AVISO_MS`, `VELOCIDAD`, `DESVIO_MAX` (qué tan cerca de ti pasa), zigzag, `DANO` / `EMPUJE` al perro, `DANO_ENEMIGOS` y `DANO_JEFE`, lo del Galgo (`GALGO_MARGEN`, `GALGO_SPRINT_LISTO`) y `BOCINA_VOLUMEN` (0 = sin sonido).
+
 ### Nombres, dibujos y parejas de fusión (`src/objetos.js`)
 
 - `RAREZAS`: nombre y color de cada rareza, y si destella.
@@ -736,7 +775,8 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, zonas, desafíos, ultra raros, la noche, el jefe, los huesitos, el árbol de habilidades y las apuestas).
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
-- `src/instintos.js` — nombres y frases de las cartas de instintos, y sus íconos (12 x 12) para el menú de pausa.
+- `src/instintos.js` — nombres y frases de las cartas de instintos, y sus íconos (12 x 12) para el menú de pausa y las cartas de evolución.
+- `src/ataques.js` — Rasguño, Escarbar, las evoluciones de ataque (textos, carta dorada y lo que hacen), el curao al volante (aviso, bocina, atropello y la tecla V) y la fila Ataques de la pausa.
 - `src/sinergias.js` — las sinergias: nombre, frase, qué pide cada una y cómo se calcula su bonus.
 - `src/pausa.js` — el menú de pausa: panel, pestañas (incluidas Desafíos y Colección) y botones.
 - `src/coleccionables.js` — los ultra raros coleccionables: nombres, frases, dibujos, a qué mapa pertenecen, guardado en el navegador, peluche, aviso grande y la tecla C.

@@ -78,6 +78,7 @@ class GameScene extends Phaser.Scene {
     this.objetos = {};
     this.inventario = [];
     this.fusiones = {};           // fusiones logradas (id: true)
+    this.evoluciones = {};        // evoluciones de ataque logradas (src/ataques.js; antes del HUD, que las muestra)
     this.esperaCaracu = 0;
     this.proximoElite = CONFIG.ELITE_CADA_SEGUNDOS * 1000;
     this.cueroHasta = 0;          // "Cuero de calle" activo hasta este momento
@@ -162,6 +163,7 @@ class GameScene extends Phaser.Scene {
     this.teclaZ = this.input.keyboard.addKey('Z'); // modo de prueba: una zona de cada tipo
     this.teclaX = this.input.keyboard.addKey('X'); // modo de prueba: empieza un desafío al azar
     this.teclaC = this.input.keyboard.addKey('C'); // modo de prueba: un ultra raro coleccionable
+    this.teclaV = this.input.keyboard.addKey('V'); // modo de prueba: viene el curao al volante
     this.teclaP = this.input.keyboard.addKey('P');   // menú de pausa
     this.teclaEsc = this.input.keyboard.addKey('ESC'); // menú de pausa
     this.teclasCartas = [
@@ -182,6 +184,9 @@ class GameScene extends Phaser.Scene {
 
     // Ultra raros coleccionables (src/coleccionables.js): peluche, etc.
     iniciarColeccionables(this);
+
+    // Ataques secundarios, evoluciones y el curao al volante (src/ataques.js)
+    iniciarAtaques(this);
   }
 
   update(time, delta) {
@@ -282,6 +287,11 @@ class GameScene extends Phaser.Scene {
       this.partidaDePrueba = true;
       pruebaUltra(this);
     }
+    // Modo de prueba: el curao al volante viene al tiro (src/ataques.js)
+    if (Phaser.Input.Keyboard.JustDown(this.teclaV) && !this.amaneciendo) {
+      this.partidaDePrueba = true;
+      pruebaCurao(this);
+    }
 
     // Zonas especiales: en cuál está el perro (antes de moverlo, por el barro)
     actualizarZonas(this);
@@ -307,6 +317,10 @@ class GameScene extends Phaser.Scene {
 
     // La noche: fases, jefe y amanecer (si ya terminó, no sigue)
     this.actualizarNoche(delta);
+    if (this.gameOver) return;
+
+    // El curao al volante (src/ataques.js): puede atropellarte y terminar la partida
+    actualizarCurao(this, delta);
     if (this.gameOver) return;
 
     // Enemigo élite cada cierto tiempo (al amanecer ya no llegan más)
@@ -338,6 +352,9 @@ class GameScene extends Phaser.Scene {
         this.ladrar();
       }
     }
+
+    // Rasguño, Escarbar, enemigos frenados y evoluciones (src/ataques.js)
+    actualizarAtaques(this, delta, puedeAtacar);
 
     // Poder "Calle" (Quiltro): se cura un poco con el tiempo
     if (this.poder === 'calle') {
@@ -577,7 +594,8 @@ class GameScene extends Phaser.Scene {
 
   radioLadrido() {
     const extra = this.fusiones.aullido ? CONFIG.FUSIONES.aullido.RADIO_EXTRA : 0;
-    return CONFIG.LADRIDO_RADIO + (this.instintos.ladrido - 1) * CONFIG.LADRIDO_RADIO_EXTRA + extra;
+    return CONFIG.LADRIDO_RADIO + (this.instintos.ladrido - 1) * CONFIG.LADRIDO_RADIO_EXTRA + extra +
+      radioExtraLadrido(this); // Aullido rastreador (src/ataques.js)
   }
 
   danoLadrido() {
@@ -632,6 +650,16 @@ class GameScene extends Phaser.Scene {
 
     if (dx !== 0 || dy !== 0) {
       this.ultimaDireccion.set(dx, dy).normalize();
+    }
+
+    // Empujón del curao al volante (src/ataques.js): sale volando un momento
+    const empuje = this.empujePerro;
+    if (empuje) {
+      if (this.tiempoSobrevivido < empuje.hasta) {
+        this.perro.body.setVelocity(empuje.x, empuje.y);
+        return;
+      }
+      this.empujePerro = null;
     }
 
     // Atrapado por la Perrera: no se puede mover
@@ -851,7 +879,8 @@ class GameScene extends Phaser.Scene {
 
   iniciarSprint() {
     this.direccionSprint = this.ultimaDireccion.clone();
-    this.sprintHasta = this.tiempoSobrevivido + this.base.SPRINT_DURACION_MS + bonusArbol(this, 'SPRINT_DURACION_MS');
+    this.sprintHasta = this.tiempoSobrevivido + this.base.SPRINT_DURACION_MS + bonusArbol(this, 'SPRINT_DURACION_MS') +
+      sprintExtraEvolucion(this); // Embestida de galgo (src/ataques.js)
     this.poderCarga = 0;
     this.numeroSprint++;          // Rayo gris: cada enemigo recibe daño 1 vez por sprint
     if (bonusArbol(this, 'LEBREL_MULTIPLICADOR') > 0) this.lebrelListo = true; // Lebrel: la próxima mordida es fuerte
@@ -1141,7 +1170,7 @@ class GameScene extends Phaser.Scene {
   // Quita vida a un enemigo; si muere, suelta huesos (más duro = más huesos)
   danarEnemigo(enemigo, dano) {
     if (!enemigo.active) return;
-    enemigo.vida -= dano;
+    enemigo.vida -= danoContraMarcado(this, enemigo, dano); // Aullido rastreador: los marcados reciben más
 
     if (enemigo.vida <= 0) {
       // Los enemigos del modo de prueba (tecla T) no dan huesos ni cuentan
@@ -1217,6 +1246,7 @@ class GameScene extends Phaser.Scene {
     objetivos.forEach((objetivo, i) => {
       let dano = this.danoMordida();
       let fuerte = false;
+      let hierro = false;
 
       // Poder "Mandíbula de hierro" (Pitbull): si está cargado, aturde y hace daño extra
       // (solo al primero)
@@ -1226,6 +1256,7 @@ class GameScene extends Phaser.Scene {
         objetivo.aturdidoHasta = this.tiempoSobrevivido + this.base.MANDIBULA_ATURDIR_MS + bonusArbol(this, 'MANDIBULA_ATURDIR_MS');
         if (!berserker) this.poderCarga = 0;
         fuerte = true;
+        hierro = true;
       }
 
       // Caza (Galgo): más daño y crítico contra enemigos rápidos o que embisten
@@ -1247,6 +1278,10 @@ class GameScene extends Phaser.Scene {
       const ox = objetivo.x;
       const oy = objetivo.y;
       this.danarEnemigo(objetivo, dano);
+
+      // Evoluciones (src/ataques.js): Mordida callejera (rebota) y Agarre de pitbull
+      reboteMordida(this, ox, oy, objetivo, dano);
+      if (hierro) intentarAgarre(this, objetivo, ox, oy);
 
       // Sacudida (Pitbull): también daña a los que están cerca del mordido
       const sacudida = bonusArbol(this, 'SACUDIDA');
@@ -1318,6 +1353,7 @@ class GameScene extends Phaser.Scene {
       if (aullido) enemigo.huyendoHasta = enemigo.empujadoHasta + CONFIG.FUSIONES.aullido.HUIR_MS;
       if (op.huirMs) enemigo.huyendoHasta = Math.max(enemigo.huyendoHasta || 0, enemigo.empujadoHasta + op.huirMs);
 
+      marcarConLadrido(this, enemigo); // Aullido rastreador (src/ataques.js): primero se marca, después recibe el daño
       this.danarEnemigo(enemigo, dano);
     });
   }
@@ -1688,10 +1724,12 @@ class GameScene extends Phaser.Scene {
   }
 
   mostrarCartas() {
-    // Primero las fusiones disponibles (cartas doradas), y el resto instintos al azar
-    const fusiones = this.fusionesDisponibles().slice(0, 3).map((f) => ({ fusion: f }));
-    const instintos = Phaser.Utils.Array.Shuffle(this.instintosDisponibles().slice()).slice(0, 3 - fusiones.length);
-    const opciones = fusiones.concat(instintos);
+    // Primero las evoluciones y fusiones disponibles (cartas doradas), y el resto instintos al azar
+    const evoluciones = evolucionesDisponibles(this).slice(0, 3).map((e) => ({ evolucion: e }));
+    const fusiones = this.fusionesDisponibles().slice(0, 3 - evoluciones.length).map((f) => ({ fusion: f }));
+    const doradas = evoluciones.concat(fusiones);
+    const instintos = Phaser.Utils.Array.Shuffle(this.instintosDisponibles().slice()).slice(0, 3 - doradas.length);
+    const opciones = doradas.concat(instintos);
 
     // Si ya tiene todos los instintos al máximo, no hay nada que elegir
     if (opciones.length === 0) {
@@ -1717,9 +1755,9 @@ class GameScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '36px', color: '#ffffff', fontStyle: 'bold'
     }).setOrigin(0.5));
     const como = modoTactil() ? '(toca una carta)' : '(clic o teclas 1, 2, 3)';
-    const titulo = fusiones.length > 0
-      ? '¡Fusión disponible! Elige una carta ' + como
-      : 'Elige un instinto ' + como;
+    let titulo = 'Elige un instinto ' + como;
+    if (evoluciones.length > 0) titulo = '¡Evolución disponible! Elige una carta ' + como;
+    else if (fusiones.length > 0) titulo = '¡Fusión disponible! Elige una carta ' + como;
     // En celular, las cartas no se pueden tocar hasta pasado un ratito (evita toques sin querer)
     this.cartasListasEn = this.time.now + (modoTactil() ? CONFIG.MOVIL.CARTAS_ESPERA_MS : 0);
     capa.push(this.add.text(w / 2, 130, titulo, {
@@ -1734,6 +1772,10 @@ class GameScene extends Phaser.Scene {
 
     this.cartas = opciones.map((inst, i) => {
       const cx = inicioX + i * separacion;
+      if (inst.evolucion) {
+        capa.push(...dibujarCartaEvolucion(this, inst.evolucion, i, cx, cy, anchoCarta, altoCarta));
+        return inst;
+      }
       if (inst.fusion) {
         capa.push(...this.dibujarCartaFusion(inst.fusion, i, cx, cy, anchoCarta, altoCarta));
         return inst;
@@ -1821,7 +1863,8 @@ class GameScene extends Phaser.Scene {
     const inst = this.cartas[indice];
     if (!inst) return;
 
-    if (inst.fusion) this.aplicarFusion(inst.fusion.id);
+    if (inst.evolucion) aplicarEvolucion(this, inst.evolucion.id);
+    else if (inst.fusion) this.aplicarFusion(inst.fusion.id);
     else this.aplicarInstinto(inst.id);
 
     this.capaCartas.forEach((obj) => { this.tweens.killTweensOf(obj); obj.destroy(); });
@@ -1871,6 +1914,7 @@ class GameScene extends Phaser.Scene {
   recibirGolpe(perro, enemigo) {
     if (this.gameOver || this.eligiendo || this.pausado || this.amaneciendo) return; // al amanecer ya nadie ataca
     if (this.enSprint()) return; // el Galgo no recibe daño ni lo atrapan durante el sprint
+    if (this.agarre && this.agarre.enemigo === enemigo) return; // lo tiene sujeto en el hocico (Agarre de pitbull)
 
     const cfg = enemigo.cfg;
     const ahora = this.tiempoSobrevivido;
@@ -1946,6 +1990,7 @@ class GameScene extends Phaser.Scene {
     this.escudo.clear();
     limpiarZonas(this);
     ocultarDesafio(this);
+    limpiarAtaques(this);         // auto del curao, terrones, miras (src/ataques.js)
     this.actualizarHUD();
     // el inventario se oculta: los objetos salen escritos en el Game Over
     this.capaInventario.forEach((obj) => obj.destroy());
@@ -1988,7 +2033,8 @@ class GameScene extends Phaser.Scene {
       const nivel = this.objetos[id];
       return buscarObjeto(id).nombre + ' ' + (nivel >= CONFIG.OBJETO_NIVEL_MAX ? 'MAX' : 'Nv ' + nivel);
     });
-    const fusiones = FUSIONES.filter((f) => this.fusiones[f.id]).map((f) => f.nombre);
+    const fusiones = FUSIONES.filter((f) => this.fusiones[f.id]).map((f) => f.nombre)
+      .concat(nombresEvoluciones(this).map((n) => '★ ' + n)); // evoluciones de ataque (src/ataques.js)
     y += 8;
     lineas.push({ texto: 'Objetos: ' + (objetos.length ? objetos.join(' · ') : 'ninguno'),
       y, tam: '17px', color: '#90caf9', ancho: 900 });
@@ -2183,7 +2229,8 @@ class GameScene extends Phaser.Scene {
     }
 
     // Fusiones logradas, encima de las casillas
-    const fusiones = FUSIONES.filter((f) => this.fusiones[f.id]).map((f) => f.nombre);
+    const fusiones = FUSIONES.filter((f) => this.fusiones[f.id]).map((f) => f.nombre)
+      .concat(nombresEvoluciones(this).map((n) => '★ ' + n)); // evoluciones de ataque (src/ataques.js)
     if (fusiones.length > 0) {
       capa.push(this.add.text(this.scale.width / 2, y - lado / 2 - 6, 'Fusiones: ' + fusiones.join(' · '), {
         fontFamily: FUENTE, fontSize: '14px', color: '#ffd54f', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3

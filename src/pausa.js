@@ -340,6 +340,9 @@ function calcularStats(escena) {
   if (arb('XP')) xp.push('Árbol +' + pct(arb('XP')));
   stats.push({ nombre: 'Experiencia extra', valor: '+' + Math.round(xpExtra * 100) + '%', partes: xp });
 
+  // Ataques: Ladrido, Rasguño, Escarbar y evoluciones de la raza (src/ataques.js)
+  stats.push(statsAtaques(e));
+
   // Árbol de habilidades: lo que no aparece en los otros stats y las especiales (★)
   const partesArbol = partesArbolStats(e);
   stats.push({
@@ -356,18 +359,19 @@ function pestanaStats(escena, capa, area) {
   const anchoCol = area.ancho / 2 - 14;
   const paso = 52;
 
-  // 6 stats a la izquierda, el resto a la derecha
+  // 6 stats a la izquierda, el resto a la derecha.
+  // En la derecha cada stat empieza debajo del anterior (Ataques y Árbol pueden ocupar varias líneas)
   let abajoDerecha = area.y + 4;
   stats.forEach((s, i) => {
     const col = i < 6 ? 0 : 1;
     const fila = i < 6 ? i : i - 6;
     const x = area.x + col * (anchoCol + 28);
-    const y = area.y + 4 + fila * paso;
+    const y = col === 0 ? area.y + 4 + fila * paso : (fila === 0 ? area.y + 4 : abajoDerecha);
     capa.push(textoPausa(escena, x, y, s.nombre, 15, '#ffe082', true));
     capa.push(textoPausa(escena, x + 175, y, s.valor, 15, '#ffffff', true));
     const partes = textoPausa(escena, x, y + 20, s.partes.join('  ·  '), 12, '#b0bec5', false, anchoCol);
     capa.push(partes);
-    if (col === 1) abajoDerecha = Math.max(y + paso, partes.y + partes.height + 8);
+    if (col === 1) abajoDerecha = Math.max(y + paso, partes.y + partes.height + 10);
   });
 
   // Datos de la partida, abajo a la derecha (debajo del último stat de esa columna)
@@ -400,7 +404,10 @@ function pestanaStats(escena, capa, area) {
 
 function pestanaInventario(escena, capa, area) {
   const anchoCol = area.ancho / 2 - 14;
-  const paso = 48;
+  // Si hay muchos instintos, las filas se juntan para no tapar los botones de abajo
+  const limite = escena.scale.height - 72 - 34;
+  const filas = Math.max(INSTINTOS.length, OBJETOS.length);
+  const paso = Math.min(48, (limite - (area.y + 46)) / Math.max(1, filas - 1));
 
   // Instintos (izquierda)
   let x = area.x;
