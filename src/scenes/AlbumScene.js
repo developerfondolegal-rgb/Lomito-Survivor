@@ -162,12 +162,13 @@ class AlbumScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '26px', color: '#ef9a9a', fontStyle: 'bold'
     }).setOrigin(0.5));
     capa.push(this.add.text(w / 2, h / 2 - 20,
-      'Se perderán todos tus coleccionables, sus copias y niveles,\ny también tus huesitos guardados. No se puede deshacer.', {
+      'Se perderán todos tus coleccionables, sus copias y niveles,\ntus huesitos guardados y el árbol de habilidades de todas las razas.\nNo se puede deshacer.', {
         fontFamily: FUENTE, fontSize: '15px', color: '#ffffff', align: 'center'
       }).setOrigin(0.5));
     this.boton(w / 2 - 120, h / 2 + 55, 200, 'Sí, borrar', 0xef5350, () => {
       borrarColeccion();
       borrarHuesitos(); // src/huesitos.js
+      borrarArbol();    // src/arbol.js
       this.cerrarConfirmar();
       this.dibujar();
       this.avisoBorrado();

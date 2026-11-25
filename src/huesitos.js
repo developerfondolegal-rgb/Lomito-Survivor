@@ -86,6 +86,12 @@ function desgloseHuesitos(escena, victoria) {
     { nombre: 'Jefe', cantidad: (escena.jefesDerrotados || 0) * H.POR_JEFE },
     { nombre: 'Amanecer', cantidad: victoria ? H.BONUS_AMANECER : 0 }
   ];
+  // Árbol de habilidades (Moneda en el suelo / Coleccionista): un % más de lo ganado (src/arbol.js)
+  const extraArbol = bonusArbol(escena, 'HUESITOS');
+  if (extraArbol > 0) {
+    const ganado = lineas.reduce((t, l) => t + l.cantidad, 0);
+    lineas.push({ nombre: 'Árbol', cantidad: Math.floor(ganado * extraArbol) });
+  }
   if (escena.huesitosApuestas) lineas.push({ nombre: 'Apuestas', cantidad: escena.huesitosApuestas });
   const suma = lineas.reduce((t, l) => t + l.cantidad, 0);
   return { lineas, total: Math.max(0, suma) };

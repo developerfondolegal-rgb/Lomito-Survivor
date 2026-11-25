@@ -1,4 +1,5 @@
-// Pantalla de inicio: elegir la raza del perro (y abrir el Álbum de coleccionables).
+// Pantalla de inicio: elegir la raza del perro (y abrir el Álbum de coleccionables,
+// el Árbol de habilidades y el Rincón de apuestas).
 // Arriba a la izquierda se ven los huesitos guardados (src/huesitos.js).
 
 const FUENTE = 'Arial, sans-serif';
@@ -34,16 +35,21 @@ class MenuScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5);
 
-    this.add.text(w - 10 - e, this.scale.height - 8 - e, 'Lomito Survivor - v0.14.1', {
+    this.add.text(w - 10 - e, this.scale.height - 8 - e, 'Lomito Survivor - v0.15', {
       fontFamily: FUENTE, fontSize: '13px', color: '#888888'
     }).setOrigin(1, 1);
 
     this.crearCartas();
     this.crearBotonAlbum();
 
+    // Botones de abajo: Álbum, Árbol y Rincón (dejan libre la esquina de la versión)
+    const yBotones = this.scale.height - 26 - e / 2;
+    // Árbol de habilidades por raza (src/scenes/ArbolScene.js)
+    botonPantalla(this, w / 2 - 20, yBotones, 196, 34, 'Árbol' + (modoTactil() ? '' : ' (G)'),
+      0x9ccc65, () => this.scene.start('ArbolScene'));
     // Rincón de apuestas con los huesitos guardados (src/scenes/ApuestasScene.js)
-    botonPantalla(this, w / 2 + 140, this.scale.height - 26 - e / 2, 260, 34, 'Rincón de apuestas' + (modoTactil() ? '' : ' (B)'),
-      0xf2d64b, () => this.scene.start('ApuestasScene', { modo: 'fin' }));
+    botonPantalla(this, w / 2 + 186, yBotones, 196, 34, 'Rincón de apuestas' + (modoTactil() ? '' : ' (B)'),
+      0xf2d64b, () => this.scene.start('ApuestasScene', { modo: 'fin' }), 15);
 
     // Celular: botón de pantalla completa (src/tactil.js). No se muestra si ya se abrió
     // como app desde la pantalla de inicio. En iPhone no se puede: muestra cómo agregarlo a inicio.
@@ -65,6 +71,7 @@ class MenuScene extends Phaser.Scene {
     this.teclas = this.razas.map((_, i) => this.input.keyboard.addKey(nombresTeclas[i]));
     this.teclaAlbum = this.input.keyboard.addKey('A');
     this.teclaRincon = this.input.keyboard.addKey('B');
+    this.teclaArbol = this.input.keyboard.addKey('G');
     this.teclaH = this.input.keyboard.addKey('H'); // modo de prueba: +100 huesitos guardados
   }
 
@@ -78,6 +85,7 @@ class MenuScene extends Phaser.Scene {
     });
     if (Phaser.Input.Keyboard.JustDown(this.teclaAlbum)) this.scene.start('AlbumScene');
     if (Phaser.Input.Keyboard.JustDown(this.teclaRincon)) this.scene.start('ApuestasScene', { modo: 'fin' });
+    if (Phaser.Input.Keyboard.JustDown(this.teclaArbol)) this.scene.start('ArbolScene');
     // Modo de prueba: H da huesitos guardados (cuánto, en CONFIG.HUESITOS.PRUEBA_TECLA_H)
     if (Phaser.Input.Keyboard.JustDown(this.teclaH)) {
       sumarHuesitos(CONFIG.HUESITOS.PRUEBA_TECLA_H);
@@ -89,11 +97,11 @@ class MenuScene extends Phaser.Scene {
     }
   }
 
-  // Botón "Álbum" abajo al centro (src/scenes/AlbumScene.js)
+  // Botón "Álbum" abajo a la izquierda (src/scenes/AlbumScene.js)
   crearBotonAlbum() {
-    const cx = this.scale.width / 2 - 140;
+    const cx = this.scale.width / 2 - 226;
     const cy = this.scale.height - 26 - this.margenExtra / 2;
-    const ancho = 260;
+    const ancho = 196;
     const alto = 34;
     const encontrados = cuantosEncontrados('plaza') + ' / ' + listaColeccionables('plaza').length;
     const g = this.add.graphics();
@@ -103,7 +111,7 @@ class MenuScene extends Phaser.Scene {
     };
     pintar(false);
     this.add.text(cx, cy, 'Álbum' + (modoTactil() ? '' : ' (A)') + '   ✦ ' + encontrados, {
-      fontFamily: FUENTE, fontSize: '16px', color: '#f3e5f5', fontStyle: 'bold'
+      fontFamily: FUENTE, fontSize: '15px', color: '#f3e5f5', fontStyle: 'bold'
     }).setOrigin(0.5);
     const zona = this.add.zone(cx, cy, ancho, alto).setInteractive({ useHandCursor: true });
     zona.on('pointerover', () => pintar(true));

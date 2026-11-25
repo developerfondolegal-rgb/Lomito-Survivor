@@ -584,6 +584,144 @@ const CONFIG = {
   },
 
   // ---------------------------------------------------------------
+  //  ÁRBOL DE HABILIDADES (src/arbol.js y src/scenes/ArbolScene.js)
+  //  Mejoras permanentes por raza que se compran con huesitos guardados.
+  //  Cada raza tiene 3 ramas con 4 mejoras. Para comprar una mejora hay
+  //  que tener la anterior de su rama. Se aplican al EMPEZAR la partida.
+  //  Los nombres y textos de cada mejora están en src/arbol.js
+  //
+  //  Cada mejora es una lista de números; si compras varias mejoras con
+  //  el mismo número, se suman. Qué significa cada número:
+  //   VIDA: vida máxima extra              VELOCIDAD: 0.05 = 5% más rápido
+  //   DANO: 0.1 = 10% más daño de mordida  MORDIDA_RAPIDEZ: 0.1 = muerde 10% más seguido
+  //   CRITICO: probabilidad de mordida crítica (doble daño)
+  //   MENOS_DANO: 0.08 = 8% menos daño recibido
+  //   ESQUIVAR: probabilidad de esquivar un golpe (0.06 = 6 de cada 100)
+  //   REGENERACION: 0.25 = la curación con el tiempo es 25% más rápida
+  //   IMAN: alcance extra del imán (px)    IMAN_RAPIDEZ: 0.4 = los huesos vuelan 40% más rápido
+  //   XP: 0.1 = 10% más experiencia        HUESO_EXTRA: probabilidad de 1 hueso extra por enemigo
+  //   HUESITOS: 0.2 = 20% más huesitos al terminar la partida
+  //   OBJETO: 0.4 = los objetos caen 40% más seguido
+  //   ULTRA: 1 = los ultra raros caen el doble de seguido de enemigos normales
+  //   COMIDA: 0.5 = comida 50% más curativa y pileta 50% más rápida
+  //   COMIDA_RAPIDEZ: 0.3 = la comida aparece 30% más seguido
+  // ---------------------------------------------------------------
+  ARBOL: {
+    COSTOS: [50, 120, 250, 500],  // huesitos que cuesta cada nivel de la rama (1º, 2º, 3º y 4º)
+    DEVOLUCION: 1,                // "Reiniciar árbol" devuelve esta parte de lo gastado (1 = el 100%)
+    GUARDADO: 'lomitoSurvivor_arbol', // nombre del guardado en el navegador (no lo cambies o se "pierde" el árbol)
+
+    // Para las ramas que dependen de los enemigos cercanos (Manada del Beagle)
+    GRUPO_RADIO: 160,             // a esta distancia (px) un enemigo cuenta como "cerca"
+    GRUPO_MAXIMO: 5,              // máximo de enemigos que cuentan
+    // Caza (Galgo): enemigos "rápidos" = velocidad base desde este número, o embistiendo
+    CAZA_VELOCIDAD_MINIMA: 110,   // rival (110) y manada (165) cuentan; borracho (65) no
+
+    RAZAS: {
+      quiltro: {
+        // Calle: mejora el poder "Calle"
+        calle: [
+          { CALLE_RAPIDEZ: 0.3 },               // Calle cura 30% más rápido
+          { HUESO_EXTRA: 0.15 },                // 15% de probabilidad de 1 hueso extra
+          { CALLE_CURA: 1 },                    // Calle cura +1 de vida cada vez
+          { DUENO_CADA_ENEMIGOS: 12 }           // ESPECIAL "Dueño del barrio": cada 12 enemigos derrotados cae una comida
+        ],
+        // Suerte: más raros, ultra raros y huesitos
+        suerte: [
+          { HUESITOS: 0.15 },                   // +15% huesitos al terminar
+          { OBJETO: 0.4 },                      // objetos 40% más seguido
+          { ULTRA: 1 },                         // ultra raros el doble de seguido (enemigos normales)
+          { PATA_CONEJO: 1 }                    // ESPECIAL "Pata de conejo": los élites siempre sueltan un ultra raro
+        ],
+        // Supervivencia: vida, regeneración, comer y beber
+        supervivencia: [
+          { VIDA: 15 },
+          { COMIDA: 0.5 },                      // comida cura 50% más y la pileta cura 50% más rápido
+          { REGENERACION: 0.25, VIDA: 10 },
+          { SIETE_VIDAS: 0.4 }                  // ESPECIAL "Siete vidas": 1 vez por partida, al morir vuelves con 40% de vida
+        ]
+      },
+      pitbull: {
+        // Mordida: daño
+        mordida: [
+          { DANO: 0.1 },
+          { CRITICO: 0.08 },                    // 8% de mordida crítica (doble daño)
+          { MORDIDA_RAPIDEZ: 0.1 },
+          { SACUDIDA: 0.4, SACUDIDA_RADIO: 70 } // ESPECIAL "Sacudida": cada mordida daña también a los que están
+                                                // cerca del mordido (40% del daño, a 70 px)
+        ],
+        // Aguante: vida y reducción de daño
+        aguante: [
+          { VIDA: 20 },
+          { MENOS_DANO: 0.08 },
+          { CURA_CADA_MS: 3000, VIDA: 10 },     // recupera 1 de vida cada 3 s
+          { INAMOVIBLE: 0.5 }                   // ESPECIAL "Inamovible": la Perrera no te atrapa y las embestidas
+                                                // te hacen la mitad de daño (0.5)
+        ],
+        // Furia: mejora "Mandíbula de hierro" y pega más con poca vida
+        furia: [
+          { MANDIBULA_RECARGA: 0.25 },          // la Mandíbula se carga 25% más rápido
+          { MANDIBULA_DANO: 15, MANDIBULA_ATURDIR_MS: 500 },
+          { FURIA_DANO: 0.3, FURIA_VIDA: 0.4 }, // +30% de daño con menos del 40% de vida
+          { BERSERKER: 0.35 }                   // ESPECIAL "Berserker": con menos del 35% de vida TODAS las mordidas
+                                                // son de Mandíbula de hierro
+        ]
+      },
+      galgo: {
+        // Sprint: duración y recarga
+        sprint: [
+          { SPRINT_DURACION_MS: 100 },          // el sprint dura 0,1 s más
+          { SPRINT_RECARGA: 0.2 },              // se recarga 20% más rápido
+          { SPRINT_VELOCIDAD: 150, SPRINT_RECARGA: 0.1 },
+          { RAYO_DANO: 25 }                     // ESPECIAL "Rayo gris": el sprint hace 25 de daño a cada enemigo que atraviesas
+        ],
+        // Esquiva: velocidad y esquivar
+        esquiva: [
+          { VELOCIDAD: 0.05 },
+          { ESQUIVAR: 0.06 },
+          { ESQUIVAR: 0.06, VELOCIDAD: 0.05 },
+          { REFLEJOS_MS: 800 }                  // ESPECIAL "Reflejos": al esquivar, el sprint queda listo y
+                                                // quedas 0,8 s más sin recibir daño
+        ],
+        // Caza: daño a enemigos rápidos o embistiendo
+        caza: [
+          { CAZA_DANO: 0.25 },
+          { CAZA_DANO: 0.25 },
+          { CAZA_CRITICO: 0.15 },               // 15% de crítico contra enemigos rápidos
+          { LEBREL_MULTIPLICADOR: 3, LEBREL_OBJETIVOS: 3 } // ESPECIAL "Lebrel": la primera mordida después de cada sprint
+                                                           // hace el triple de daño a hasta 3 enemigos
+        ]
+      },
+      beagle: {
+        // Olfato: rango de recolección y Rastreo
+        olfato: [
+          { IMAN: 30 },
+          { IMAN: 30, IMAN_RAPIDEZ: 0.4 },
+          { COMIDA_RAPIDEZ: 0.3 },
+          { NARIZ: 1 }                          // ESPECIAL "Nariz de sabueso": las flechas del Rastreo también
+                                                // señalan comida (verde) y objetos (morado) fuera de la pantalla
+        ],
+        // Botín: más huesos, experiencia y huesitos
+        botin: [
+          { XP: 0.1 },
+          { HUESO_EXTRA: 0.15 },
+          { HUESITOS: 0.2 },
+          { TESORO_CADA_MS: 75000 }             // ESPECIAL "Tesoro enterrado": cada 75 s desentierra un objeto raro o mejor
+        ],
+        // Manada: ayuda contra grupos de enemigos
+        manada: [
+          { GRUPO_DEFENSA: 0.03 },              // 3% menos daño por cada enemigo cerca (máx GRUPO_MAXIMO)
+          { GRUPO_DANO: 0.04 },                 // 4% más daño por cada enemigo cerca
+          { GRUPO_DEFENSA: 0.03, GRUPO_DANO: 0.04 },
+          { AULLIDO_CADA_MS: 10000, AULLIDO_RADIO: 170, AULLIDO_DANO: 12, AULLIDO_HUIR_MS: 1500 }
+                                                // ESPECIAL "Aullido de la manada": cada 10 s aúlla: daña,
+                                                // empuja y hace huir a los enemigos cercanos
+        ]
+      }
+    }
+  },
+
+  // ---------------------------------------------------------------
   //  RINCÓN DE APUESTAS (src/scenes/ApuestasScene.js)
   //  Aparece al cambiar de fase la noche (solo con los huesitos de la
   //  partida) y al terminar la partida (con el total guardado o con

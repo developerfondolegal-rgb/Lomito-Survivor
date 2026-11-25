@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.14.1** — HUD visible en celulares y modo app en iPhone.
+Versión actual: **v0.15** — árbol de habilidades por raza, pagado con huesitos.
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -45,6 +45,7 @@ El juego se ajusta solo a la parte visible de la pantalla (sin la barra del nave
 | Menú de pausa | Toca las pestañas y los botones **Continuar**, **Reiniciar** y **Salir al menú** |
 | Pantalla final | Botones **Reiniciar**, **Rincón de apuestas** y **Menú** |
 | Álbum | Botones **Volver** y **Borrar progreso** (pide confirmar) |
+| Árbol de habilidades | Toca una pestaña de raza, toca una mejora para ver qué hace, **Comprar**, **Reiniciar árbol de …** (pide confirmar) y **Volver** |
 | Rincón de apuestas | Toca el juego, tu número o bajo/alto, **−** y **+** para el monto, "Huesitos guardados" o "1 copia de un coleccionable", **Tirar** y **Seguir jugando** / **Salir** |
 
 Las teclas de prueba (T, Y, U, J, K, Z, X, C, H) no tienen versión táctil.
@@ -58,6 +59,8 @@ Las teclas de prueba (T, Y, U, J, K, Z, X, C, H) no tienen versión táctil.
 | Elegir raza (pantalla de inicio) | **clic**, o teclas **1**, **2**, **3**, **4** |
 | Abrir el Álbum de coleccionables (pantalla de inicio) | botón **Álbum** o tecla **A** |
 | Abrir el Rincón de apuestas con los huesitos guardados (pantalla de inicio) | botón **Rincón de apuestas** o tecla **B** |
+| Abrir el Árbol de habilidades (pantalla de inicio) | botón **Árbol** o tecla **G** |
+| Árbol: elegir mejora / raza / comprar / reiniciar / volver | flechas · **Q** / **E** o **1**-**4** · **Enter** o **Espacio** · **R** (Enter confirma, Esc cancela) · **Esc** o **G** |
 | Volver del Álbum a la pantalla de inicio | **Esc** o **A** (o el botón Volver) |
 | Modo de prueba: +100 huesitos guardados (pantalla de inicio) | **H** |
 | Mover al perro | **W A S D** o **flechas** |
@@ -303,6 +306,33 @@ Los **huesitos** son la moneda del juego (no confundir con los huesos amarillos 
 - El total guardado se ve arriba a la izquierda en la **pantalla de inicio**.
 - **H** en la pantalla de inicio (modo de prueba): +100 huesitos guardados.
 - Se guardan en el navegador igual que la colección. **Borrar progreso** del Álbum también los borra.
+- Se gastan en el **Árbol de habilidades** (y se pueden apostar en el Rincón de apuestas).
+
+### Árbol de habilidades
+
+En la pantalla de inicio, el botón **Árbol** (o la tecla **G**) abre el árbol de mejoras **permanentes** de cada raza, que se compran con **huesitos guardados**.
+
+- Cada raza tiene **3 ramas con 4 mejoras** (12 por raza). Para comprar una mejora necesitas la anterior de su rama.
+- Cuestan **50, 120, 250 y 500** huesitos (1ª, 2ª, 3ª y 4ª de la rama). La **4ª es una habilidad especial** (★).
+- Cada mejora sale como un cuadrito en pixel art: **dorado** = comprada, **de color** = disponible, **gris con candado** = bloqueada. Al elegirla, el panel de la derecha muestra su nombre, qué hace y cuánto cuesta.
+- **Reiniciar árbol de …**: quita las mejoras de esa raza y te **devuelve el 100%** de los huesitos gastados en ella (pide confirmar).
+- Las mejoras se aplican **al empezar** una partida con esa raza y se ven en la pestaña **Stats** del menú de pausa (como "Árbol +…" en cada stat y en la fila **Árbol de habilidades**).
+- **Borrar progreso** del Álbum también borra el árbol de todas las razas.
+
+| Raza | Rama | Mejoras (la última es especial) |
+|---|---|---|
+| Quiltro | **Calle** | Calle cura 30% más rápido · 15% de hueso extra · Calle cura +1 · ★ **Dueño del barrio**: cada 12 enemigos derrotados cae una comida |
+| Quiltro | **Suerte** | +15% huesitos · objetos 40% más seguido · ultra raros el doble de seguido · ★ **Pata de conejo**: los élites siempre sueltan un ultra raro |
+| Quiltro | **Supervivencia** | +15 vida · comida y pileta +50% · regeneración +25% y +10 vida · ★ **Siete vidas**: 1 vez por partida vuelves con 40% de vida |
+| Pitbull | **Mordida** | +10% daño · 8% crítico · muerde 10% más seguido · ★ **Sacudida**: la mordida también daña a los que están al lado (40%) |
+| Pitbull | **Aguante** | +20 vida · −8% daño recibido · 1 de vida cada 3 s y +10 vida · ★ **Inamovible**: la Perrera no te atrapa y las embestidas hacen la mitad |
+| Pitbull | **Furia** | Mandíbula se carga 25% más rápido · Mandíbula +15 daño y +0,5 s de aturdir · +30% daño con menos del 40% de vida · ★ **Berserker**: con menos del 35% de vida todas las mordidas son de Mandíbula de hierro |
+| Galgo | **Sprint** | +0,1 s de sprint · recarga 20% más rápida · sprint más rápido y recarga +10% · ★ **Rayo gris**: el sprint daña (25) a cada enemigo que atraviesas |
+| Galgo | **Esquiva** | +5% velocidad · 6% esquivar · +6% esquivar y +5% velocidad · ★ **Reflejos**: al esquivar, el sprint queda listo |
+| Galgo | **Caza** | +25% daño a enemigos rápidos o que embisten · +25% más · 15% crítico contra ellos · ★ **Lebrel**: la primera mordida tras cada sprint hace ×3 a hasta 3 enemigos |
+| Beagle | **Olfato** | +30 imán · +30 imán y huesos más rápidos · comida 30% más seguido · ★ **Nariz de sabueso**: el Rastreo también señala comida (verde) y objetos (morado) |
+| Beagle | **Botín** | +10% experiencia · 15% de hueso extra · +20% huesitos · ★ **Tesoro enterrado**: cada 75 s desentierras un objeto raro o mejor |
+| Beagle | **Manada** | −3% daño por enemigo cerca · +4% daño por enemigo cerca · ambos otra vez · ★ **Aullido de la manada**: cada 10 s un aullido que daña, empuja y hace huir |
 
 ### Rincón de apuestas
 
@@ -329,7 +359,7 @@ Eliges el monto con las flechas izquierda/derecha (de 5 en 5, mínimo 5 y máxim
 En la pantalla de inicio, el botón **Álbum** (o la tecla **A**) muestra los 12 coleccionables en una cuadrícula:
 - Los **no encontrados** salen como **silueta negra** con "???".
 - Los **encontrados** muestran su dibujo con brillo arcoíris, su nombre, su frase, su **nivel** (estrellas), cuántas **copias** faltan para el siguiente nivel y su **bonus actual**. Los que están en nivel máximo tienen borde dorado.
-- **Borrar progreso**: borra toda tu colección **y tus huesitos guardados**. Antes pregunta **"¿Borrar todo tu progreso?"** con los botones **Sí, borrar** y **Cancelar** (o Esc). No se puede deshacer.
+- **Borrar progreso**: borra toda tu colección, **tus huesitos guardados y el árbol de habilidades de todas las razas**. Antes pregunta **"¿Borrar todo tu progreso?"** con los botones **Sí, borrar** y **Cancelar** (o Esc). No se puede deshacer.
 
 **Dónde se guarda:** en el almacenamiento del navegador (localStorage). Se mantiene al cerrar el juego, pero es **de ese navegador**: si abres el juego en otro navegador o en una ventana privada/incógnito, la colección empieza vacía. Si borras los datos de navegación, también se borra.
 
@@ -339,7 +369,7 @@ Presiona **P** o **Esc** para pausar. Todo se detiene (enemigos, reloj de la noc
 
 El panel tiene 6 pestañas (clic o flechas izquierda/derecha):
 
-- **Stats**: vida, velocidad, daño y frecuencia de mordida, alcance, imán de huesos, reducción de daño, regeneración y experiencia extra. Debajo de cada uno sale el **valor base de tu raza** y cuánto suma cada instinto, objeto, fusión o sinergia. También tu nivel, el tiempo jugado, la hora de la noche y los enemigos derrotados.
+- **Stats**: vida, velocidad, daño y frecuencia de mordida, alcance, imán de huesos, reducción de daño, regeneración, experiencia extra y **árbol de habilidades**. Debajo de cada uno sale el **valor base de tu raza** y cuánto suma cada instinto, objeto, fusión, sinergia o mejora del árbol (las especiales salen con ★). También tu nivel, el tiempo jugado, la hora de la noche y los enemigos derrotados.
 - **Instintos y objetos**: todos, con su ícono, su nivel y lo que hacen (los que no tienes salen en gris).
 - **Fusiones**: las 4 fusiones. Dice si ya la **lograste**, si está **lista** (sale en la próxima subida de nivel) o **qué falta** (por ejemplo "Falta: Mordida rápida 3/5 + Collar viejo 1/3").
 - **Sinergias**: cuáles están **activas** y qué falta para las otras.
@@ -619,6 +649,16 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `PRUEBA_TECLA_H`: cuántos da la tecla H en la pantalla de inicio.
 - `GUARDADO`: el nombre del guardado en el navegador (no lo cambies o los huesitos se "pierden").
 
+### Árbol de habilidades (`src/config.js`, sección `ARBOL`, y `src/arbol.js`)
+
+- `COSTOS`: lo que cuesta cada nivel de una rama (por defecto `[50, 120, 250, 500]`).
+- `DEVOLUCION`: qué parte de lo gastado devuelve "Reiniciar árbol" (`1` = el 100%).
+- `GUARDADO`: el nombre del guardado en el navegador (no lo cambies o el árbol se "pierde").
+- `GRUPO_RADIO`, `GRUPO_MAXIMO`: qué cuenta como "enemigo cerca" para la rama Manada del Beagle.
+- `CAZA_VELOCIDAD_MINIMA`: desde qué velocidad un enemigo cuenta como "rápido" para la rama Caza del Galgo.
+- `RAZAS`: los números de cada mejora (raza → rama → lista de 4). Arriba de la sección está explicado qué significa cada número. Si compras varias mejoras con el mismo número, se suman.
+- En `src/arbol.js` están los **nombres y textos** de las mejoras (los números del texto se ponen solos desde `config.js`) y los **íconos de 8 x 8** de cada rama.
+
 ### Rincón de apuestas (`src/config.js`, sección `APUESTAS`, y `src/scenes/ApuestasScene.js`)
 
 - `EN_CAMBIO_DE_FASE`: ponlo en `false` para que el rincón **no aparezca** al cambiar de fase (útil para probar).
@@ -652,7 +692,7 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `index.html` — la página que abre el juego (zona segura del notch, altura visible y modo app de iPhone).
 - `manifest.json` — datos para "Agregar a pantalla de inicio": nombre, pantalla completa, horizontal e ícono.
 - `icons/` — ícono del perro en pixel art (180, 192 y 512 px).
-- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, zonas, desafíos, ultra raros, la noche, el jefe, los huesitos y las apuestas).
+- `src/config.js` — los números para ajustar el juego (plaza, razas, enemigos, niveles, instintos, objetos, fusiones, élites, zonas, desafíos, ultra raros, la noche, el jefe, los huesitos, el árbol de habilidades y las apuestas).
 - `src/razas.js` — textos de las cartas de razas.
 - `src/enemigos.js` — nombres de los enemigos.
 - `src/instintos.js` — nombres y frases de las cartas de instintos, y sus íconos (12 x 12) para el menú de pausa.
@@ -661,6 +701,7 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/coleccionables.js` — los ultra raros coleccionables: nombres, frases, dibujos, a qué mapa pertenecen, guardado en el navegador, peluche, aviso grande y la tecla C.
 - `src/tactil.js` — el celular: detecta pantallas táctiles, joystick, botones Sprint y Pausa, pantalla completa (y aviso en iPhone), altura visible real, margen del HUD, aviso "Gira el celular", letra mínima y límites de rendimiento.
 - `src/huesitos.js` — los huesitos: cuánto se gana en la partida, el desglose y el guardado en el navegador.
+- `src/arbol.js` — el árbol de habilidades: nombres y textos de las mejoras, íconos, guardado en el navegador, comprar/reiniciar y lo que hacen las especiales en la partida.
 - `src/zonas.js` — las zonas especiales: nombres, colores, íconos, dónde aparecen y qué hacen.
 - `src/desafios.js` — los mini desafíos: nombres, frases, cómo avanzan, flechas, recompensas y la tecla X.
 - `src/sprites.js` — los dibujos en pixel art de todos los personajes, el hueso y la mordida (y el borde de las élites y objetos).
@@ -669,14 +710,15 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/noche.js` — el reloj de la noche, las fases y cuánto se aclara la oscuridad.
 - `src/jefe.js` — El Jefe de la Plaza: su dibujo, sus ataques y su barra de vida.
 - `src/main.js` — configuración del motor del juego.
-- `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza (y el botón Álbum).
+- `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza (y los botones Álbum, Árbol y Rincón de apuestas).
+- `src/scenes/ArbolScene.js` — la pantalla del Árbol de habilidades: pestañas de raza, las 3 ramas, el panel de la mejora y el botón Reiniciar.
 - `src/scenes/AlbumScene.js` — el Álbum de coleccionables y el botón Borrar progreso.
 - `src/scenes/ApuestasScene.js` — el Rincón de apuestas: los tres juegos, el dado y el gato en pixel art.
 - `src/scenes/GameScene.js` — la partida: perro, enemigos (y cómo rodean obstáculos), ataques, poderes, comida, agua, experiencia, objetos, élites, fusiones, cartas, fases de la noche, amanecer, Game Over y victoria.
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js`, `src/sinergias.js`, `src/zonas.js`, `src/desafios.js`, `src/coleccionables.js`, `src/huesitos.js` o `src/scenes/ApuestasScene.js`, revisa ese cambio.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js`, `src/sinergias.js`, `src/zonas.js`, `src/desafios.js`, `src/coleccionables.js`, `src/huesitos.js`, `src/arbol.js` o `src/scenes/ApuestasScene.js`, revisa ese cambio.
 - En el celular no aparece el joystick: revisa que `CONTROLES_TACTILES` en `src/config.js` esté en `'auto'` o `true`. Si se ve todo muy chico, gira el celular a horizontal y usa pantalla completa.
 - En el celular va lento: baja `ENEMIGOS_MAXIMOS` o `LIMITAR_EFECTOS_DESDE` en la sección `MOVIL`, o sube `OSCURIDAD_CADA_CUADROS` a 3.
 - En el celular se corta el HUD arriba o abajo: recarga la página (puede ser caché vieja) y gira el celular a horizontal. Si aún queda pegado al borde, sube `MARGEN_HUD` en la sección `MOVIL`.

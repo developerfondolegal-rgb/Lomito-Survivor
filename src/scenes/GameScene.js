@@ -40,7 +40,8 @@ class GameScene extends Phaser.Scene {
     // Estado de la partida
     // (Sweater tejido a mano: los coleccionables guardados se aplican desde el inicio)
     this.mapaId = 'plaza';        // mapa actual (los coleccionables dicen a qué mapa pertenecen)
-    this.vidaMax = this.base.VIDA + bonusColeccion('sweater', 'VIDA');
+    iniciarArbol(this);           // árbol de habilidades de la raza (src/arbol.js)
+    this.vidaMax = this.base.VIDA + bonusColeccion('sweater', 'VIDA') + bonusArbol(this, 'VIDA');
     this.vida = this.vidaMax;
     this.tiempoSobrevivido = 0;   // reloj del juego en ms (se detiene en pausa)
     this.invulnerableHasta = 0;
@@ -223,7 +224,8 @@ class GameScene extends Phaser.Scene {
     // Cargar el poder (si tiene espera). No carga mientras está en sprint.
     // Capa de superhéroe: se recarga más rápido
     if (this.poderEsperaTotal > 0 && !this.enSprint()) {
-      const rapidez = 1 + bonusColeccion('capa', 'RECARGA');
+      // Árbol: Mandíbula ansiosa (Pitbull) y Pulmones de atleta (Galgo)
+      const rapidez = 1 + bonusColeccion('capa', 'RECARGA') + bonusArbol(this, 'MANDIBULA_RECARGA') + bonusArbol(this, 'SPRINT_RECARGA');
       this.poderCarga = Math.min(this.poderEsperaTotal, this.poderCarga + delta * rapidez);
     }
 
@@ -331,11 +333,14 @@ class GameScene extends Phaser.Scene {
     // Poder "Calle" (Quiltro): se cura un poco con el tiempo
     if (this.poder === 'calle') {
       this.esperaCura += delta;
-      if (this.esperaCura >= this.base.CALLE_CURA_CADA_MS / this.multiplicadorRegeneracion()) {
+      if (this.esperaCura >= this.base.CALLE_CURA_CADA_MS / this.multiplicadorRegeneracion() / this.rapidezCalle()) {
         this.esperaCura = 0;
-        this.vida = Math.min(this.vidaMax, this.vida + this.base.CALLE_CURA);
+        this.vida = Math.min(this.vidaMax, this.vida + this.curaCalle());
       }
     }
+
+    // Mejoras especiales del árbol de habilidades (src/arbol.js)
+    actualizarArbol(this, delta, puedeAtacar);
 
     // Poder "Rastreo" (Beagle): flechas a enemigos fuera de pantalla
     if (this.poder === 'rastreo') {
@@ -491,17 +496,28 @@ class GameScene extends Phaser.Scene {
   velocidadPerro() {
     const suma = this.base.VELOCIDAD + this.instintos.patasLigeras * CONFIG.PATAS_VELOCIDAD +
       this.nivelObjeto('pelota') * CONFIG.OBJETOS.pelota.VELOCIDAD;
-    return suma * (1 + bonusSinergias(this, 'VELOCIDAD') + bonusColeccion('capa', 'VELOCIDAD'));
+    return suma * (1 + bonusSinergias(this, 'VELOCIDAD') + bonusColeccion('capa', 'VELOCIDAD') + bonusArbol(this, 'VELOCIDAD'));
   }
 
   // Regeneración (poder Calle y Hueso de caracú): 1.2 = se cura 20% más rápido
+  // (bonusArbol viene de src/arbol.js: mejoras compradas en el árbol de habilidades)
   multiplicadorRegeneracion() {
-    return 1 + bonusSinergias(this, 'REGENERACION');
+    return 1 + bonusSinergias(this, 'REGENERACION') + bonusArbol(this, 'REGENERACION');
+  }
+
+  // Poder Calle (Quiltro) con las mejoras del árbol
+  rapidezCalle() {
+    return 1 + bonusArbol(this, 'CALLE_RAPIDEZ');
+  }
+
+  curaCalle() {
+    return (this.base.CALLE_CURA || 0) + bonusArbol(this, 'CALLE_CURA');
   }
 
   intervaloMordida() {
     let ms = Math.max(100, this.base.MORDIDA_CADA_MS - this.instintos.mordidaRapida * CONFIG.MORDIDA_RAPIDA_MS);
     if (this.fusiones.frenesi) ms = Math.max(100, ms * CONFIG.FUSIONES.frenesi.MORDIDA_MULTIPLICADOR);
+    ms = Math.max(100, ms * Math.max(0.1, 1 - bonusArbol(this, 'MORDIDA_RAPIDEZ'))); // Árbol: Mordisco rápido
     return ms;
   }
 
@@ -512,12 +528,26 @@ class GameScene extends Phaser.Scene {
 
   danoMordida() {
     const suma = this.base.MORDIDA_DANO + this.instintos.colmillos * CONFIG.COLMILLOS_DANO;
-    return suma * (1 + bonusSinergias(this, 'DANO'));
+    return suma * (1 + bonusSinergias(this, 'DANO') + this.bonusDanoArbol());
+  }
+
+  // Daño extra del árbol: Quijada fuerte, Sangre caliente (poca vida) y Manada (enemigos cerca)
+  bonusDanoArbol() {
+    let b = bonusArbol(this, 'DANO');
+    if (bonusArbol(this, 'FURIA_DANO') && this.vida < this.vidaMax * bonusArbol(this, 'FURIA_VIDA')) b += bonusArbol(this, 'FURIA_DANO');
+    if (bonusArbol(this, 'GRUPO_DANO')) b += bonusArbol(this, 'GRUPO_DANO') * enemigosCercaArbol(this);
+    return b;
+  }
+
+  // Berserker (Pitbull): con poca vida, todas las mordidas son de Mandíbula de hierro
+  enBerserker() {
+    const b = bonusArbol(this, 'BERSERKER');
+    return b > 0 && this.poder === 'mandibula' && this.vida < this.vidaMax * b;
   }
 
   radioIman() {
     return CONFIG.IMAN_RADIO + (this.base.IMAN_EXTRA || 0) + this.instintos.olfato * CONFIG.OLFATO_IMAN +
-      bonusColeccion('lentes', 'IMAN');
+      bonusColeccion('lentes', 'IMAN') + bonusArbol(this, 'IMAN');
   }
 
   // Alcance de la mordida (Lentes: más alcance)
@@ -528,7 +558,7 @@ class GameScene extends Phaser.Scene {
   // Experiencia que da cada hueso (Placa de identificación y Cascabel)
   xpPorHueso() {
     return CONFIG.HUESO_XP * (1 + this.nivelObjeto('placa') * CONFIG.OBJETOS.placa.XP_EXTRA +
-      bonusColeccion('cascabel', 'XP_EXTRA'));
+      bonusColeccion('cascabel', 'XP_EXTRA') + bonusArbol(this, 'XP'));
   }
 
   intervaloLadrido() {
@@ -606,7 +636,7 @@ class GameScene extends Phaser.Scene {
 
     // Durante el sprint va muy rápido en línea recta
     if (this.enSprint()) {
-      const v = this.base.SPRINT_VELOCIDAD * barro;
+      const v = (this.base.SPRINT_VELOCIDAD + bonusArbol(this, 'SPRINT_VELOCIDAD')) * barro;
       this.perro.body.setVelocity(this.direccionSprint.x * v, this.direccionSprint.y * v);
       this.dejarEstela();
       return;
@@ -812,8 +842,10 @@ class GameScene extends Phaser.Scene {
 
   iniciarSprint() {
     this.direccionSprint = this.ultimaDireccion.clone();
-    this.sprintHasta = this.tiempoSobrevivido + this.base.SPRINT_DURACION_MS;
+    this.sprintHasta = this.tiempoSobrevivido + this.base.SPRINT_DURACION_MS + bonusArbol(this, 'SPRINT_DURACION_MS');
     this.poderCarga = 0;
+    this.numeroSprint++;          // Rayo gris: cada enemigo recibe daño 1 vez por sprint
+    if (bonusArbol(this, 'LEBREL_MULTIPLICADOR') > 0) this.lebrelListo = true; // Lebrel: la próxima mordida es fuerte
   }
 
   // Sombras que quedan atrás durante el sprint
@@ -846,18 +878,32 @@ class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     const w = this.scale.width;
     const h = this.scale.height;
-    const cx = w / 2;
-    const cy = h / 2;
     const margen = 26 + margenExtra();
 
-    // Enemigos fuera de la pantalla, los más cercanos primero
-    const fuera = this.enemigos.getChildren()
+    // Cosas fuera de la pantalla, las más cercanas primero
+    const fueraDePantalla = (lista, maximo) => lista
+      .filter((e) => e.active)
       .map((e) => ({ sx: e.x - cam.scrollX, sy: e.y - cam.scrollY, d: Phaser.Math.Distance.Between(this.perro.x, this.perro.y, e.x, e.y) }))
       .filter((p) => p.sx < 0 || p.sx > w || p.sy < 0 || p.sy > h)
       .sort((a, b) => a.d - b.d)
-      .slice(0, this.base.RASTREO_FLECHAS_MAX);
+      .slice(0, maximo);
 
-    g.fillStyle(COLOR_FLECHA, 0.9);
+    this.dibujarGrupoFlechas(fueraDePantalla(this.enemigos.getChildren(), this.base.RASTREO_FLECHAS_MAX), COLOR_FLECHA, margen);
+
+    // Nariz de sabueso (árbol del Beagle): también comida (verde) y objetos/ultra raros (morado)
+    if (bonusArbol(this, 'NARIZ') > 0) {
+      this.dibujarGrupoFlechas(fueraDePantalla(this.comidas.getChildren(), 3), 0x9ccc65, margen);
+      const cosas = this.objetosSuelo.getChildren().concat(this.ultrasSuelo || []);
+      this.dibujarGrupoFlechas(fueraDePantalla(cosas, 4), 0xce93d8, margen);
+    }
+  }
+
+  // Triángulos en el borde de la pantalla apuntando a cada punto
+  dibujarGrupoFlechas(fuera, color, margen) {
+    const g = this.flechas;
+    const cx = this.scale.width / 2;
+    const cy = this.scale.height / 2;
+    g.fillStyle(color, 0.9);
     fuera.forEach((p) => {
       const dx = p.sx - cx;
       const dy = p.sy - cy;
@@ -1099,6 +1145,8 @@ class GameScene extends Phaser.Scene {
       let cantidad = enemigo.cfg.HUESOS === undefined ? 1 : enemigo.cfg.HUESOS;
       if (enemigo.elite) cantidad *= CONFIG.ELITE_HUESOS;
       if (enemigo.esJefe) this.derrotarJefe(enemigo);
+      // Árbol: Hueso de regalo / Escarbador: a veces 1 hueso extra
+      if (Math.random() < bonusArbol(this, 'HUESO_EXTRA')) cantidad++;
       for (let i = 0; i < cantidad; i++) {
         if (Math.random() < probabilidad) {
           const ox = cantidad > 1 ? Phaser.Math.Between(-14, 14) : 0;
@@ -1114,11 +1162,12 @@ class GameScene extends Phaser.Scene {
         this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza(CONFIG.JEFE.OBJETO_RAREZA));
       } else if (enemigo.elite) {
         this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza(CONFIG.ELITE_RAREZA_MINIMA));
-      } else if (Math.random() < CONFIG.OBJETO_PROBABILIDAD) {
+      } else if (Math.random() < CONFIG.OBJETO_PROBABILIDAD * (1 + bonusArbol(this, 'OBJETO'))) { // Árbol: Ojo para lo bueno
         this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza());
       }
       // Muy de vez en cuando, un ultra raro coleccionable (src/coleccionables.js)
       sorteoUltraAlDerrotar(this, enemigo);
+      alDerrotarArbol(this, enemigo); // Dueño del barrio (src/arbol.js)
       this.derrotados++;
       this.derrotadosPorTipo[enemigo.tipo] = (this.derrotadosPorTipo[enemigo.tipo] || 0) + 1;
       enemigo.destroy();
@@ -1143,13 +1192,18 @@ class GameScene extends Phaser.Scene {
   morder() {
     // Los enemigos dentro del alcance (medido hasta su borde), el más cercano primero.
     // Normalmente muerde a 1; con la fusión "Frenesí", a varios.
-    const cuantos = this.fusiones.frenesi ? CONFIG.FUSIONES.frenesi.OBJETIVOS : 1;
+    let cuantos = this.fusiones.frenesi ? CONFIG.FUSIONES.frenesi.OBJETIVOS : 1;
+    // Lebrel (Galgo): la primera mordida después de un sprint muerde a varios
+    const lebrel = this.lebrelListo;
+    if (lebrel) cuantos = Math.max(cuantos, bonusArbol(this, 'LEBREL_OBJETIVOS') || 1);
     const objetivos = this.enemigos.getChildren()
       .map((enemigo) => ({ enemigo, d: Phaser.Math.Distance.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y) - enemigo.radio }))
       .filter((o) => o.d <= this.alcanceMordida())
       .sort((a, b) => a.d - b.d)
       .slice(0, cuantos)
       .map((o) => o.enemigo);
+    if (lebrel && objetivos.length > 0) this.lebrelListo = false;
+    const berserker = this.enBerserker();
 
     objetivos.forEach((objetivo, i) => {
       let dano = this.danoMordida();
@@ -1157,19 +1211,44 @@ class GameScene extends Phaser.Scene {
 
       // Poder "Mandíbula de hierro" (Pitbull): si está cargado, aturde y hace daño extra
       // (solo al primero)
-      if (i === 0 && this.poder === 'mandibula' && this.poderListo()) {
-        dano += this.base.MANDIBULA_DANO_EXTRA;
-        objetivo.aturdidoHasta = this.tiempoSobrevivido + this.base.MANDIBULA_ATURDIR_MS;
-        this.poderCarga = 0;
+      // Berserker (árbol): con poca vida todas son de hierro y no gastan la carga
+      if (berserker || (i === 0 && this.poder === 'mandibula' && this.poderListo())) {
+        dano += this.base.MANDIBULA_DANO_EXTRA + bonusArbol(this, 'MANDIBULA_DANO');
+        objetivo.aturdidoHasta = this.tiempoSobrevivido + this.base.MANDIBULA_ATURDIR_MS + bonusArbol(this, 'MANDIBULA_ATURDIR_MS');
+        if (!berserker) this.poderCarga = 0;
         fuerte = true;
       }
 
-      // Pañuelo rojo: a veces la mordida es crítica (doble daño)
-      const critico = Math.random() < bonusColeccion('panuelo', 'CRITICO');
+      // Caza (Galgo): más daño y crítico contra enemigos rápidos o que embisten
+      const presa = esPresaRapida(objetivo);
+      if (presa) dano *= 1 + bonusArbol(this, 'CAZA_DANO');
+      // Lebrel (Galgo): mordida después del sprint
+      if (lebrel) {
+        dano *= bonusArbol(this, 'LEBREL_MULTIPLICADOR') || 1;
+        fuerte = true;
+      }
+
+      // Pañuelo rojo y árbol (Colmillo certero, Remate): a veces la mordida es crítica (doble daño)
+      const probCritico = bonusColeccion('panuelo', 'CRITICO') + bonusArbol(this, 'CRITICO') +
+        (presa ? bonusArbol(this, 'CAZA_CRITICO') : 0);
+      const critico = Math.random() < probCritico;
       if (critico) dano *= 2;
 
       this.mostrarMordida(objetivo, fuerte, critico);
+      const ox = objetivo.x;
+      const oy = objetivo.y;
       this.danarEnemigo(objetivo, dano);
+
+      // Sacudida (Pitbull): también daña a los que están cerca del mordido
+      const sacudida = bonusArbol(this, 'SACUDIDA');
+      if (sacudida > 0) {
+        const radio = bonusArbol(this, 'SACUDIDA_RADIO') || 70;
+        this.enemigos.getChildren().slice().forEach((otro) => {
+          if (otro === objetivo || !otro.active) return;
+          if (Phaser.Math.Distance.Between(ox, oy, otro.x, otro.y) > radio + otro.radio) return;
+          this.danarEnemigo(otro, dano * sacudida);
+        });
+      }
     });
   }
 
@@ -1196,16 +1275,19 @@ class GameScene extends Phaser.Scene {
 
   // ---------------- Ladrido ----------------
 
-  ladrar() {
-    const radio = this.radioLadrido();
-    const dano = this.danoLadrido();
+  // opciones (opcional, para el Aullido de la manada del árbol): { radio, dano, huirMs, color }
+  ladrar(opciones) {
+    const op = opciones || {};
+    const radio = op.radio || this.radioLadrido();
+    const dano = op.dano || this.danoLadrido();
 
     // Onda blanca pixelada que se expande
     const onda = this.add.image(this.perro.x, this.perro.y, texturaOnda(this, radio));
     onda.setDepth(5);
     onda.setScale(ESCALA_PIXEL * 0.2);
     const aullido = !!this.fusiones.aullido;
-    if (aullido) onda.setTint(0xffd54f); // el Aullido se ve dorado
+    if (op.color) onda.setTint(op.color);
+    else if (aullido) onda.setTint(0xffd54f); // el Aullido se ve dorado
     this.tweens.add({
       targets: onda,
       scale: ESCALA_PIXEL,
@@ -1225,6 +1307,7 @@ class GameScene extends Phaser.Scene {
       enemigo.empujadoHasta = this.tiempoSobrevivido + CONFIG.LADRIDO_EMPUJE_MS;
       // Aullido: además huyen un rato (después del empujón)
       if (aullido) enemigo.huyendoHasta = enemigo.empujadoHasta + CONFIG.FUSIONES.aullido.HUIR_MS;
+      if (op.huirMs) enemigo.huyendoHasta = Math.max(enemigo.huyendoHasta || 0, enemigo.empujadoHasta + op.huirMs);
 
       this.danarEnemigo(enemigo, dano);
     });
@@ -1244,7 +1327,7 @@ class GameScene extends Phaser.Scene {
     if (this.efectoZona.segura) return;
     const iman = this.radioIman();
     const distanciaRecoger = this.base.RADIO + CONFIG.HUESO_TAMANO;
-    const paso = CONFIG.IMAN_VELOCIDAD * (delta / 1000);
+    const paso = CONFIG.IMAN_VELOCIDAD * (1 + bonusArbol(this, 'IMAN_RAPIDEZ')) * (delta / 1000); // Árbol: Nariz fina
 
     this.huesos.getChildren().slice().forEach((hueso) => {
       const d = Phaser.Math.Distance.Between(this.perro.x, this.perro.y, hueso.x, hueso.y);
@@ -1300,7 +1383,7 @@ class GameScene extends Phaser.Scene {
   aparecerComida(delta) {
     // De vez en cuando, en algún lugar libre cerca del perro
     this.esperaComida += delta;
-    if (this.esperaComida >= CONFIG.COMIDA_CADA_MS) {
+    if (this.esperaComida >= CONFIG.COMIDA_CADA_MS / (1 + bonusArbol(this, 'COMIDA_RAPIDEZ'))) { // Árbol: Huele la comida
       this.esperaComida = 0;
       for (let intento = 0; intento < 15; intento++) {
         const ang = Math.random() * Math.PI * 2;
@@ -1348,7 +1431,9 @@ class GameScene extends Phaser.Scene {
       if (this.vida >= this.vidaMax) return;
       if (Phaser.Math.Distance.Between(this.perro.x, this.perro.y, comida.x, comida.y) <= alcance) {
         comida.destroy();
-        this.curar(CONFIG.COMIDA_CURA + bonusColeccion('zapatilla', 'COMIDA_CURA'), '#9ccc65'); // Zapatilla perdida: cura más
+        // Zapatilla perdida: cura más. Árbol (Estómago de fierro): cura un % más
+        const cura = (CONFIG.COMIDA_CURA + bonusColeccion('zapatilla', 'COMIDA_CURA')) * (1 + bonusArbol(this, 'COMIDA'));
+        this.curar(Math.round(cura), '#9ccc65');
       }
     });
   }
@@ -1363,7 +1448,7 @@ class GameScene extends Phaser.Scene {
     }
     this.esperaAgua += delta;
     // Mantita cuadrillé: la pileta cura más rápido
-    if (this.esperaAgua >= CONFIG.AGUA_CURA_CADA_MS / (1 + bonusColeccion('mantita', 'PILETA_RAPIDEZ'))) {
+    if (this.esperaAgua >= CONFIG.AGUA_CURA_CADA_MS / (1 + bonusColeccion('mantita', 'PILETA_RAPIDEZ') + bonusArbol(this, 'COMIDA'))) {
       this.esperaAgua = 0;
       this.curar(CONFIG.AGUA_CURA, '#81d4fa');
     }
@@ -1784,6 +1869,7 @@ class GameScene extends Phaser.Scene {
     // La Perrera no hace daño: te deja quieto un momento
     if (cfg.COMPORTAMIENTO === 'atrapar') {
       if (ahora < enemigo.recargaHasta || ahora < enemigo.aturdidoHasta) return;
+      if (bonusArbol(this, 'INAMOVIBLE') > 0) return; // Inamovible (Pitbull): no lo pueden atrapar
       // Gorro de lana: te deja atrapado menos rato
       this.atrapadoHasta = ahora + cfg.ATRAPA_MS * Math.max(0, 1 - bonusColeccion('gorro', 'MENOS_LENTITUD'));
       enemigo.recargaHasta = ahora + cfg.RECARGA_MS;
@@ -1795,8 +1881,10 @@ class GameScene extends Phaser.Scene {
     if (this.efectoZona.segura) return; // Zona segura: no recibe daño
 
     // Antifaz: a veces esquiva el golpe
-    if (Math.random() < bonusColeccion('antifaz', 'ESQUIVAR')) {
-      this.invulnerableHasta = ahora + CONFIG.PERRO_INVULNERABLE_MS;
+    // Árbol (Quiebre de cintura...): más probabilidad. Reflejos: el sprint queda listo
+    if (Math.random() < bonusColeccion('antifaz', 'ESQUIVAR') + bonusArbol(this, 'ESQUIVAR')) {
+      this.invulnerableHasta = ahora + CONFIG.PERRO_INVULNERABLE_MS + bonusArbol(this, 'REFLEJOS_MS');
+      if (bonusArbol(this, 'REFLEJOS_MS') > 0 && this.poder === 'sprint') this.poderCarga = this.poderEsperaTotal;
       this.textoFlotante('¡Esquivado!', '#e1bee7');
       return;
     }
@@ -1813,6 +1901,9 @@ class GameScene extends Phaser.Scene {
     if (antipulgas && (antipulgas.TIPOS || []).includes(enemigo.tipo)) {
       dano *= Math.max(0, 1 - bonusColeccion('antipulgas', 'MENOS_DANO'));
     }
+    // Árbol: Piel gruesa (menos daño), Inamovible (embestidas) y Manada (enemigos cerca)
+    dano *= Math.max(0, 1 - this.reduccionArbol());
+    if (enemigo.estado === 'embestir') dano *= Math.max(0, 1 - bonusArbol(this, 'INAMOVIBLE'));
     dano = Math.max(1, Math.round(dano));
 
     this.vida = Math.max(0, this.vida - dano);
@@ -1820,9 +1911,14 @@ class GameScene extends Phaser.Scene {
     if (this.fusiones.cuero) this.cueroHasta = ahora + CONFIG.FUSIONES.cuero.DURACION_MS;
     this.cameras.main.shake(100, 0.005);
 
-    if (this.vida <= 0) {
+    if (this.vida <= 0 && !salvarseArbol(this)) { // Siete vidas (Quiltro, src/arbol.js)
       this.terminarJuego();
     }
+  }
+
+  // Reducción de daño del árbol (sin contar Inamovible, que es solo para embestidas)
+  reduccionArbol() {
+    return Math.min(0.9, bonusArbol(this, 'MENOS_DANO') + bonusArbol(this, 'GRUPO_DEFENSA') * enemigosCercaArbol(this));
   }
 
   // victoria = true: sobreviviste la noche; si no, Game Over
@@ -1956,7 +2052,7 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20 + e, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(m, 20 + e, 'Lomito Survivor - v0.14.1', estilo)
+    this.add.text(m, 20 + e, 'Lomito Survivor - v0.15', estilo)
       .setScrollFactor(0).setDepth(1000);
     if (!modoTactil()) { // en celular está el botón de pausa
       this.add.text(12, this.scale.height - 10, 'P / Esc: pausa', { ...estilo, fontSize: '13px', color: '#9e9e9e' })

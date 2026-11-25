@@ -607,9 +607,11 @@ function sortearColeccionable(mapa) {
 
 // Un enemigo murió: a veces suelta un ultra raro (élites y jefe, más seguido)
 function sorteoUltraAlDerrotar(escena, enemigo) {
-  let p = CONFIG.ULTRA_PROBABILIDAD_ENEMIGO;
+  // Árbol del Quiltro (src/arbol.js): Estrella de la calle (más en enemigos normales)
+  // y Pata de conejo (los élites siempre sueltan uno)
+  let p = CONFIG.ULTRA_PROBABILIDAD_ENEMIGO * (1 + bonusArbol(escena, 'ULTRA'));
   if (enemigo.esJefe) p = CONFIG.ULTRA_PROBABILIDAD_JEFE;
-  else if (enemigo.elite) p = CONFIG.ULTRA_PROBABILIDAD_ELITE;
+  else if (enemigo.elite) p = bonusArbol(escena, 'PATA_CONEJO') > 0 ? 1 : CONFIG.ULTRA_PROBABILIDAD_ELITE;
   if (Math.random() < p) soltarUltra(escena, enemigo.x, enemigo.y);
 }
 

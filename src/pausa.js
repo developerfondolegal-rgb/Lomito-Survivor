@@ -224,6 +224,10 @@ function calcularStats(escena) {
     .filter((s) => sinergiaActiva(e, s) && numerosSinergia(s)[bonus])
     .map((s) => s.nombre + ' +' + Math.round(numerosSinergia(s)[bonus] * 100) + '%');
 
+  // Árbol de habilidades de la raza (src/arbol.js)
+  const arb = (k) => bonusArbol(e, k);
+  const pct = (v) => Math.round(v * 100) + '%';
+
   const stats = [];
 
   // Vida
@@ -231,6 +235,7 @@ function calcularStats(escena) {
   if (inst('pellejoDuro')) vida.push(nombreInstinto('pellejoDuro') + nvI('pellejoDuro') + ' +' + inst('pellejoDuro') * CONFIG.PELLEJO_VIDA);
   if (obj('frazada')) vida.push(buscarObjeto('frazada').nombre + nvO('frazada') + ' +' + obj('frazada') * CONFIG.OBJETOS.frazada.VIDA);
   if (col('sweater')) vida.push(nombreCol('sweater') + ' +' + Math.round(bonusColeccion('sweater', 'VIDA')));
+  if (arb('VIDA')) vida.push('Árbol +' + arb('VIDA'));
   stats.push({ nombre: 'Vida', valor: Math.round(e.vida) + ' / ' + e.vidaMax, partes: vida });
 
   // Velocidad
@@ -238,14 +243,21 @@ function calcularStats(escena) {
   if (inst('patasLigeras')) vel.push(nombreInstinto('patasLigeras') + nvI('patasLigeras') + ' +' + inst('patasLigeras') * CONFIG.PATAS_VELOCIDAD);
   if (obj('pelota')) vel.push(buscarObjeto('pelota').nombre + nvO('pelota') + ' +' + obj('pelota') * CONFIG.OBJETOS.pelota.VELOCIDAD);
   const velCol = col('capa') ? [nombreCol('capa') + ' +' + Math.round(bonusColeccion('capa', 'VELOCIDAD') * 100) + '%'] : [];
+  if (arb('VELOCIDAD')) velCol.push('Árbol +' + pct(arb('VELOCIDAD')));
   stats.push({ nombre: 'Velocidad', valor: numeroPausa(e.velocidadPerro()), partes: vel.concat(deSinergias('VELOCIDAD'), velCol) });
 
   // Daño de mordida
   const dano = [raza + ' ' + base.MORDIDA_DANO];
   if (inst('colmillos')) dano.push(nombreInstinto('colmillos') + nvI('colmillos') + ' +' + inst('colmillos') * CONFIG.COLMILLOS_DANO);
   const danoExtra = deSinergias('DANO');
-  if (e.poder === 'mandibula') danoExtra.push('Mandíbula de hierro +' + base.MANDIBULA_DANO_EXTRA + ' cada ' + numeroPausa(base.PODER_ESPERA_MS / 1000) + ' s');
+  if (e.poder === 'mandibula') {
+    // Con el árbol (Mandíbula ansiosa / pesada): más daño y se carga más rápido
+    const cargaMs = base.PODER_ESPERA_MS / (1 + bonusColeccion('capa', 'RECARGA') + bonusArbol(e, 'MANDIBULA_RECARGA'));
+    danoExtra.push('Mandíbula de hierro +' + (base.MANDIBULA_DANO_EXTRA + bonusArbol(e, 'MANDIBULA_DANO')) + ' cada ' + numeroPausa(cargaMs / 1000) + ' s');
+  }
   if (col('panuelo')) danoExtra.push(nombreCol('panuelo') + ' ' + Math.round(bonusColeccion('panuelo', 'CRITICO') * 100) + '% de crítico (×2)');
+  if (e.bonusDanoArbol()) danoExtra.push('Árbol +' + pct(e.bonusDanoArbol()) + ' ahora');
+  if (arb('CRITICO')) danoExtra.push('Árbol ' + pct(arb('CRITICO')) + ' de crítico');
   stats.push({ nombre: 'Daño de mordida', valor: numeroPausa(e.danoMordida()), partes: dano.concat(danoExtra) });
 
   // Frecuencia de mordida
@@ -256,6 +268,7 @@ function calcularStats(escena) {
     const f = CONFIG.FUSIONES.frenesi;
     frec.push('Frenesí ×' + numeroPausa(1 / f.MORDIDA_MULTIPLICADOR) + ' de rapidez y muerde a ' + f.OBJETIVOS);
   }
+  if (arb('MORDIDA_RAPIDEZ')) frec.push('Árbol ' + pct(arb('MORDIDA_RAPIDEZ')) + ' más seguido');
   stats.push({ nombre: 'Frecuencia de mordida', valor: 'cada ' + numeroPausa(ms / 1000, 2) + ' s (' + numeroPausa(1000 / ms) + ' por seg.)', partes: frec });
 
   // Alcance de la mordida
@@ -268,6 +281,7 @@ function calcularStats(escena) {
   if (base.IMAN_EXTRA) iman.push(e.textosRaza.nombre + (e.poder === 'rastreo' ? ' (Rastreo)' : '') + ' +' + base.IMAN_EXTRA);
   if (inst('olfato')) iman.push(nombreInstinto('olfato') + nvI('olfato') + ' +' + inst('olfato') * CONFIG.OLFATO_IMAN);
   if (col('lentes')) iman.push(nombreCol('lentes') + ' +' + Math.round(bonusColeccion('lentes', 'IMAN')));
+  if (arb('IMAN')) iman.push('Árbol +' + arb('IMAN'));
   stats.push({ nombre: 'Imán de huesos', valor: String(e.radioIman()), partes: iman });
 
   // Reducción de daño
@@ -281,16 +295,20 @@ function calcularStats(escena) {
   if (col('antifaz')) red.push(nombreCol('antifaz') + ' ' + Math.round(bonusColeccion('antifaz', 'ESQUIVAR') * 100) + '% de esquivar');
   if (col('antipulgas')) red.push(nombreCol('antipulgas') + ' −' + Math.round(bonusColeccion('antipulgas', 'MENOS_DANO') * 100) + '% de manada y rivales');
   if (col('chalequito')) red.push(nombreCol('chalequito') + ' −' + Math.round(bonusColeccion('chalequito', 'MENOS_DANO_EMBESTIDA') * 100) + '% de embestidas');
-  stats.push({ nombre: 'Reducción de daño', valor: Math.round(collar * 100) + '%', partes: red });
+  if (arb('MENOS_DANO') || arb('GRUPO_DEFENSA')) red.push('Árbol −' + pct(e.reduccionArbol()) + ' ahora');
+  if (arb('ESQUIVAR')) red.push('Árbol ' + pct(arb('ESQUIVAR')) + ' de esquivar');
+  if (arb('INAMOVIBLE')) red.push('Inamovible −' + pct(arb('INAMOVIBLE')) + ' de embestidas, sin Perrera');
+  const reduccion = 1 - (1 - collar) * (1 - e.reduccionArbol());
+  stats.push({ nombre: 'Reducción de daño', valor: Math.round(reduccion * 100) + '%', partes: red });
 
   // Regeneración (curación con el tiempo)
   const mult = e.multiplicadorRegeneracion();
   let porSeg = 0;
   const regen = [];
   if (e.poder === 'calle') {
-    const calle = base.CALLE_CURA / (base.CALLE_CURA_CADA_MS / 1000);
+    const calle = e.curaCalle() * e.rapidezCalle() / (base.CALLE_CURA_CADA_MS / 1000);
     porSeg += calle * mult;
-    regen.push(raza + ' (Calle) ' + numeroPausa(calle, 2) + '/s');
+    regen.push(raza + ' (Calle' + (arb('CALLE_CURA') || arb('CALLE_RAPIDEZ') ? ' + árbol' : '') + ') ' + numeroPausa(calle, 2) + '/s');
   } else {
     regen.push(raza + ' 0/s');
   }
@@ -304,16 +322,31 @@ function calcularStats(escena) {
     porSeg += sweater * mult;
     regen.push(nombreCol('sweater') + ' +' + numeroPausa(sweater, 2) + '/s');
   }
+  if (arb('CURA_CADA_MS')) {
+    const lamer = 1 / (arb('CURA_CADA_MS') / 1000);
+    porSeg += lamer * mult;
+    regen.push('Árbol +' + numeroPausa(lamer, 2) + '/s');
+  }
+  if (arb('REGENERACION')) regen.push('Árbol +' + pct(arb('REGENERACION')));
   stats.push({ nombre: 'Regeneración', valor: numeroPausa(porSeg, 2) + ' de vida por seg.', partes: regen.concat(deSinergias('REGENERACION')) });
 
   // Experiencia extra
   const xpPlaca = obj('placa') * CONFIG.OBJETOS.placa.XP_EXTRA;
   const xpCascabel = bonusColeccion('cascabel', 'XP_EXTRA');
-  const xpExtra = xpPlaca + xpCascabel;
+  const xpExtra = xpPlaca + xpCascabel + arb('XP');
   const xp = [raza + ' 0%'];
   if (obj('placa')) xp.push(buscarObjeto('placa').nombre + nvO('placa') + ' +' + Math.round(xpPlaca * 100) + '%');
   if (col('cascabel')) xp.push(nombreCol('cascabel') + ' +' + Math.round(xpCascabel * 100) + '%');
+  if (arb('XP')) xp.push('Árbol +' + pct(arb('XP')));
   stats.push({ nombre: 'Experiencia extra', valor: '+' + Math.round(xpExtra * 100) + '%', partes: xp });
+
+  // Árbol de habilidades: lo que no aparece en los otros stats y las especiales (★)
+  const partesArbol = partesArbolStats(e);
+  stats.push({
+    nombre: 'Árbol de habilidades',
+    valor: mejorasCompradas(e.razaId) + ' / ' + ramasDeRaza(e.razaId).length * ARBOL_NODOS + ' mejoras',
+    partes: partesArbol.length ? partesArbol : ['Sin mejoras: se compran con huesitos en el menú (Árbol)']
+  });
 
   return stats;
 }
@@ -324,6 +357,7 @@ function pestanaStats(escena, capa, area) {
   const paso = 52;
 
   // 6 stats a la izquierda, el resto a la derecha
+  let abajoDerecha = area.y + 4;
   stats.forEach((s, i) => {
     const col = i < 6 ? 0 : 1;
     const fila = i < 6 ? i : i - 6;
@@ -331,13 +365,15 @@ function pestanaStats(escena, capa, area) {
     const y = area.y + 4 + fila * paso;
     capa.push(textoPausa(escena, x, y, s.nombre, 15, '#ffe082', true));
     capa.push(textoPausa(escena, x + 175, y, s.valor, 15, '#ffffff', true));
-    capa.push(textoPausa(escena, x, y + 20, s.partes.join('  ·  '), 12, '#b0bec5', false, anchoCol));
+    const partes = textoPausa(escena, x, y + 20, s.partes.join('  ·  '), 12, '#b0bec5', false, anchoCol);
+    capa.push(partes);
+    if (col === 1) abajoDerecha = Math.max(y + paso, partes.y + partes.height + 8);
   });
 
-  // Datos de la partida, abajo a la derecha
+  // Datos de la partida, abajo a la derecha (debajo del último stat de esa columna)
   const e = escena;
   const x = area.x + anchoCol + 28;
-  let y = area.y + 4 + 3 * paso + 6;
+  let y = abajoDerecha + 6;
   const fase = datosFase(Math.max(0, e.faseActual)).NOMBRE;
   const lineas = [
     ['Nivel', e.nivel + '   (' + numeroPausa(e.xp) + ' / ' + e.xpParaSubir() + ' huesos para el siguiente)'],
@@ -346,14 +382,17 @@ function pestanaStats(escena, capa, area) {
     ['Enemigos derrotados', String(e.derrotados)]
   ];
   if (e.jefeAparecido) lineas.push([NOMBRE_JEFE, e.jefeDerrotado ? 'derrotado' : 'sigue vivo']);
+  // Si el árbol ocupa mucho, las líneas se juntan un poco para no tapar los botones de abajo
+  const limite = escena.scale.height - 72;
+  const pasoLinea = Math.max(18, Math.min(24, (limite - y) / lineas.length));
   const g = escena.add.graphics();
   g.fillStyle(0x000000, 0.3);
-  g.fillRect(x - 8, y - 6, anchoCol + 8, lineas.length * 24 + 8);
+  g.fillRect(x - 8, y - 6, anchoCol + 8, lineas.length * pasoLinea + 8);
   capa.push(g);
   lineas.forEach(([nombre, valor]) => {
     capa.push(textoPausa(escena, x, y, nombre, 15, '#90caf9', true));
     capa.push(textoPausa(escena, x + 175, y, valor, 15, '#ffffff'));
-    y += 24;
+    y += pasoLinea;
   });
 }
 
