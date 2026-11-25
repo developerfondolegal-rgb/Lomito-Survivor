@@ -1,5 +1,6 @@
 // Pantalla de inicio: elegir la raza del perro (y abrir el Álbum de coleccionables,
-// el Árbol de habilidades y el Rincón de apuestas).
+// el Árbol de habilidades, el Rincón de apuestas y el Ranking).
+// Arriba a la derecha: entrar con Google / salir y el apodo (src/online.js).
 // Arriba a la izquierda se ven los huesitos guardados (src/huesitos.js).
 
 const FUENTE = 'Arial, sans-serif';
@@ -35,7 +36,7 @@ class MenuScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5);
 
-    this.add.text(w - 10 - e, this.scale.height - 8 - e, 'Lomito Survivor - v0.15', {
+    this.add.text(w - 10 - e, this.scale.height - 8 - e, 'Lomito Survivor - v' + VERSION_JUEGO, {
       fontFamily: FUENTE, fontSize: '13px', color: '#888888'
     }).setOrigin(1, 1);
 
@@ -61,6 +62,16 @@ class MenuScene extends Phaser.Scene {
       }, 15);
     }
 
+    // Ranking online (src/scenes/RankingScene.js), abajo a la izquierda
+    botonPantalla(this, 14 + e + 62, yBotones, 124, 34, 'Ranking' + (modoTactil() ? '' : ' (L)'),
+      0x4fc3f7, () => this.scene.start('RankingScene'), 15);
+
+    // Cuenta: "Entrar con Google" / "Salir" y el apodo (se redibuja cuando cambia la sesión)
+    this.capaCuenta = [];
+    this.dibujarCuenta();
+    const desuscribir = alCambiarOnline(() => this.dibujarCuenta());
+    this.events.once('shutdown', desuscribir);
+
     // Huesitos guardados (la moneda del juego)
     this.textoHuesitos = this.add.text(14 + e, 12 + e / 2, '', {
       fontFamily: FUENTE, fontSize: '18px', color: '#f2d64b', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
@@ -73,6 +84,52 @@ class MenuScene extends Phaser.Scene {
     this.teclaRincon = this.input.keyboard.addKey('B');
     this.teclaArbol = this.input.keyboard.addKey('G');
     this.teclaH = this.input.keyboard.addKey('H'); // modo de prueba: +100 huesitos guardados
+    this.teclaRanking = this.input.keyboard.addKey('L');
+  }
+
+  // Arriba a la derecha (en celular, debajo del botón de pantalla completa)
+  dibujarCuenta() {
+    this.capaCuenta.forEach((o) => o.destroy());
+    this.capaCuenta = [];
+    const capa = this.capaCuenta;
+    const e = this.margenExtra;
+    const derecha = this.scale.width - 10 - e;
+    const ancho = 172;
+    const cx = this.scale.width - 96 - e;
+    const cy = (modoTactil() && !esModoApp() ? 70 : 28) + e / 2; // en celular el de arriba es pantalla completa
+    const texto = (t, y, color) => {
+      const obj = this.add.text(derecha, y, t, {
+        fontFamily: FUENTE, fontSize: '14px', color, fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
+      }).setOrigin(1, 0.5);
+      capa.push(obj);
+      return obj;
+    };
+
+    if (!onlineDisponible()) {
+      texto(TEXTO_SOLO_ONLINE.replace(' en la', '\nen la'), cy, '#9e9e9e').setAlign('right'); // en 2 líneas para no tocar el título
+      return;
+    }
+    if (ONLINE.cargando) {
+      texto('Conectando...', cy, '#9e9e9e');
+      return;
+    }
+    if (!ONLINE.usuario) {
+      capa.push(...botonPantalla(this, cx, cy, ancho, 34, 'Entrar con Google', 0x81d4fa, () => {
+        entrarConGoogle().catch((err) => avisoBreve(this, this.scale.width / 2, 120, 'No se pudo entrar: ' + mensajeError(err)));
+      }, 15));
+      return;
+    }
+    capa.push(...botonPantalla(this, cx, cy, ancho, 34, 'Salir', 0xef9a9a, () => salirOnline(), 15));
+    if (ONLINE.apodo) {
+      texto('★ ' + ONLINE.apodo, cy + 28, '#ffe082');
+    } else if (ONLINE.apodoCargado) {
+      // Primera vez: hay que elegir apodo
+      const t = texto('Elegir apodo', cy + 28, '#9ccc65').setInteractive({ useHandCursor: true });
+      t.on('pointerdown', () => pedirApodo());
+      pedirApodo();
+    } else {
+      texto('...', cy + 28, '#9e9e9e');
+    }
   }
 
   actualizarHuesitos() {
@@ -86,6 +143,7 @@ class MenuScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.teclaAlbum)) this.scene.start('AlbumScene');
     if (Phaser.Input.Keyboard.JustDown(this.teclaRincon)) this.scene.start('ApuestasScene', { modo: 'fin' });
     if (Phaser.Input.Keyboard.JustDown(this.teclaArbol)) this.scene.start('ArbolScene');
+    if (Phaser.Input.Keyboard.JustDown(this.teclaRanking)) this.scene.start('RankingScene');
     // Modo de prueba: H da huesitos guardados (cuánto, en CONFIG.HUESITOS.PRUEBA_TECLA_H)
     if (Phaser.Input.Keyboard.JustDown(this.teclaH)) {
       sumarHuesitos(CONFIG.HUESITOS.PRUEBA_TECLA_H);

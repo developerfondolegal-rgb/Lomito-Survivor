@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.15** — árbol de habilidades por raza, pagado con huesitos.
+Versión actual: **v0.16** — inicio de sesión con Google y ranking online.
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -45,6 +45,7 @@ El juego se ajusta solo a la parte visible de la pantalla (sin la barra del nave
 | Menú de pausa | Toca las pestañas y los botones **Continuar**, **Reiniciar** y **Salir al menú** |
 | Pantalla final | Botones **Reiniciar**, **Rincón de apuestas** y **Menú** |
 | Álbum | Botones **Volver** y **Borrar progreso** (pide confirmar) |
+| Ranking | Botón **Ranking** del inicio; toca **General** o una raza, **Actualizar** y **Volver**. **Entrar con Google** / **Salir** arriba a la derecha |
 | Árbol de habilidades | Toca una pestaña de raza, toca una mejora para ver qué hace, **Comprar**, **Reiniciar árbol de …** (pide confirmar) y **Volver** |
 | Rincón de apuestas | Toca el juego, tu número o bajo/alto, **−** y **+** para el monto, "Huesitos guardados" o "1 copia de un coleccionable", **Tirar** y **Seguir jugando** / **Salir** |
 
@@ -60,6 +61,8 @@ Las teclas de prueba (T, Y, U, J, K, Z, X, C, H) no tienen versión táctil.
 | Abrir el Álbum de coleccionables (pantalla de inicio) | botón **Álbum** o tecla **A** |
 | Abrir el Rincón de apuestas con los huesitos guardados (pantalla de inicio) | botón **Rincón de apuestas** o tecla **B** |
 | Abrir el Árbol de habilidades (pantalla de inicio) | botón **Árbol** o tecla **G** |
+| Abrir el Ranking online (pantalla de inicio) | botón **Ranking** o tecla **L** |
+| Ranking: cambiar filtro / actualizar / volver | **flechas izquierda / derecha**, **Q** / **E** o **1**-**5** · **R** · **Esc** o **L** |
 | Árbol: elegir mejora / raza / comprar / reiniciar / volver | flechas · **Q** / **E** o **1**-**4** · **Enter** o **Espacio** · **R** (Enter confirma, Esc cancela) · **Esc** o **G** |
 | Volver del Álbum a la pantalla de inicio | **Esc** o **A** (o el botón Volver) |
 | Modo de prueba: +100 huesitos guardados (pantalla de inicio) | **H** |
@@ -413,9 +416,38 @@ A los **9 minutos** (05:12 en el reloj) llega un perro enorme y oscuro con colla
 - Arriba al centro, en dorado (solo durante un desafío): el **desafío**, su progreso y los segundos que quedan. Se pone rojo y parpadea los últimos 10 segundos.
 - Abajo al centro: **inventario** de objetos y fusiones logradas.
 
+### Ranking online e inicio de sesión con Google
+
+Solo en la **versión online** (GitHub Pages). Si abres el juego con doble clic o sin internet, todo funciona igual que antes y solo dice *"Ranking disponible en la versión online"*.
+
+- **Entrar con Google** (arriba a la derecha del inicio): te lleva a Google y vuelve al juego. La sesión queda guardada al recargar. **Salir** la cierra.
+- **Apodo**: la primera vez que entras te pide elegir un apodo (3 a 16 letras, números, espacios, `_ . -`). Es único y es el nombre que sale en el ranking. Se escribe con el teclado del PC o del celular. Si eliges *Ahora no*, te lo vuelve a pedir al volver al inicio.
+- **Puntaje**: al terminar una partida (Game Over o victoria) aparece arriba a la derecha tu **PUNTAJE**. Si tienes sesión y apodo, se **envía solo** y dice *"Puntaje enviado ✓"* o el error.
+  - Puntaje = segundos × 10 + nivel × 50 + enemigos × 5 + 2000 si derrotaste al jefe + 3000 si amaneció (sobreviviste la noche). Los números están en `src/config.js`, sección `ONLINE`, `PUNTAJE`.
+  - **Las partidas donde usaste teclas de prueba (T, Y, U, J, K, Z, X, C) no se envían**: la pantalla final dice *"Partida de prueba: no se envía al ranking"*.
+- **Ranking** (botón o tecla **L**): top 20 **General** (la mejor partida de cada jugador) o por **raza**. Tu fila se ve destacada en amarillo y abajo sale **tu posición** aunque no estés en el top 20. ⚔ = derrotó al jefe, ☀ = sobrevivió la noche.
+
+#### Preparar la base de datos (una sola vez)
+
+El ranking usa **Supabase**. La URL y la llave pública (anon) están en `src/config.js`, sección `ONLINE`. **Nunca** pongas ahí la llave `service_role`.
+
+1. Entra a [supabase.com](https://supabase.com) → tu proyecto → **SQL Editor** → **New query**.
+2. Abre el archivo `supabase/migraciones/001_ranking.sql`, copia **todo** y pégalo.
+3. Presiona **Run**. Debe decir *Success*. (Se puede correr otra vez sin borrar datos.)
+4. Revisa en **Table Editor** que aparezcan las tablas `jugadores` y `partidas`, y en **Authentication → Providers** que **Google** esté activo, con la *Site URL* y la *Redirect URL* apuntando a la página del juego en GitHub Pages.
+
+Qué crea la migración:
+- `jugadores`: id del usuario de Google, apodo único (3-16 caracteres) y fecha.
+- `partidas`: raza, segundos sobrevividos, nivel, enemigos, jefe derrotado, amanecer, puntaje, versión del juego y fecha.
+- Reglas de seguridad (RLS): cada usuario solo crea o edita **su** jugador y solo guarda partidas **suyas**; todos pueden leer el ranking; **nadie puede editar ni borrar partidas**.
+- Validaciones para frenar trampas obvias: valores no negativos, máximo 1200 segundos (la noche dura 600), no se puede amanecer sin derrotar al jefe, límite de enemigos por segundo, y **el servidor vuelve a calcular el puntaje** (el que manda el juego no se usa).
+- Vistas `ranking_top` (mejor puntaje de cada jugador por raza, con apodo) y `ranking_general` (mejor puntaje de cada jugador).
+
+> Si cambias la fórmula del puntaje en `src/config.js`, cámbiala también en la función `calcular_puntaje` de la base de datos (con una migración nueva, por ejemplo `002_...sql`). Si cambias `NOCHE.DURACION_MINUTOS`, revisa el máximo de segundos (`SEGUNDOS_MAXIMOS` y el CHECK de la tabla).
+
 ### Game Over y victoria
 
-Al llegar a 0 de vida aparece "Game Over". Si sobrevives la noche aparece **"¡Sobreviviste la noche!"**. Las dos pantallas muestran tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados, cuántos de cada tipo, si derrotaste al jefe, los **objetos** que tenías (con su nivel), las **fusiones** logradas y cuántos **desafíos completaste** (y cuántos fallaste). Si recogiste ultra raros, también dice cuántos. Al final aparecen los **huesitos de la partida** (ya sumados a tu total guardado) con su desglose.
+Al llegar a 0 de vida aparece "Game Over". Si sobrevives la noche aparece **"¡Sobreviviste la noche!"**. Las dos pantallas muestran tu raza, tu tiempo, el nivel alcanzado, el total de enemigos derrotados, cuántos de cada tipo, si derrotaste al jefe, los **objetos** que tenías (con su nivel), las **fusiones** logradas y cuántos **desafíos completaste** (y cuántos fallaste). Si recogiste ultra raros, también dice cuántos. Al final aparecen los **huesitos de la partida** (ya sumados a tu total guardado) con su desglose. Arriba a la derecha sale tu **puntaje** y si se envió al ranking.
 - **R**: jugar de nuevo con la misma raza.
 - **M**: ir al **Rincón de apuestas** y de ahí a la pantalla de inicio (si `EN_FIN_DE_PARTIDA` está en `false`, va directo al inicio).
 
@@ -709,8 +741,11 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/mapa.js` — la plaza: suelo, pileta, bancas, árboles, faroles, basureros, autos, comida, obstáculos y la oscuridad de la noche.
 - `src/noche.js` — el reloj de la noche, las fases y cuánto se aclara la oscuridad.
 - `src/jefe.js` — El Jefe de la Plaza: su dibujo, sus ataques y su barra de vida.
+- `src/online.js` — login con Google, apodo, puntaje, envío de partidas y lectura del ranking (Supabase).
 - `src/main.js` — configuración del motor del juego.
-- `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza (y los botones Álbum, Árbol y Rincón de apuestas).
+- `src/scenes/MenuScene.js` — la pantalla de inicio para elegir raza (y los botones Álbum, Árbol, Rincón de apuestas, Ranking y Entrar con Google / Salir).
+- `src/scenes/RankingScene.js` — el Ranking online: top 20 general y por raza, y tu posición.
+- `supabase/migraciones/001_ranking.sql` — tablas, reglas de seguridad y vistas del ranking (se pega en el SQL Editor de Supabase).
 - `src/scenes/ArbolScene.js` — la pantalla del Árbol de habilidades: pestañas de raza, las 3 ramas, el panel de la mejora y el botón Reiniciar.
 - `src/scenes/AlbumScene.js` — el Álbum de coleccionables y el botón Borrar progreso.
 - `src/scenes/ApuestasScene.js` — el Rincón de apuestas: los tres juegos, el dado y el gato en pixel art.
@@ -723,4 +758,7 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - En el celular va lento: baja `ENEMIGOS_MAXIMOS` o `LIMITAR_EFECTOS_DESDE` en la sección `MOVIL`, o sube `OSCURIDAD_CADA_CUADROS` a 3.
 - En el celular se corta el HUD arriba o abajo: recarga la página (puede ser caché vieja) y gira el celular a horizontal. Si aún queda pegado al borde, sube `MARGEN_HUD` en la sección `MOVIL`.
 - El perro no se mueve o las teclas no responden: haz clic una vez sobre el juego para que la ventana tenga el foco del teclado.
+- Dice "Ranking disponible en la versión online": abriste el juego con doble clic o sin internet. Ábrelo desde GitHub Pages.
+- "Falta crear las tablas del ranking en Supabase": aplica `supabase/migraciones/001_ranking.sql` (ver *Ranking online*).
+- Al entrar con Google vuelve a otra página o da error de redirección: en Supabase → Authentication → URL Configuration, la *Site URL* y la *Redirect URL* deben ser exactamente la dirección del juego en GitHub Pages (con la `/` final).
 - La colección no se guarda: revisa que no estés en una ventana privada/incógnito. Cada navegador guarda su propia colección.

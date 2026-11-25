@@ -5,6 +5,10 @@
 //  (ms = milisegundos; 1000 ms = 1 segundo)
 //  Cuidado: no borres las comas ni los dos puntos.
 // ===============================================================
+
+// Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
+const VERSION_JUEGO = '0.16';
+
 const CONFIG = {
   // Tamaño del mapa (en píxeles)
   MAPA_ANCHO: 3000,
@@ -794,5 +798,46 @@ const CONFIG = {
     LIMITAR_EFECTOS_DESDE: 45,  // con más enemigos que esto se omiten efectos chicos (dientes, sombras del sprint)
     EFECTOS_UNO_DE_CADA: 3,     // cuando se limitan, solo se muestra 1 de cada 3 dientes de mordida
     OSCURIDAD_CADA_CUADROS: 2   // la oscuridad de la noche se redibuja cada 2 cuadros (1 = siempre, más fluido pero más pesado)
+  },
+
+  // ---------------------------------------------------------------
+  //  ONLINE: inicio de sesión con Google y ranking (src/online.js,
+  //  src/scenes/RankingScene.js). Usa Supabase.
+  //  Solo funciona en la versión online (GitHub Pages). Con doble clic
+  //  (file://) o sin internet el juego sigue igual, sin ranking.
+  //  La base de datos se crea con supabase/migraciones/001_ranking.sql
+  // ---------------------------------------------------------------
+  ONLINE: {
+    ACTIVO: true,               // false = apaga el login y el ranking aunque haya internet
+
+    // Datos del proyecto de Supabase (Project Settings → API).
+    // La llave "anon" es pública: está hecha para ir en la página. La seguridad
+    // la ponen las reglas (RLS) de la base de datos.
+    // ¡NUNCA pongas aquí la llave service_role!
+    SUPABASE_URL: 'https://apxeyaveeeixskyashwb.supabase.co',
+    SUPABASE_LLAVE_ANON: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFweGV5YXZlZWVpeHNreWFzaHdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1NzAzMTIsImV4cCI6MjExMTE0NjMxMn0.M8uZe9Y4J9w3VIUHbujrtN3Mt_vAT2cifjtTlxCUI0o',
+
+    // Apodo: se elige la primera vez que entras (letras, números, espacio, _ . -)
+    APODO_MIN: 3,
+    APODO_MAX: 16,
+
+    RANKING_CANTIDAD: 20,       // cuántos puestos muestra el ranking
+
+    // Puntaje de una partida (se muestra en la pantalla final y va al ranking):
+    //   segundos × POR_SEGUNDO + nivel × POR_NIVEL + enemigos × POR_ENEMIGO
+    //   + JEFE (si derrotaste al jefe) + AMANECER (si sobreviviste la noche)
+    // OJO: la base de datos vuelve a calcular el puntaje con estos mismos números
+    // (función calcular_puntaje en supabase/migraciones/001_ranking.sql).
+    // Si cambias algo aquí, cámbialo también allá (con una migración nueva).
+    PUNTAJE: {
+      POR_SEGUNDO: 10,
+      POR_NIVEL: 50,
+      POR_ENEMIGO: 5,
+      JEFE: 2000,
+      AMANECER: 3000
+    },
+    // Máximo de segundos que se envían (la noche dura NOCHE.DURACION_MINUTOS más un
+    // margen por si el jefe sigue vivo a las 06:00). Debe ser igual al CHECK de la base de datos.
+    SEGUNDOS_MAXIMOS: 1200
   }
 };

@@ -58,6 +58,7 @@ class GameScene extends Phaser.Scene {
     this.nivelesPendientes = 0;
     this.derrotados = 0;
     this.derrotadosPorTipo = {};
+    this.partidaDePrueba = false; // true si se usó alguna tecla de prueba: no va al ranking (src/online.js)
     Object.keys(CONFIG.ENEMIGOS).forEach((id) => { this.derrotadosPorTipo[id] = 0; });
     iniciarHuesitos(this);        // huesitos de la partida (src/huesitos.js)
     this.esperaMordida = 0;
@@ -239,14 +240,17 @@ class GameScene extends Phaser.Scene {
 
     // Modo de prueba: un enemigo de cada tipo cerca del perro
     if (Phaser.Input.Keyboard.JustDown(this.teclaT)) {
+      this.partidaDePrueba = true;
       this.modoPrueba();
     }
     // Modo de prueba: un objeto de cada rareza cerca del perro
     if (Phaser.Input.Keyboard.JustDown(this.teclaY)) {
+      this.partidaDePrueba = true;
       this.pruebaObjetos();
     }
     // Modo de prueba: subir 5 niveles de golpe (salen las cartas)
     if (Phaser.Input.Keyboard.JustDown(this.teclaU)) {
+      this.partidaDePrueba = true;
       this.nivel += 5;
       this.nivelesPendientes += 5;
       this.mostrarCartas();
@@ -254,23 +258,28 @@ class GameScene extends Phaser.Scene {
     }
     // Modo de prueba: el jefe aparece al tiro (si no hay uno vivo)
     if (Phaser.Input.Keyboard.JustDown(this.teclaJ) && !this.jefeVivo() && !this.amaneciendo) {
+      this.partidaDePrueba = true;
       this.aparecerJefe();
     }
     // Modo de prueba: el reloj de la noche salta 1 minuto
     if (Phaser.Input.Keyboard.JustDown(this.teclaK) && !this.amaneciendo) {
+      this.partidaDePrueba = true;
       this.tiempoSobrevivido += 60000;
       this.textoFlotante('+1 minuto (prueba)', '#b3e5fc');
     }
     // Modo de prueba: una zona especial de cada tipo cerca del perro
     if (Phaser.Input.Keyboard.JustDown(this.teclaZ) && !this.amaneciendo) {
+      this.partidaDePrueba = true;
       pruebaZonas(this);
     }
     // Modo de prueba: empieza un desafío al azar
     if (Phaser.Input.Keyboard.JustDown(this.teclaX) && !this.amaneciendo) {
+      this.partidaDePrueba = true;
       pruebaDesafio(this);
     }
     // Modo de prueba: un ultra raro coleccionable al azar cerca del perro
     if (Phaser.Input.Keyboard.JustDown(this.teclaC)) {
+      this.partidaDePrueba = true;
       pruebaUltra(this);
     }
 
@@ -2001,6 +2010,9 @@ class GameScene extends Phaser.Scene {
     y += 21;
     lineas.push({ texto: textoDesgloseHuesitos(huesitos), y, tam: '14px', color: '#e6d28a', ancho: 900 });
 
+    // Ranking online (src/online.js): se envía solo, arriba a la derecha dice cómo le fue
+    this.enviarAlRanking(victoria);
+
 
     lineas.forEach((l) => {
       const estilo = { fontFamily: FUENTE, fontSize: l.tam, color: l.color, fontStyle: l.negrita ? 'bold' : 'normal', align: 'center' };
@@ -2028,6 +2040,48 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  // Puntaje de la partida y envío al ranking (si hay sesión y no es de prueba)
+  enviarAlRanking(victoria) {
+    const datos = datosPartida(this, victoria);
+    // Columna a la derecha, debajo del título (ahí no tapa ningún texto)
+    const ancho = 180;
+    const cx = this.scale.width - margenHUD() - ancho / 2;
+    const fijo = (o) => o.setScrollFactor(0).setDepth(2001);
+    fijo(this.add.text(cx, 112, 'PUNTAJE', {
+      fontFamily: FUENTE, fontSize: '14px', color: '#cfd8dc', fontStyle: 'bold'
+    }).setOrigin(0.5, 0));
+    const numero = fijo(this.add.text(cx, 130, '', {
+      fontFamily: FUENTE, fontSize: '28px', color: '#ffe082', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5, 0));
+    const texto = fijo(this.add.text(cx, 166, '', {
+      fontFamily: FUENTE, fontSize: '14px', color: '#ffffff', fontStyle: 'bold', align: 'center',
+      stroke: '#000000', strokeThickness: 3, wordWrap: { width: ancho }
+    }).setOrigin(0.5, 0));
+    const poner = (estado, color) => {
+      if (!texto.active) return; // ya se fue de esta pantalla
+      numero.setText(Number(datos.puntaje).toLocaleString('es-CL'));
+      texto.setText(estado).setColor(color);
+    };
+
+    if (this.partidaDePrueba) {
+      poner('Partida de prueba (usaste teclas de prueba): no se envía al ranking', '#ffb74d');
+    } else if (!onlineDisponible()) {
+      poner(TEXTO_SOLO_ONLINE, '#b0bec5');
+    } else if (!ONLINE.usuario) {
+      poner('Entra con Google en el menú para aparecer en el ranking', '#b0bec5');
+    } else if (!ONLINE.apodo) {
+      poner('Elige tu apodo en el menú para aparecer en el ranking', '#b0bec5');
+    } else {
+      poner('Enviando al ranking...', '#cfd8dc');
+      enviarPartida(datos)
+        .then((guardado) => {
+          datos.puntaje = guardado;
+          poner('Puntaje enviado ✓', '#9ccc65');
+        })
+        .catch((e) => poner('No se pudo enviar: ' + e.message, '#ef9a9a'));
+    }
+  }
+
   // Tipos de enemigo con nombre (src/enemigos.js) y números (config.js)
   listaEnemigos() {
     const conNombre = ENEMIGOS.filter((e) => CONFIG.ENEMIGOS[e.id]);
@@ -2052,7 +2106,7 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20 + e, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(m, 20 + e, 'Lomito Survivor - v0.15', estilo)
+    this.add.text(m, 20 + e, 'Lomito Survivor - v' + VERSION_JUEGO, estilo)
       .setScrollFactor(0).setDepth(1000);
     if (!modoTactil()) { // en celular está el botón de pausa
       this.add.text(12, this.scale.height - 10, 'P / Esc: pausa', { ...estilo, fontSize: '13px', color: '#9e9e9e' })
