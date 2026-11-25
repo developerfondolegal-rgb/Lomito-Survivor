@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.16';
+const VERSION_JUEGO = '0.16.1';
 
 const CONFIG = {
   // Tamaño del mapa (en píxeles)
@@ -768,6 +768,36 @@ const CONFIG = {
     GATO_PROBABILIDAD: 1 / 12,  // 1 de cada 12 tiradas el gato salta y pierdes
 
     DADO_MS: 900                // cuánto rato rueda el dado antes de mostrar el resultado
+  },
+
+  // ---------------------------------------------------------------
+  //  BIENVENIDA: la primera pantalla al abrir el juego
+  //  (src/scenes/BienvenidaScene.js). Cada vez sale una frase al azar.
+  //  Puedes agregar, cambiar o borrar frases (entre comillas y con coma).
+  // ---------------------------------------------------------------
+  BIENVENIDA: {
+    FRASES: [
+      "¡Está como pa' perros!",
+      'Perro que ladra no muerde... el tuyo sí',
+      "Sobrevive la noche, que el día es pa' echarse",
+      'Más perdido que perro en misa',
+      'Ser quiltro es un estilo de vida',
+      'Aquí no hay correa que valga',
+      'Más contento que perro con dos colas',
+      'Al tiro, que la plaza no se cuida sola',
+      'Ladra, corre y no te achunchis',
+      'Pulento el lomito, bacán la noche',
+      'Ni el gato del almacén me quita la banca',
+      'Perro que duerme no come sopaipilla',
+      'Ojo al charqui: cada huesito cuenta',
+      "La plaza de noche es pa' valientes... y pa' quiltros",
+      'Cachai que aquí manda el lomito, ¿cierto?',
+      '¡Aperra, lomito, que se viene la noche!'
+    ],
+    TEXTO_EMPEZAR: 'Toca o presiona cualquier tecla para empezar',
+    TITULO_PIXEL: 7,              // tamaño de cada cuadrito del título "LOMITO SURVIVOR"
+    LADRIDO_CADA_MS: [2200, 3800], // el perro ladra cada este rato (al azar entre los dos números)
+    ESPERA_MS: 350                // no acepta toques antes de este rato (para no saltarla sin querer)
   },
 
   // ---------------------------------------------------------------

@@ -133,15 +133,22 @@ function errorApodo(apodo) {
   return '';
 }
 
-// Guarda el apodo del jugador (solo la primera vez). Devuelve una promesa.
+// Guarda el apodo del jugador: lo crea la primera vez y después lo cambia
+// (la base de datos deja editar solo el apodo propio). Devuelve una promesa.
 function guardarApodo(apodo) {
   apodo = String(apodo || '').trim().replace(/\s+/g, ' ');
   const malo = errorApodo(apodo);
   if (malo) return Promise.reject(new Error(malo));
   if (!onlineDisponible() || !ONLINE.usuario) return Promise.reject(new Error('No has iniciado sesión.'));
-  return ONLINE.cliente.from('jugadores').insert({ id: ONLINE.usuario.id, apodo })
-    .then(({ error }) => {
+  if (ONLINE.apodo === apodo) return Promise.resolve(); // no cambió nada
+  const tabla = ONLINE.cliente.from('jugadores');
+  const pedido = ONLINE.apodo
+    ? tabla.update({ apodo }).eq('id', ONLINE.usuario.id).select('apodo')
+    : tabla.insert({ id: ONLINE.usuario.id, apodo });
+  return pedido
+    .then(({ data, error }) => {
       if (error) throw new Error(mensajeError(error));
+      if (ONLINE.apodo && (!data || data.length === 0)) throw new Error('No se pudo cambiar el apodo (revisa que la sesión siga iniciada).');
       ONLINE.apodo = apodo;
       ONLINE.apodoCargado = true;
       avisarCambioOnline();
@@ -234,35 +241,51 @@ function cargarRanking(raza) {
   });
 }
 
-// ---------------- Ventana para elegir el apodo ----------------
+// ---------------- Ventana para elegir (o cambiar) el apodo ----------------
 // Es HTML encima del juego, para que funcione el teclado del celular.
 // Las teclas no llegan a Phaser mientras está abierta.
+// pedirApodo() = primera vez (solo si falta) · pedirApodo(true) = cambiar el apodo actual
 
 let ventanaApodo = null;
 
-function pedirApodo() {
-  if (ventanaApodo || !faltaApodo()) return;
+// true si hay sesión y apodo (se puede cambiar)
+function puedeCambiarApodo() {
+  return onlineDisponible() && !!ONLINE.usuario && !!ONLINE.apodo;
+}
+
+function pedirApodo(cambiar) {
+  if (ventanaApodo) return;
+  if (cambiar ? !puedeCambiarApodo() : !faltaApodo()) return;
   const cfg = CONFIG.ONLINE;
+  const titulo = cambiar ? 'Cambiar apodo' : 'Elige tu apodo';
+  const ayuda = cambiar
+    ? 'Tu apodo actual es <b style="color:#ffe082"></b>. El nuevo se verá en todo el ranking.'
+    : 'Así aparecerás en el ranking. Después lo puedes cambiar desde el menú.';
   const fondo = document.createElement('div');
   fondo.style.cssText = 'position:fixed;inset:0;z-index:20;background:rgba(0,0,0,0.8);display:flex;' +
     'align-items:flex-start;justify-content:center;padding-top:6vh;font-family:Arial,sans-serif;';
   fondo.innerHTML =
     '<div style="background:#2a1f3a;border:4px solid #ffe082;padding:18px 22px;max-width:92vw;width:420px;box-sizing:border-box;color:#fff;text-align:center">' +
-      '<div style="font-size:22px;font-weight:bold;color:#ffe082;margin-bottom:6px">Elige tu apodo</div>' +
-      '<div style="font-size:14px;color:#cfd8dc;margin-bottom:12px">Así aparecerás en el ranking. Solo se elige una vez.</div>' +
+      '<div style="font-size:22px;font-weight:bold;color:#ffe082;margin-bottom:6px">' + titulo + '</div>' +
+      '<div style="font-size:14px;color:#cfd8dc;margin-bottom:12px">' + ayuda + '</div>' +
       '<input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="' + cfg.APODO_MAX + '" ' +
         'style="font-size:20px;width:100%;box-sizing:border-box;padding:8px;border:2px solid #888;background:#111;color:#fff;' +
         'user-select:text;-webkit-user-select:text;touch-action:auto">' +
       '<div class="error" style="min-height:20px;font-size:14px;color:#ef9a9a;margin:8px 0"></div>' +
       '<div style="display:flex;gap:12px;justify-content:center">' +
         '<button class="ok" style="font-size:17px;font-weight:bold;padding:8px 18px;background:#9ccc65;border:0;cursor:pointer">Guardar</button>' +
-        '<button class="no" style="font-size:17px;padding:8px 18px;background:#ffd54f;border:0;cursor:pointer">Ahora no</button>' +
+        '<button class="no" style="font-size:17px;padding:8px 18px;background:#ffd54f;border:0;cursor:pointer">' + (cambiar ? 'Cancelar' : 'Ahora no') + '</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(fondo);
   ventanaApodo = fondo;
 
   const input = fondo.querySelector('input');
+  input.placeholder = cfg.APODO_MIN + ' a ' + cfg.APODO_MAX + ' caracteres';
+  if (cambiar) {
+    fondo.querySelector('b').textContent = ONLINE.apodo; // textContent: el apodo no se lee como HTML
+    input.value = ONLINE.apodo;
+  }
   const textoError = fondo.querySelector('.error');
   const botonOk = fondo.querySelector('.ok');
   const cerrar = () => { if (fondo.parentNode) fondo.parentNode.removeChild(fondo); ventanaApodo = null; };
@@ -282,7 +305,7 @@ function pedirApodo() {
     if (tipo === 'keydown' && ev.key === 'Escape') cerrar();
   }));
   ['pointerdown', 'touchstart', 'mousedown'].forEach((tipo) => fondo.addEventListener(tipo, (ev) => ev.stopPropagation()));
-  setTimeout(() => input.focus(), 50);
+  setTimeout(() => { input.focus(); input.select(); }, 50);
 }
 
 iniciarOnline();

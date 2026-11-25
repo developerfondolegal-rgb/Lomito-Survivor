@@ -21,7 +21,7 @@ const config = {
     activePointers: 3
   },
   disableContextMenu: true,
-  scene: [MenuScene, GameScene, AlbumScene, ApuestasScene, ArbolScene, RankingScene] // la primera de la lista es la que se muestra al abrir
+  scene: [BienvenidaScene, MenuScene, GameScene, AlbumScene, ApuestasScene, ArbolScene, RankingScene] // la primera de la lista es la que se muestra al abrir
 };
 
 const game = new Phaser.Game(config);

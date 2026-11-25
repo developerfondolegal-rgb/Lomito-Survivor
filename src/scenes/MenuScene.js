@@ -85,6 +85,7 @@ class MenuScene extends Phaser.Scene {
     this.teclaArbol = this.input.keyboard.addKey('G');
     this.teclaH = this.input.keyboard.addKey('H'); // modo de prueba: +100 huesitos guardados
     this.teclaRanking = this.input.keyboard.addKey('L');
+    this.teclaApodo = this.input.keyboard.addKey('N'); // cambiar apodo (con sesión)
   }
 
   // Arriba a la derecha (en celular, debajo del botón de pantalla completa)
@@ -119,10 +120,18 @@ class MenuScene extends Phaser.Scene {
       }, 15));
       return;
     }
-    capa.push(...botonPantalla(this, cx, cy, ancho, 34, 'Salir', 0xef9a9a, () => salirOnline(), 15));
     if (ONLINE.apodo) {
+      // "Cambiar apodo" y "Salir" en la misma fila (no bajan hasta las cartas)
+      const anchoSalir = 84;
+      const anchoCambiar = 150;
+      capa.push(...botonPantalla(this, derecha - anchoSalir / 2, cy, anchoSalir, 34, 'Salir', 0xef9a9a, () => salirOnline(), 15));
+      capa.push(...botonPantalla(this, derecha - anchoSalir - 10 - anchoCambiar / 2, cy, anchoCambiar, 34,
+        'Cambiar apodo' + (modoTactil() ? '' : ' (N)'), 0x9ccc65, () => pedirApodo(true), 14));
       texto('★ ' + ONLINE.apodo, cy + 28, '#ffe082');
-    } else if (ONLINE.apodoCargado) {
+      return;
+    }
+    capa.push(...botonPantalla(this, cx, cy, ancho, 34, 'Salir', 0xef9a9a, () => salirOnline(), 15));
+    if (ONLINE.apodoCargado) {
       // Primera vez: hay que elegir apodo
       const t = texto('Elegir apodo', cy + 28, '#9ccc65').setInteractive({ useHandCursor: true });
       t.on('pointerdown', () => pedirApodo());
@@ -144,6 +153,7 @@ class MenuScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.teclaRincon)) this.scene.start('ApuestasScene', { modo: 'fin' });
     if (Phaser.Input.Keyboard.JustDown(this.teclaArbol)) this.scene.start('ArbolScene');
     if (Phaser.Input.Keyboard.JustDown(this.teclaRanking)) this.scene.start('RankingScene');
+    if (Phaser.Input.Keyboard.JustDown(this.teclaApodo)) pedirApodo(true);
     // Modo de prueba: H da huesitos guardados (cuánto, en CONFIG.HUESITOS.PRUEBA_TECLA_H)
     if (Phaser.Input.Keyboard.JustDown(this.teclaH)) {
       sumarHuesitos(CONFIG.HUESITOS.PRUEBA_TECLA_H);

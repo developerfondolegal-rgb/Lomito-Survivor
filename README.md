@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.16** — inicio de sesión con Google y ranking online.
+Versión actual: **v0.16.1** — pantalla de bienvenida, cambiar apodo y arreglos del ranking.
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -57,11 +57,13 @@ Las teclas de prueba (T, Y, U, J, K, Z, X, C, H) no tienen versión táctil.
 
 | Acción | Teclas |
 |---|---|
+| Pasar la pantalla de bienvenida | **cualquier tecla** o tocar/clic en la pantalla |
 | Elegir raza (pantalla de inicio) | **clic**, o teclas **1**, **2**, **3**, **4** |
 | Abrir el Álbum de coleccionables (pantalla de inicio) | botón **Álbum** o tecla **A** |
 | Abrir el Rincón de apuestas con los huesitos guardados (pantalla de inicio) | botón **Rincón de apuestas** o tecla **B** |
 | Abrir el Árbol de habilidades (pantalla de inicio) | botón **Árbol** o tecla **G** |
 | Abrir el Ranking online (pantalla de inicio) | botón **Ranking** o tecla **L** |
+| Cambiar tu apodo (pantalla de inicio, con sesión de Google) | botón **Cambiar apodo** o tecla **N** |
 | Ranking: cambiar filtro / actualizar / volver | **flechas izquierda / derecha**, **Q** / **E** o **1**-**5** · **R** · **Esc** o **L** |
 | Árbol: elegir mejora / raza / comprar / reiniciar / volver | flechas · **Q** / **E** o **1**-**4** · **Enter** o **Espacio** · **R** (Enter confirma, Esc cancela) · **Esc** o **G** |
 | Volver del Álbum a la pantalla de inicio | **Esc** o **A** (o el botón Volver) |
@@ -406,6 +408,12 @@ A los **9 minutos** (05:12 en el reloj) llega un perro enorme y oscuro con colla
 - El Ladrido y la Mandíbula le hacen daño, pero no lo empujan ni lo aturden.
 - Al morir suelta muchos huesos y un objeto **épico o legendario**.
 
+### Pantalla de bienvenida
+
+Es lo primero que aparece al abrir el juego: el título **LOMITO SURVIVOR** en pixel art, un perro que mueve la cola y ladra, la plaza de noche con faroles que parpadean y una **frase perruna al azar** (distinta a la de la vez anterior). Si ya entraste con Google, te saluda: *"¡Guau, bienvenido de vuelta, [apodo]!"*. Toca la pantalla o presiona cualquier tecla para ir a la pantalla de inicio.
+
+Las frases, el texto de abajo, el tamaño del título y cada cuánto ladra el perro están en `src/config.js`, sección `BIENVENIDA`. Puedes agregar o cambiar frases.
+
 ### Pantalla
 
 - Arriba de todo: barra de experiencia y tu **nivel**.
@@ -422,10 +430,11 @@ Solo en la **versión online** (GitHub Pages). Si abres el juego con doble clic 
 
 - **Entrar con Google** (arriba a la derecha del inicio): te lleva a Google y vuelve al juego. La sesión queda guardada al recargar. **Salir** la cierra.
 - **Apodo**: la primera vez que entras te pide elegir un apodo (3 a 16 letras, números, espacios, `_ . -`). Es único y es el nombre que sale en el ranking. Se escribe con el teclado del PC o del celular. Si eliges *Ahora no*, te lo vuelve a pedir al volver al inicio.
+- **Cambiar apodo**: con sesión, en el inicio está el botón **Cambiar apodo** (o tecla **N**), al lado de **Salir**. Abre la misma ventana, con tu apodo actual; las mismas reglas (3 a 16 caracteres, único). El nuevo apodo se ve en todas tus partidas del ranking.
 - **Puntaje**: al terminar una partida (Game Over o victoria) aparece arriba a la derecha tu **PUNTAJE**. Si tienes sesión y apodo, se **envía solo** y dice *"Puntaje enviado ✓"* o el error.
   - Puntaje = segundos × 10 + nivel × 50 + enemigos × 5 + 2000 si derrotaste al jefe + 3000 si amaneció (sobreviviste la noche). Los números están en `src/config.js`, sección `ONLINE`, `PUNTAJE`.
   - **Las partidas donde usaste teclas de prueba (T, Y, U, J, K, Z, X, C) no se envían**: la pantalla final dice *"Partida de prueba: no se envía al ranking"*.
-- **Ranking** (botón o tecla **L**): top 20 **General** (la mejor partida de cada jugador) o por **raza**. Tu fila se ve destacada en amarillo y abajo sale **tu posición** aunque no estés en el top 20. ⚔ = derrotó al jefe, ☀ = sobrevivió la noche.
+- **Ranking** (botón o tecla **L**): top 20 **General** (la mejor partida de cada jugador) o por **raza**, en dos columnas (1-10 y 11-20). Los encabezados salen una sola vez sobre cada columna que tiene partidas. Tu fila se ve destacada en amarillo y abajo sale **tu posición** aunque no estés en el top 20. ⚔ = derrotó al jefe, ☀ = sobrevivió la noche.
 
 #### Preparar la base de datos (una sola vez)
 

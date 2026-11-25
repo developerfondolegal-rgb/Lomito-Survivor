@@ -135,8 +135,18 @@ class RankingScene extends Phaser.Scene {
     const anchoCol = (w - 2 * this.m - espacio) / 2;
     const arriba = 104 + this.e / 2;
     const altoFila = 29;
-    const texto = (x, y, t, estilo) => {
+    // Posición de cada dato dentro de una columna (la misma para encabezados y filas)
+    const pos = {
+      num: 8,
+      apodo: 40,
+      raza: Math.round(anchoCol * 0.43),
+      tiempo: Math.round(anchoCol * 0.63),
+      puntaje: anchoCol - 8
+    };
+    // anchoMax: si el texto no cabe, se achica (para que no se encime con la columna de al lado)
+    const texto = (x, y, t, estilo, anchoMax) => {
       const obj = this.add.text(x, y, t, { fontFamily: FUENTE, fontSize: '15px', color: '#ffffff', ...estilo }).setOrigin(0, 0.5);
+      if (anchoMax && obj.width > anchoMax) obj.setScale(anchoMax / obj.width, 1);
       capa.push(obj);
       return obj;
     };
@@ -147,18 +157,20 @@ class RankingScene extends Phaser.Scene {
       }).setOrigin(0.5));
     }
 
-    // Encabezados
-    [0, 1].forEach((col) => {
+    // Encabezados: una sola fila, y solo sobre las columnas que tienen datos
+    // (con 10 partidas o menos hay una sola columna y un solo encabezado)
+    const columnas = Math.min(2, Math.ceil(r.filas.length / porColumna));
+    for (let col = 0; col < columnas; col++) {
       const x0 = this.m + col * (anchoCol + espacio);
       const estilo = { fontSize: '13px', color: '#9e9e9e', fontStyle: 'bold' };
-      texto(x0 + 8, arriba, '#', estilo);
-      texto(x0 + 46, arriba, 'Apodo', estilo);
-      if (general) texto(x0 + 200, arriba, 'Raza', estilo);
-      texto(x0 + 290, arriba, 'Tiempo', estilo);
-      texto(x0 + anchoCol - 8, arriba, 'Puntaje', estilo).setOrigin(1, 0.5);
-    });
+      texto(x0 + pos.num, arriba, '#', estilo);
+      texto(x0 + pos.apodo, arriba, 'Apodo', estilo);
+      if (general) texto(x0 + pos.raza, arriba, 'Raza', estilo);
+      texto(x0 + pos.tiempo, arriba, 'Tiempo', estilo);
+      texto(x0 + pos.puntaje, arriba, 'Puntaje', estilo).setOrigin(1, 0.5);
+    }
 
-    r.filas.forEach((f, i) => {
+    r.filas.slice(0, porColumna * 2).forEach((f, i) => {
       const col = Math.floor(i / porColumna);
       const x0 = this.m + col * (anchoCol + espacio);
       const y = arriba + 24 + (i % porColumna) * altoFila;
@@ -168,12 +180,15 @@ class RankingScene extends Phaser.Scene {
       else g.fillStyle(i % 2 ? 0x2b2b3a : 0x24243a, 1).fillRect(x0, y - altoFila / 2 + 1, anchoCol, altoFila - 2);
       capa.push(g);
       const color = mia ? '#ffe082' : (i < 3 ? ['#ffd54f', '#e0e0e0', '#ffab91'][i] : '#ffffff');
-      texto(x0 + 8, y, String(i + 1), { color, fontStyle: 'bold' });
-      texto(x0 + 46, y, f.apodo, { color, fontStyle: mia ? 'bold' : 'normal' });
-      if (general) texto(x0 + 200, y, this.nombreRaza(f.raza), { fontSize: '14px', color: '#cfd8dc' });
+      const finApodo = general ? pos.raza : pos.tiempo;
+      texto(x0 + pos.num, y, String(i + 1), { color, fontStyle: 'bold' });
+      texto(x0 + pos.apodo, y, f.apodo, { color, fontStyle: mia ? 'bold' : 'normal' }, finApodo - pos.apodo - 8);
+      if (general) texto(x0 + pos.raza, y, this.nombreRaza(f.raza), { fontSize: '14px', color: '#cfd8dc' }, pos.tiempo - pos.raza - 8);
       const logros = (f.jefe_derrotado ? ' ⚔' : '') + (f.amanecer ? ' ☀' : '');
-      texto(x0 + 290, y, formatoTiempo(f.segundos_sobrevividos) + logros, { fontSize: '14px', color: '#cfd8dc' });
-      texto(x0 + anchoCol - 8, y, Number(f.puntaje).toLocaleString('es-CL'), { color, fontStyle: 'bold' }).setOrigin(1, 0.5);
+      const tiempo = texto(x0 + pos.tiempo, y, formatoTiempo(f.segundos_sobrevividos) + logros, { fontSize: '14px', color: '#cfd8dc' });
+      const puntaje = texto(x0 + pos.puntaje, y, Number(f.puntaje).toLocaleString('es-CL'), { color, fontStyle: 'bold' }).setOrigin(1, 0.5);
+      const libre = (pos.puntaje - puntaje.displayWidth - 8) - pos.tiempo; // espacio entre el tiempo y el puntaje
+      if (tiempo.width > libre) tiempo.setScale(Math.max(0.6, libre / tiempo.width), 1);
     });
 
     // Tu posición (abajo)
