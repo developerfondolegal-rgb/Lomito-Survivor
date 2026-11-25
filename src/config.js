@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.19';
+const VERSION_JUEGO = '0.19.1';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -1100,6 +1100,48 @@ const CONFIG = {
     TITULO_PIXEL: 7,              // tamaño de cada cuadrito del título "LOMITO SURVIVOR"
     LADRIDO_CADA_MS: [2200, 3800], // el perro ladra cada este rato (al azar entre los dos números)
     ESPERA_MS: 350                // no acepta toques antes de este rato (para no saltarla sin querer)
+  },
+
+  // ---------------------------------------------------------------
+  //  PORTADA (v0.19.1): la escena animada de la pantalla de bienvenida
+  //  (src/portada.js): calle de noche con un chow chow y un shar pei.
+  //  Las posiciones "_X" son la parte del ancho de la pantalla
+  //  (0 = borde izquierdo, 0.5 = centro, 1 = borde derecho).
+  //  Los "_MS" son milisegundos; los que van entre [ ] son [mínimo, máximo] al azar.
+  // ---------------------------------------------------------------
+  PORTADA: {
+    PIXEL: 5,                   // tamaño de cada cuadrito de los perros (5 = el shar pei mide 34 × 5 = 170 px de alto)
+    VEREDA_Y: 0.8,              // a qué altura de la pantalla está la vereda donde se paran (0.8 = 80% hacia abajo)
+    CHOW_X: 0.36,               // dónde está el chow chow (a la izquierda)
+    SHARPEI_X: 0.64,            // dónde está el shar pei (a la derecha)
+
+    // Chow chow
+    COLA_MS: 110,               // cuánto dura cada posición del meneo de la cola (más chico = cola más rápida)
+    JADEO_MS: 260,              // cada cuánto alarga y acorta la lengua al jadear (nunca la mete)
+
+    // Shar pei
+    RESPIRA_MS: 2400,           // cuánto dura una respiración completa (sube y baja)
+    PARPADEO_CADA_MS: [2500, 5500], // cada cuánto parpadea
+    PARPADEO_DURA_MS: 160,      // cuánto dura el parpadeo
+    BABA_LARGO: 6,              // largo del hilo de baba (en cuadritos)
+    BABA_VAIVEN_MS: 1800,       // cuánto demora la baba en ir y volver
+    BABA_ANGULO: 0.35,          // cuánto se balancea la baba (0 = cuelga derecho)
+
+    // Fondo
+    ESTRELLAS: 70,              // estrellas quietas
+    ESTRELLAS_BRILLAN: 10,      // estrellas que brillan
+    ESTRELLA_MS: [700, 1600],   // qué tan rápido brillan
+    LUNA_X: 0.86,               // dónde está la luna
+    LUNA_Y: 150,                // altura de la luna (px desde arriba; en celular baja un poco más)
+    EDIFICIO_ALTO: [90, 200],   // alto de los edificios (px)
+    VENTANAS_QUE_CAMBIAN: 7,    // cuántas ventanas se prenden y apagan solas
+    VENTANA_MS: [1500, 5000],   // cada cuánto cambia cada una
+    FAROLES_X: [0.1, 0.27, 0.73, 0.9], // dónde van los faroles
+    FAROL_ALTO: 150,            // alto de los faroles (px)
+    FAROL_MALO: 2,              // cuál farol anda medio malo y titila más (0 = el primero; -1 = ninguno)
+    FAROL_TITILA_MS: [1800, 6000], // cada cuánto titilan los faroles buenos
+    FAROL_MALO_MS: [400, 1600],    // cada cuánto titila el malo
+    BASUREROS_X: [0.17, 0.81]   // dónde van los basureros
   },
 
   // ---------------------------------------------------------------

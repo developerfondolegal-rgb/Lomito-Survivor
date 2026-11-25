@@ -1,6 +1,7 @@
 // Pantalla de bienvenida: es lo primero que se ve al abrir el juego.
-// Título en pixel art, un perro que mueve la cola y ladra, la plaza de noche
-// con faroles que parpadean y una frase al azar (CONFIG.BIENVENIDA.FRASES).
+// Título en pixel art, la portada animada (src/portada.js: calle de noche con
+// un chow chow y un shar pei; el chow chow ladra de vez en cuando) y una frase
+// al azar (CONFIG.BIENVENIDA.FRASES).
 // Al tocar la pantalla o presionar cualquier tecla, va al menú (MenuScene).
 // Si hay sesión de Google con apodo, saluda: "¡Guau, bienvenido de vuelta, [apodo]!".
 // (FUENTE viene de MenuScene.js; margenExtra y modoTactil, de src/tactil.js;
@@ -32,9 +33,8 @@ class BienvenidaScene extends Phaser.Scene {
     this.cfg = cfg;
     this.yendo = false;
 
-    this.suelo = Math.round(h * 0.7); // donde termina el cielo y empieza la plaza
-    this.dibujarFondo();
-    this.crearFaroles();
+    // Portada animada (src/portada.js; números en CONFIG.PORTADA)
+    this.portada = crearPortada(this);
 
     // Título
     const p = cfg.TITULO_PIXEL;
@@ -57,12 +57,7 @@ class BienvenidaScene extends Phaser.Scene {
     const desuscribir = alCambiarOnline(() => this.actualizarSaludo());
     this.events.once('shutdown', desuscribir);
 
-    // Perro
-    this.perroP = 6;
-    this.perroX = Math.round(w / 2 - 11 * this.perroP);
-    this.perroY = this.suelo + 34 - 13 * this.perroP;
-    this.perro = this.add.graphics();
-    this.ladrando = false;
+    // El chow chow ladra de vez en cuando
     this.programarLadrido();
 
     // "Toca o presiona cualquier tecla para empezar" (parpadea)
@@ -83,7 +78,7 @@ class BienvenidaScene extends Phaser.Scene {
   }
 
   update(tiempo) {
-    this.dibujarPerro(tiempo);
+    this.portada.actualizar(tiempo);
   }
 
   irAlMenu() {
@@ -134,113 +129,6 @@ class BienvenidaScene extends Phaser.Scene {
     pintar(0, 0, 0xffe082);  // letras
   }
 
-  // ---------------- Plaza de noche ----------------
-
-  dibujarFondo() {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const suelo = this.suelo;
-    const g = this.add.graphics();
-
-    // Cielo y estrellas
-    g.fillGradientStyle(0x060a22, 0x060a22, 0x1c2754, 0x1c2754, 1).fillRect(0, 0, w, suelo);
-    const azar = new Phaser.Math.RandomDataGenerator(['lomito']);
-    for (let i = 0; i < 70; i++) {
-      g.fillStyle(0xffffff, azar.realInRange(0.3, 0.9)).fillRect(azar.between(0, w), azar.between(0, suelo - 90), 2, 2);
-    }
-    for (let i = 0; i < 8; i++) { // algunas estrellas titilan
-      const s = this.add.rectangle(azar.between(20, w - 20), azar.between(10, suelo - 120), 3, 3, 0xfff8e1);
-      this.tweens.add({ targets: s, alpha: 0.1, duration: azar.between(700, 1600), yoyo: true, repeat: -1, delay: azar.between(0, 1500) });
-    }
-
-    // Luna en pixel art
-    const lx = w - 130;
-    const ly = 150;
-    g.fillStyle(0xfff3c4, 1);
-    [[-2, 3], [-3, 4], [-4, 4], [-4, 4], [-4, 4], [-4, 4], [-3, 4], [-2, 3]].forEach(([a, b], fila) => {
-      g.fillRect(lx + a * 6, ly + (fila - 4) * 6, (b - a) * 6, 6);
-    });
-    g.fillStyle(0xe6d79a, 1).fillRect(lx - 12, ly - 12, 6, 6).fillRect(lx + 6, ly + 6, 12, 6);
-
-    // Edificios y árboles a lo lejos
-    g.fillStyle(0x10152e, 1);
-    let x = 0;
-    while (x < w) {
-      const ancho = azar.between(50, 110);
-      const alto = azar.between(40, 120);
-      g.fillRect(x, suelo - alto, ancho, alto);
-      g.fillStyle(0xffe082, 0.5);
-      for (let vy = suelo - alto + 10; vy < suelo - 14; vy += 18) {
-        for (let vx = x + 8; vx < x + ancho - 10; vx += 16) {
-          if (azar.frac() < 0.25) g.fillRect(vx, vy, 6, 8);
-        }
-      }
-      g.fillStyle(0x10152e, 1);
-      x += ancho + azar.between(0, 12);
-    }
-    g.fillStyle(0x0f2a1a, 1);
-    for (let ax = -20; ax < w; ax += 70) {
-      const r = azar.between(26, 38);
-      g.fillRect(ax, suelo - r * 1.4, r * 2, r * 1.4);
-      g.fillRect(ax + r * 0.3, suelo - r * 1.8, r * 1.4, r * 0.5);
-    }
-
-    // Pasto y camino de baldosas
-    g.fillStyle(0x1d3b22, 1).fillRect(0, suelo, w, h - suelo);
-    g.fillStyle(0x24482a, 1);
-    for (let i = 0; i < 60; i++) g.fillRect(azar.between(0, w), azar.between(suelo + 4, h - 4), 4, 4);
-    const caminoY = suelo + 14;
-    const caminoAlto = 46;
-    g.fillStyle(0x4a4a5a, 1).fillRect(0, caminoY, w, caminoAlto);
-    g.fillStyle(0x3a3a48, 1);
-    g.fillRect(0, caminoY, w, 3).fillRect(0, caminoY + caminoAlto - 3, w, 3).fillRect(0, caminoY + caminoAlto / 2 - 1, w, 2);
-    for (let bx = 0; bx < w; bx += 48) {
-      g.fillRect(bx, caminoY, 2, caminoAlto / 2);
-      g.fillRect(bx + 24, caminoY + caminoAlto / 2, 2, caminoAlto / 2);
-    }
-
-    // Banca a la izquierda
-    const bx = 150;
-    const by = suelo + 4;
-    g.fillStyle(0x5d3a1a, 1).fillRect(bx, by - 34, 110, 8).fillRect(bx, by - 20, 110, 8);
-    g.fillStyle(0x2b2b2b, 1).fillRect(bx + 8, by - 26, 6, 30).fillRect(bx + 96, by - 26, 6, 30);
-  }
-
-  // Faroles con luz que parpadea (uno anda medio malo)
-  crearFaroles() {
-    const w = this.scale.width;
-    const suelo = this.suelo;
-    const posiciones = [0.1, 0.36, 0.64, 0.9];
-    posiciones.forEach((fraccion, i) => {
-      const x = Math.round(w * fraccion);
-      const arriba = suelo - 170;
-      const luz = this.add.graphics();
-      [[90, 0.06], [60, 0.08], [36, 0.12]].forEach(([r, a]) => luz.fillStyle(0xffd27a, a).fillCircle(x, arriba + 10, r));
-      luz.fillStyle(0xffd27a, 0.1).fillEllipse(x, suelo + 14, 160, 30);
-      const poste = this.add.graphics();
-      poste.fillStyle(0x22222c, 1).fillRect(x - 3, arriba + 16, 6, suelo + 14 - arriba - 16);
-      poste.fillRect(x - 8, suelo + 6, 16, 8);
-      poste.fillRect(x - 10, arriba - 6, 20, 6).fillRect(x - 6, arriba + 12, 12, 6);
-      const ampolleta = this.add.rectangle(x, arriba + 6, 14, 12, 0xffe9a8);
-      this.parpadear([luz, ampolleta], i === 2);
-    });
-  }
-
-  parpadear(objetos, malo) {
-    const espera = malo ? Phaser.Math.Between(400, 1600) : Phaser.Math.Between(1800, 6000);
-    this.time.delayedCall(espera, () => {
-      const veces = malo ? Phaser.Math.Between(2, 4) : Phaser.Math.Between(1, 2);
-      let t = 0;
-      for (let k = 0; k < veces; k++) {
-        this.time.delayedCall(t, () => objetos.forEach((o) => o.setAlpha(Phaser.Math.FloatBetween(0.15, 0.5))));
-        t += Phaser.Math.Between(50, 110);
-        this.time.delayedCall(t, () => objetos.forEach((o) => o.setAlpha(1)));
-        t += Phaser.Math.Between(60, 140);
-      }
-      this.time.delayedCall(t, () => this.parpadear(objetos, malo));
-    });
-  }
-
   // ---------------- Perro ----------------
 
   programarLadrido() {
@@ -251,73 +139,12 @@ class BienvenidaScene extends Phaser.Scene {
     });
   }
 
+  // "¡Guau!" sobre el chow chow
   ladrar() {
-    this.ladrando = true;
-    this.time.delayedCall(320, () => { this.ladrando = false; });
-    const p = this.perroP;
-    const t = this.add.text(this.perroX + 22 * p, this.perroY - 4, '¡Guau!', {
+    const chow = this.portada.chow;
+    const t = this.add.text(chow.x + chow.displayWidth * 0.35, chow.y - chow.displayHeight - 4, '¡Guau!', {
       fontFamily: FUENTE, fontSize: '22px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0, 1).setAngle(-8);
     this.tweens.add({ targets: t, y: t.y - 26, alpha: 0, duration: 900, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
-  }
-
-  // Perro de perfil mirando a la derecha, en una grilla de 22 x 14 cuadritos
-  dibujarPerro(tiempo) {
-    const g = this.perro;
-    const p = this.perroP;
-    const respira = Math.sin(tiempo / 260) > 0.6 ? -1 : 0; // el cuerpo sube un poquito al respirar
-    const ox = this.perroX;
-    const oy = this.perroY;
-    const c = (x, y, an, al, color, dy) => {
-      g.fillStyle(color, 1).fillRect(ox + x * p, oy + (y + (dy || 0)) * p, an * p, al * p);
-    };
-    const CAFE = 0xc68642;
-    const CLARO = 0xe8b07a;
-    const OSCURO = 0x7a4a22;
-    g.clear();
-
-    // Sombra
-    g.fillStyle(0x000000, 0.35).fillEllipse(ox + 11 * p, oy + 13.5 * p, 18 * p, 2 * p);
-
-    // Cola (se mueve rápido de lado a lado)
-    const angulo = Phaser.Math.DegToRad(55 + Math.sin(tiempo / 70) * 30);
-    for (let k = 1; k <= 5; k++) {
-      const tx = Math.round(4 - k * Math.cos(angulo) * 0.9);
-      const ty = Math.round(5 - k * Math.sin(angulo) * 0.9);
-      c(tx, ty, 1, 1, k === 5 ? CLARO : CAFE, respira);
-    }
-
-    // Patas
-    c(5, 10, 2, 3, OSCURO);
-    c(8, 10, 2, 3, CAFE);
-    c(12, 10, 2, 3, OSCURO);
-    c(15, 10, 2, 3, CAFE);
-    c(5, 12, 2, 1, 0x3b2410); c(8, 12, 2, 1, 0x3b2410); c(12, 12, 2, 1, 0x3b2410); c(15, 12, 2, 1, 0x3b2410);
-
-    // Cuerpo
-    c(4, 5, 13, 5, CAFE, respira);
-    c(6, 9, 9, 1, CLARO, respira);
-    c(8, 5, 4, 2, OSCURO, respira); // mancha en el lomo
-
-    // Collar
-    c(15, 4, 2, 4, 0xd32f2f, respira);
-    c(16, 8, 1, 1, 0xffd54f, respira);
-
-    // Cabeza (se levanta un poco al ladrar)
-    const dc = respira + (this.ladrando ? -1 : 0);
-    c(16, 1, 5, 5, CAFE, dc);
-    c(16, 0, 2, 5, OSCURO, dc);       // oreja caída
-    c(19, 2, 1, 1, 0x000000, dc);     // ojo
-    c(19, 1, 1, 1, 0xffffff, dc);     // brillo
-    if (this.ladrando) {
-      c(21, 2, 2, 2, CLARO, dc);      // hocico de arriba
-      c(22, 2, 1, 1, 0x000000, dc);   // nariz
-      c(21, 4, 2, 1, 0xb71c1c, dc);   // boca abierta
-      c(20, 5, 3, 1, CLARO, dc);      // mandíbula
-    } else {
-      c(21, 3, 2, 3, CLARO, dc);      // hocico
-      c(22, 3, 1, 1, 0x000000, dc);   // nariz
-      c(21, 5, 1, 1, 0xf48fb1, dc);   // lengüita
-    }
   }
 }
