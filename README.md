@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.17** — evolución de ataques (una por raza), dos ataques nuevos (Rasguño y Escarbar) y el curao al volante.
+Versión actual: **v0.18** — mapa más grande (la plaza ahora mide el doble) y dos mapas nuevos: Terminal de buses y Feria libre, cada uno con sus ultra raros.
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 
@@ -146,9 +146,21 @@ Con las otras razas (no Quiltro), los enemigos sueltan hueso 3 de cada 4 veces.
 - **Mordida automática**: tu perro muerde solo al enemigo más cercano si está cerca. Lo verás como unos dientes blancos sobre el enemigo (amarillos y más grandes si es la Mandíbula de hierro).
 - **Daño**: si un enemigo te toca, pierdes vida y la pantalla tiembla. Después de cada golpe tienes medio segundo de invulnerabilidad (el perro se ve semitransparente).
 
+### Los mapas
+
+Después de elegir la raza aparece la pantalla **Elige el mapa** (flechas ← → y Enter, clic, teclas 1 a 3, o tocar en el celular; Esc vuelve). El último mapa elegido queda marcado para la próxima vez. Por ahora todos vienen desbloqueados.
+
+| Mapa | Tamaño | Obstáculos | Ultra raros propios |
+|---|---|---|---|
+| **La plaza** | 6000 × 6000 (el doble que antes) | árboles, bancas, basureros, autos, pileta | los 12 de siempre |
+| **Terminal de buses** | 5400 × 4200 | buses estacionados, bancas, basureros (sobre andenes) | Boleto de micro, Jockey del auxiliar |
+| **Feria libre** | 4800 × 4800 | puestos, toldos, cajones (los cajones sueltan comida) | La yapa, Carro de feria |
+
+Cada ultra raro **solo cae en su mapa**. El Álbum tiene una página por mapa (← → o los botones ◀ ▶). Solo la plaza tiene pileta para tomar agua.
+
 ### La plaza
 
-El mapa es una plaza de noche dibujada en pixel art:
+La plaza de noche dibujada en pixel art:
 
 - **Calle con autos estacionados** en los 4 bordes.
 - **Caminos de baldosas** en forma de cruz, con **bancas**, **basureros** y **faroles**.
@@ -593,16 +605,20 @@ También están ahí el **hueso** y los **dientes de la mordida**. La onda del L
 
 **Raza o enemigo nuevo:** copia el bloque de otro dibujo, ponle el mismo `id` que usaste en `src/config.js` y edítalo.
 
-### Números de la plaza (`src/config.js`, sección `PLAZA`)
+### Números de los mapas (`src/config.js`, secciones `MAPAS` y `PLAZA`)
 
 | Ajuste | Qué hace |
 |---|---|
-| `MAPA_SEMILLA` | Un texto cualquiera. Cambiarlo pone los árboles, bancas, autos, etc. en otros lugares. Con el mismo texto la plaza sale siempre igual |
-| `CALLE_ANCHO` | Ancho de la calle de los bordes |
+| `MAPA_SEMILLA` | Un texto cualquiera. Cambiarlo pone los árboles, bancas, buses, puestos, etc. en otros lugares. Con el mismo texto los mapas salen siempre iguales |
+| `MAPAS.<mapa>.ANCHO` / `ALTO` | Tamaño de cada mapa. (`MAPA_ANCHO` / `MAPA_ALTO` los pone el juego solo al empezar: no los cambies) |
+| `MAPAS.plaza.ARBOLES` / `BANCAS` / `BASUREROS` / `FAROLES` / `AUTOS` | Cuántos hay de cada cosa en la plaza (si no caben todos, se ponen los que quepan) |
+| `MAPAS.terminal.ANDENES` / `BUSES` / `BANCAS` / ... | Andenes, buses, bancas, basureros y faroles de la terminal |
+| `MAPAS.feria.CORRIDAS` / `PUESTOS` / `TOLDOS` / `CAJONES` / ... | Corridas, puestos, toldos, cajones y faroles de la feria |
+| `MAPAS.<mapa>.ULTRA_MULTIPLICADOR` | Probabilidad de ultra raros en ese mapa (1 = normal, 2 = el doble) |
+| `CALLE_ANCHO` | Ancho de la calle de los bordes de la plaza |
 | `PASILLO_ANCHO` | Ancho de los caminos de baldosas en cruz |
 | `PILETA_RADIO` | Tamaño de la pileta |
-| `SENDEROS_POR_PRADO` | Senderos de tierra en cada prado |
-| `ARBOLES` / `BANCAS` / `BASUREROS` / `FAROLES` / `AUTOS` | Cuántos hay de cada cosa (si no caben todos, se ponen los que quepan) |
+| `MAPAS.plaza.SENDEROS_POR_PRADO` | Senderos de tierra en cada prado |
 | `OSCURIDAD` | Qué tan oscura es la noche (0 = de día, 1 = negro total) |
 | `LUZ_FAROL_RADIO` | Tamaño de la luz de cada farol |
 | `LUZ_PERRO_RADIO` | Tamaño de la luz alrededor del perro |
@@ -614,7 +630,7 @@ También están ahí el **hueso** y los **dientes de la mordida**. La onda del L
 | `AGUA_DISTANCIA` | Qué tan pegado a la pileta tienes que estar |
 | `RODEO_MS` | Al chocar un obstáculo, cuánto rato caminan de lado los enemigos para rodearlo |
 
-Los dibujos de la plaza (bancas, basureros, faroles, autos y comida) y el tamaño de choque de cada obstáculo están en `src/mapa.js`.
+Los dibujos de la plaza (bancas, basureros, faroles, autos y comida) y el tamaño de choque de cada obstáculo están en `src/mapa.js`. Los nombres, colores (paletas), dibujos de buses, puestos, toldos y cajones, y la lista de ultra raros de cada mapa están en `src/mapas.js`.
 
 ### Otros números (`src/config.js`)
 
@@ -715,7 +731,7 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `COLECCION_COPIAS`: copias que pide cada nivel (`[1, 2, 3, 5, 8]`). Si agregas un número, hay un nivel más.
 - `COLECCIONABLES`: lo que da cada coleccionable **por cada nivel** (por ejemplo `sweater: { VIDA: 10, ... }` = +10 de vida por nivel).
 - `COLECCION_GUARDADO`: el nombre del guardado en el navegador. Si lo cambias, el juego empieza una colección nueva (la vieja queda escondida).
-- En `src/coleccionables.js` están los nombres, las frases, los dibujos de 16 x 16 y a qué **mapa** pertenece cada uno (por ahora todos `'plaza'`). Al principio del archivo están los pasos para agregar uno nuevo (o de otro mapa).
+- En `src/coleccionables.js` están los nombres, las frases, los dibujos de 16 x 16 En qué **mapa** cae cada uno lo dice la lista `ultraRaros` de cada mapa en `src/mapas.js`. Al principio de `src/coleccionables.js` están los pasos para agregar uno nuevo.
 
 ### Huesitos (`src/config.js`, sección `HUESITOS`, y `src/huesitos.js`)
 
@@ -787,7 +803,9 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 - `src/desafios.js` — los mini desafíos: nombres, frases, cómo avanzan, flechas, recompensas y la tecla X.
 - `src/sprites.js` — los dibujos en pixel art de todos los personajes, el hueso y la mordida (y el borde de las élites y objetos).
 - `src/objetos.js` — objetos, rarezas y fusiones: nombres, frases y dibujos.
-- `src/mapa.js` — la plaza: suelo, pileta, bancas, árboles, faroles, basureros, autos, comida, obstáculos y la oscuridad de la noche.
+- `src/mapa.js` — el motor común de los mapas (suelo, choques, bancas, faroles, comida, la oscuridad de la noche) y la plaza: pileta, árboles, autos.
+- `src/mapas.js` — la lista de mapas (Plaza, Terminal de buses, Feria libre): nombres, paletas de colores, dibujos de buses, puestos, toldos y cajones, dónde va cada cosa, sus ultra raros y la miniatura. Ahí está también el TODO de los eventos de misión (escoltar guardias).
+- `src/scenes/MapaScene.js` — la pantalla Elige el mapa.
 - `src/noche.js` — el reloj de la noche, las fases y cuánto se aclara la oscuridad.
 - `src/jefe.js` — El Jefe de la Plaza: su dibujo, sus ataques y su barra de vida.
 - `src/online.js` — login con Google, apodo, puntaje, envío de partidas y lectura del ranking (Supabase).
@@ -802,7 +820,7 @@ El dibujo del jefe (24 x 18 píxeles) está al principio de `src/jefe.js`, con e
 
 ## Si algo no funciona
 
-- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js`, `src/sinergias.js`, `src/zonas.js`, `src/desafios.js`, `src/coleccionables.js`, `src/huesitos.js`, `src/arbol.js` o `src/scenes/ApuestasScene.js`, revisa ese cambio.
+- Pantalla negra: revisa tu conexión a internet y recarga con **F5**. Si acabas de editar `src/config.js`, `src/razas.js`, `src/enemigos.js`, `src/sprites.js`, `src/mapa.js`, `src/mapas.js`, `src/objetos.js`, `src/noche.js`, `src/jefe.js`, `src/sinergias.js`, `src/zonas.js`, `src/desafios.js`, `src/coleccionables.js`, `src/huesitos.js`, `src/arbol.js` o `src/scenes/ApuestasScene.js`, revisa ese cambio.
 - En el celular no aparece el joystick: revisa que `CONTROLES_TACTILES` en `src/config.js` esté en `'auto'` o `true`. Si se ve todo muy chico, gira el celular a horizontal y usa pantalla completa.
 - En el celular va lento: baja `ENEMIGOS_MAXIMOS` o `LIMITAR_EFECTOS_DESDE` en la sección `MOVIL`, o sube `OSCURIDAD_CADA_CUADROS` a 3.
 - En el celular se corta el HUD arriba o abajo: recarga la página (puede ser caché vieja) y gira el celular a horizontal. Si aún queda pegado al borde, sube `MARGEN_HUD` en la sección `MOVIL`.

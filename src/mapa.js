@@ -1,15 +1,17 @@
 // ===============================================================
-//  LA PLAZA (el mapa)
-//  Aquí se dibuja la plaza de noche en pixel art, sin archivos de
-//  imagen, y se decide dónde va cada cosa.
+//  EL MAPA: motor común y LA PLAZA
+//  Aquí se dibuja el mapa en pixel art, sin archivos de imagen, y se
+//  decide dónde va cada cosa. La lista de mapas (Plaza, Terminal de
+//  buses, Feria libre), sus colores y sus dibujos están en src/mapas.js.
 //
-//  Las cantidades (árboles, bancas, faroles...), la luz, la comida
-//  y el agua se ajustan en src/config.js (sección PLAZA).
+//  Las cantidades (árboles, bancas, faroles...) y el tamaño de cada mapa
+//  se ajustan en src/config.js (sección MAPAS). La luz, la comida y el
+//  agua también están en src/config.js.
 //
-//  La plaza siempre sale igual mientras MAPA_SEMILLA (config.js) sea
+//  Los mapas siempre salen igual mientras MAPA_SEMILLA (config.js) sea
 //  la misma. Si cambias ese texto, las cosas cambian de lugar.
 //
-//  Cómo está armada (de afuera hacia adentro):
+//  Cómo está armada la plaza (de afuera hacia adentro):
 //   - Una calle de asfalto en los 4 bordes, con autos estacionados.
 //   - Vereda y caminos de baldosas en forma de cruz.
 //   - 4 prados de pasto, con senderos de tierra.
@@ -23,7 +25,7 @@ const CHOQUE_BANCA = { ANCHO: 60, ALTO: 24 };
 const CHOQUE_AUTO = { ANCHO: 42, ALTO: 66 };
 const ANCHO_SENDERO = 54;     // ancho de los senderos de tierra
 
-// Dibujos chicos de la plaza (mismo formato que src/sprites.js:
+// Dibujos chicos que usan todos los mapas (mismo formato que src/sprites.js:
 // cada letra es un píxel, "." es transparente, K es el borde negro)
 const SPRITES_PLAZA = {
   // Banca de madera vista desde arriba. M/m = tablas, F = fierro de los lados
@@ -99,6 +101,7 @@ const SPRITES_PLAZA = {
 
 // Auto estacionado visto desde arriba (el frente mira hacia arriba).
 // C = carrocería, c = techo, V = vidrios, L = focos, R = luces traseras
+// (los colores de cada auto están en la paleta de la plaza, src/mapas.js)
 const DIBUJO_AUTO = [
   '...KKKKKKKK...',
   '..KCCCCCCCCK..',
@@ -124,74 +127,54 @@ const DIBUJO_AUTO = [
   '...KKKKKKKK...'
 ];
 
-// Colores de los autos: [carrocería, techo]
-const COLORES_AUTOS = [
-  [0xb3261e, 0x7a1813], // rojo
-  [0x1f4e9c, 0x153566], // azul
-  [0xd8d8d8, 0xa8a8a8], // blanco
-  [0xe0b000, 0x9c7a00]  // amarillo
-];
-
 // ===============================================================
-//  De aquí para abajo está el código que arma la plaza.
+//  De aquí para abajo está el código que arma los mapas.
 // ===============================================================
 
-// Crea todas las imágenes de la plaza (solo la primera vez)
-function crearTexturasPlaza(escena) {
-  if (escena.textures.exists('tile_baldosa')) return;
-  const rnd = new Phaser.Math.RandomDataGenerator(['texturas']);
+// Crea las imágenes que comparten todos los mapas (solo la primera vez)
+function crearTexturasComunes(escena) {
+  Object.keys(SPRITES_PLAZA).forEach((clave) => {
+    if (!escena.textures.exists(clave)) crearTexturaPixel(escena, clave, SPRITES_PLAZA[clave]);
+  });
+}
 
-  Object.keys(SPRITES_PLAZA).forEach((clave) => crearTexturaPixel(escena, clave, SPRITES_PLAZA[clave]));
+// Baldosa, pasto, asfalto, tierra...: un cuadrado de 16x16 con puntitos al azar.
+// colores = [normal, claro, oscuro]; claro y oscuro salen con probabilidad pClaro y pOscuro.
+// junta (opcional): color de las junturas cada 8 píxeles (para baldosas).
+function tileRuido(escena, clave, colores, pClaro, pOscuro, junta) {
+  if (escena.textures.exists(clave)) return;
+  const rnd = new Phaser.Math.RandomDataGenerator([clave]);
+  texturaDibujada(escena, clave, 16, 16, (punto) => {
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const r = rnd.frac();
+        let color = r < pClaro ? colores[1] : r < pClaro + pOscuro ? colores[2] : colores[0];
+        if (junta !== undefined && (x % 8 === 0 || y % 8 === 0)) color = junta;
+        punto(x, y, color);
+      }
+    }
+  });
+}
 
-  COLORES_AUTOS.forEach((c, i) => {
+// Imágenes propias de la plaza (solo la primera vez). "p" es su paleta (src/mapas.js)
+function crearTexturasPlaza(escena, p) {
+  p.autos.forEach((c, i) => {
+    if (escena.textures.exists('auto_' + i)) return;
     crearTexturaPixel(escena, 'auto_' + i, {
       colores: { C: c[0], c: c[1], V: 0x37557a, L: 0xfff3b0, R: 0xff4040 },
       cuadros: [DIBUJO_AUTO]
     });
   });
 
-  // Baldosas de 16x16 con junturas oscuras y puntitos
-  texturaDibujada(escena, 'tile_baldosa', 16, 16, (punto) => {
-    for (let y = 0; y < 16; y++) {
-      for (let x = 0; x < 16; x++) {
-        let color = rnd.frac() < 0.12 ? 0x5f5c58 : 0x6b6864;
-        if (x % 8 === 0 || y % 8 === 0) color = 0x4a4744;
-        punto(x, y, color);
-      }
-    }
-  });
-
-  // Pasto con hojitas claras y oscuras
-  texturaDibujada(escena, 'tile_pasto', 16, 16, (punto) => {
-    for (let y = 0; y < 16; y++) {
-      for (let x = 0; x < 16; x++) {
-        const r = rnd.frac();
-        punto(x, y, r < 0.12 ? 0x3d7234 : r < 0.24 ? 0x23461f : 0x2f5a2a);
-      }
-    }
-  });
-
-  // Tierra con piedritas
-  texturaDibujada(escena, 'tile_tierra', 16, 16, (punto) => {
-    for (let y = 0; y < 16; y++) {
-      for (let x = 0; x < 16; x++) {
-        const r = rnd.frac();
-        punto(x, y, r < 0.08 ? 0x8a6a4a : r < 0.2 ? 0x5a4129 : 0x6b4f35);
-      }
-    }
-  });
-
-  // Asfalto de la calle
-  texturaDibujada(escena, 'tile_asfalto', 16, 16, (punto) => {
-    for (let y = 0; y < 16; y++) {
-      for (let x = 0; x < 16; x++) {
-        const r = rnd.frac();
-        punto(x, y, r < 0.1 ? 0x37373b : r < 0.2 ? 0x222225 : 0x2c2c30);
-      }
-    }
-  });
+  tileRuido(escena, 'tile_baldosa', p.baldosa, 0.12, 0, p.junta);
+  tileRuido(escena, 'tile_pasto', p.pasto, 0.12, 0.12);
+  tileRuido(escena, 'tile_tierra', p.tierra, 0.08, 0.12);
+  tileRuido(escena, 'tile_asfalto', p.asfalto, 0.1, 0.1);
+  if (escena.textures.exists('arbol')) return;
+  const rnd = new Phaser.Math.RandomDataGenerator(['texturas']);
 
   // Árbol visto desde arriba: copa redonda con luces y sombras
+  const a = p.arbol;
   texturaDibujada(escena, 'arbol', 29, 29, (punto) => {
     const c = 14;
     for (let y = 0; y < 29; y++) {
@@ -199,11 +182,11 @@ function crearTexturasPlaza(escena) {
         // borde un poco irregular para que parezca follaje
         const d = Math.sqrt((x - c) * (x - c) + (y - c) * (y - c)) + rnd.frac() * 1.2;
         if (d > 14.5) continue;
-        let color = 0x2e6b30;
-        if (d > 13.3) color = 0x0f2a14;                                  // borde
-        else if (x + y < 22 && rnd.frac() < 0.45) color = 0x4a8f3c;      // luz (arriba izquierda)
-        else if (x + y > 34 && rnd.frac() < 0.55) color = 0x1f4d22;      // sombra (abajo derecha)
-        else if (rnd.frac() < 0.1) color = 0x24572a;
+        let color = a[0];
+        if (d > 13.3) color = a[1];                                      // borde
+        else if (x + y < 22 && rnd.frac() < 0.45) color = a[2];          // luz (arriba izquierda)
+        else if (x + y > 34 && rnd.frac() < 0.55) color = a[3];          // sombra (abajo derecha)
+        else if (rnd.frac() < 0.1) color = a[4];
         punto(x, y, color);
       }
     }
@@ -258,22 +241,71 @@ function puntoLibre(solidos, x, y, margen, ignorarBorde) {
   return true;
 }
 
-// Decide dónde va cada cosa (siempre igual con la misma semilla)
+// Lo que tiene todo mapa al generarse (cada mapa agrega lo suyo):
+//  centro, inicio (donde aparece el perro), pileta (null si no tiene),
+//  suelos (rectángulos pintados en el suelo), solidos (choques),
+//  faroles (luces), basureros (sueltan comida), adornos (dibujos)
+function mapaVacio(cx, cy, inicio) {
+  return {
+    centro: { x: cx, y: cy }, inicio, pileta: null,
+    suelos: [], solidos: [], faroles: [], basureros: [], adornos: []
+  };
+}
+
+// Pone una banca (con su choque) si hay lugar. Devuelve la banca o null.
+function ponerBanca(mapa, x, y, horizontal, margenFaroles) {
+  if (!puntoLibre(mapa.solidos, x, y, CHOQUE_BANCA.ANCHO / 2 + 40)) return null;
+  if (!mapa.faroles.every((f) => Phaser.Math.Distance.Between(x, y, f.x, f.y) > margenFaroles)) return null;
+  if (Phaser.Math.Distance.Between(x, y, mapa.inicio.x, mapa.inicio.y) < 130) return null;
+  const w = horizontal ? CHOQUE_BANCA.ANCHO : CHOQUE_BANCA.ALTO;
+  const h = horizontal ? CHOQUE_BANCA.ALTO : CHOQUE_BANCA.ANCHO;
+  const banca = { forma: 'rect', x, y, w, h, tipo: 'banca', horizontal };
+  mapa.solidos.push(banca);
+  mapa.adornos.push({ clave: 'banca', x, y, angulo: horizontal ? 0 : 90, profundidad: 2 });
+  return banca;
+}
+
+// Pone "cantidad" basureros al lado de las bancas
+function ponerBasureros(mapa, bancas, cantidad, rnd) {
+  for (let intento = 0; intento < cantidad * 40 && mapa.basureros.length < cantidad; intento++) {
+    if (bancas.length === 0) break;
+    const b = rnd.pick(bancas);
+    const lado = rnd.pick([-1, 1]);
+    const x = b.horizontal ? b.x + lado * (CHOQUE_BANCA.ANCHO / 2 + 26) : b.x;
+    const y = b.horizontal ? b.y : b.y + lado * (CHOQUE_BANCA.ANCHO / 2 + 26);
+    if (!puntoLibre(mapa.solidos, x, y, CHOQUE_BASURERO + 10)) continue;
+    if (!mapa.faroles.every((f) => Phaser.Math.Distance.Between(x, y, f.x, f.y) > 30)) continue;
+    mapa.solidos.push({ forma: 'circulo', x, y, r: CHOQUE_BASURERO, tipo: 'basurero' });
+    mapa.basureros.push({ x, y });
+    mapa.adornos.push({ clave: 'basurero', x, y, profundidad: 2 });
+  }
+}
+
+// Pone los primeros "cantidad" faroles de la lista de lugares
+function ponerFaroles(mapa, lugares, cantidad) {
+  lugares.slice(0, cantidad).forEach((f) => {
+    mapa.faroles.push({ x: f.x, y: f.y });
+    mapa.adornos.push({ clave: 'farol', x: f.x, y: f.y, profundidad: 2 });
+  });
+}
+
+// ---------------- La plaza ----------------
+
+// Decide dónde va cada cosa de la plaza (siempre igual con la misma semilla)
 function generarPlaza() {
+  const cfg = CONFIG.MAPAS.plaza;
   const rnd = new Phaser.Math.RandomDataGenerator([String(CONFIG.MAPA_SEMILLA)]);
-  const A = CONFIG.MAPA_ANCHO;
-  const H = CONFIG.MAPA_ALTO;
+  const A = cfg.ANCHO;
+  const H = cfg.ALTO;
   const cx = A / 2;
   const cy = H / 2;
   const P = CONFIG.PASILLO_ANCHO / 2;    // mitad del ancho de los caminos en cruz
   const calle = CONFIG.CALLE_ANCHO;
   const borde = calle + 120;             // donde empiezan los prados (después de la vereda)
 
-  const plaza = {
-    centro: { x: cx, y: cy },
-    inicio: { x: cx, y: cy + CONFIG.PILETA_RADIO + 200 }, // donde aparece el perro
-    pastos: [], senderos: [], solidos: [], faroles: [], basureros: [], adornos: []
-  };
+  const plaza = mapaVacio(cx, cy, { x: cx, y: cy + CONFIG.PILETA_RADIO + 200 });
+  plaza.pastos = [];
+  plaza.senderos = [];
   const reservado = (x, y, margen) =>
     Phaser.Math.Distance.Between(x, y, plaza.inicio.x, plaza.inicio.y) < 90 + margen;
   const lejosDeFaroles = (x, y, margen) =>
@@ -282,6 +314,7 @@ function generarPlaza() {
     x > s.x - margen && x < s.x + s.w + margen && y > s.y - margen && y < s.y + s.h + margen);
 
   // Pileta en el centro
+  plaza.pileta = { x: cx, y: cy, r: CONFIG.PILETA_RADIO };
   plaza.solidos.push({ forma: 'circulo', x: cx, y: cy, r: CONFIG.PILETA_RADIO, tipo: 'pileta' });
   plaza.adornos.push({ clave: 'pileta', x: cx, y: cy, profundidad: 1 });
 
@@ -292,7 +325,7 @@ function generarPlaza() {
     tramosY.forEach(([y0, y1]) => {
       const prado = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
       plaza.pastos.push(prado);
-      for (let i = 0; i < CONFIG.SENDEROS_POR_PRADO; i++) {
+      for (let i = 0; i < cfg.SENDEROS_POR_PRADO; i++) {
         if (rnd.frac() < 0.5) {
           const y = y0 + rnd.between(150, prado.h - 150 - ANCHO_SENDERO);
           plaza.senderos.push({ x: x0, y, w: prado.w, h: ANCHO_SENDERO });
@@ -312,56 +345,45 @@ function generarPlaza() {
     if (brazo === 2) return { x: cx + lado * orilla, y: cy - s, horizontal: false }; // norte
     return { x: cx + lado * orilla, y: cy + s, horizontal: false };                  // sur
   };
+  const largoBrazo = Math.min(cx, cy) - borde; // del centro hasta donde termina la cruz
 
-  // Faroles: primero 4 alrededor de la pileta, después a lo largo de los caminos
+  // Faroles: primero 4 alrededor de la pileta, después a lo largo de los caminos y senderos
   const puestos = [];
   for (let i = 0; i < 4; i++) {
     const ang = Math.PI / 4 + (i * Math.PI) / 2;
     const d = CONFIG.PILETA_RADIO + 70;
     puestos.push({ x: cx + Math.cos(ang) * d, y: cy + Math.sin(ang) * d });
   }
-  const puestosCaminos = [];
+  const otros = [];
   for (let brazo = 0; brazo < 4; brazo++) {
-    [450, 800, 1150].forEach((s) => {
-      [-1, 1].forEach((lado) => puestosCaminos.push(puntoEnBrazo(brazo, s, lado, P - 12)));
-    });
+    for (let s = 450; s < largoBrazo - 60; s += cfg.FAROL_CADA) {
+      [-1, 1].forEach((lado) => otros.push(puntoEnBrazo(brazo, s, lado, P - 12)));
+    }
   }
-  puestos.push(...rnd.shuffle(puestosCaminos));
-  puestos.slice(0, CONFIG.FAROLES).forEach((f) => {
-    plaza.faroles.push({ x: f.x, y: f.y });
-    plaza.adornos.push({ clave: 'farol', x: f.x, y: f.y, profundidad: 2 });
+  plaza.senderos.forEach((s) => {
+    const horizontal = s.w > s.h;
+    const largo = horizontal ? s.w : s.h;
+    for (let d = cfg.FAROL_CADA / 2; d < largo; d += cfg.FAROL_CADA) {
+      otros.push(horizontal ? { x: s.x + d, y: s.y - 14 } : { x: s.x - 14, y: s.y + d });
+    }
   });
+  puestos.push(...rnd.shuffle(otros));
+  ponerFaroles(plaza, puestos, cfg.FAROLES);
 
   // Bancas: a la orilla de los caminos, mirando hacia el camino
   const bancas = [];
-  for (let intento = 0; intento < CONFIG.BANCAS * 40 && bancas.length < CONFIG.BANCAS; intento++) {
-    const p = puntoEnBrazo(rnd.between(0, 3), rnd.between(320, cx - borde - 40), rnd.pick([-1, 1]), P - 40);
-    const w = p.horizontal ? CHOQUE_BANCA.ANCHO : CHOQUE_BANCA.ALTO;
-    const h = p.horizontal ? CHOQUE_BANCA.ALTO : CHOQUE_BANCA.ANCHO;
-    if (!puntoLibre(plaza.solidos, p.x, p.y, CHOQUE_BANCA.ANCHO / 2 + 40)) continue;
-    if (!lejosDeFaroles(p.x, p.y, 50) || reservado(p.x, p.y, 40)) continue;
-    const banca = { forma: 'rect', x: p.x, y: p.y, w, h, tipo: 'banca', horizontal: p.horizontal };
-    bancas.push(banca);
-    plaza.solidos.push(banca);
-    plaza.adornos.push({ clave: 'banca', x: p.x, y: p.y, angulo: p.horizontal ? 0 : 90, profundidad: 2 });
+  for (let intento = 0; intento < cfg.BANCAS * 40 && bancas.length < cfg.BANCAS; intento++) {
+    const p = puntoEnBrazo(rnd.between(0, 3), rnd.between(320, largoBrazo - 40), rnd.pick([-1, 1]), P - 40);
+    const banca = ponerBanca(plaza, p.x, p.y, p.horizontal, 50);
+    if (banca) bancas.push(banca);
   }
 
   // Basureros: al lado de una banca
-  for (let intento = 0; intento < CONFIG.BASUREROS * 40 && plaza.basureros.length < CONFIG.BASUREROS; intento++) {
-    if (bancas.length === 0) break;
-    const b = rnd.pick(bancas);
-    const lado = rnd.pick([-1, 1]);
-    const x = b.horizontal ? b.x + lado * (CHOQUE_BANCA.ANCHO / 2 + 26) : b.x;
-    const y = b.horizontal ? b.y : b.y + lado * (CHOQUE_BANCA.ANCHO / 2 + 26);
-    if (!puntoLibre(plaza.solidos, x, y, CHOQUE_BASURERO + 10) || !lejosDeFaroles(x, y, 30)) continue;
-    plaza.solidos.push({ forma: 'circulo', x, y, r: CHOQUE_BASURERO, tipo: 'basurero' });
-    plaza.basureros.push({ x, y });
-    plaza.adornos.push({ clave: 'basurero', x, y, profundidad: 2 });
-  }
+  ponerBasureros(plaza, bancas, cfg.BASUREROS, rnd);
 
   // Árboles: en los prados, sin tapar los senderos
   let arboles = 0;
-  for (let intento = 0; intento < CONFIG.ARBOLES * 40 && arboles < CONFIG.ARBOLES; intento++) {
+  for (let intento = 0; intento < cfg.ARBOLES * 40 && arboles < cfg.ARBOLES; intento++) {
     const prado = rnd.pick(plaza.pastos);
     const x = rnd.between(prado.x + 50, prado.x + prado.w - 50);
     const y = rnd.between(prado.y + 50, prado.y + prado.h - 50);
@@ -374,8 +396,9 @@ function generarPlaza() {
   }
 
   // Autos estacionados en la calle de los bordes
+  const coloresAutos = buscarMapa('plaza').paleta.autos.length;
   let autos = 0;
-  for (let intento = 0; intento < CONFIG.AUTOS * 40 && autos < CONFIG.AUTOS; intento++) {
+  for (let intento = 0; intento < cfg.AUTOS * 40 && autos < cfg.AUTOS; intento++) {
     const borde4 = rnd.between(0, 3); // 0 arriba, 1 abajo, 2 izquierda, 3 derecha
     const largo = rnd.between(220, (borde4 < 2 ? A : H) - 220);
     const pegado = 55; // distancia del auto al borde del mapa
@@ -389,66 +412,86 @@ function generarPlaza() {
     const h = horizontal ? CHOQUE_AUTO.ANCHO : CHOQUE_AUTO.ALTO;
     if (!puntoLibre(plaza.solidos, x, y, CHOQUE_AUTO.ALTO / 2 + 25, true)) continue; // los autos van pegados al borde
     plaza.solidos.push({ forma: 'rect', x, y, w, h, tipo: 'auto' });
-    plaza.adornos.push({ clave: 'auto_' + rnd.between(0, COLORES_AUTOS.length - 1), x, y, angulo, profundidad: 2 });
+    plaza.adornos.push({ clave: 'auto_' + rnd.between(0, coloresAutos - 1), x, y, angulo, profundidad: 2 });
     autos++;
   }
 
   return plaza;
 }
 
-// Pinta el suelo de toda la plaza en una sola imagen (calle, baldosas,
-// pasto y tierra). Se pinta en tamaño chico y se agranda x3.
-function dibujarSueloPlaza(escena, plaza) {
+// Pinta el suelo de la plaza (calle, baldosas, pasto y tierra). "h" son las herramientas de pintarSueloMapa
+function pintarSueloPlaza(h, plaza, p) {
+  const A = CONFIG.MAPA_ANCHO;
+  const H = CONFIG.MAPA_ALTO;
+  const calle = CONFIG.CALLE_ANCHO;
   const E = ESCALA_PIXEL;
-  const clave = 'suelo_plaza';
+
+  h.rect({ x: 0, y: 0, w: A, h: H }, h.patron('tile_asfalto'));                              // calle
+  h.rect({ x: calle, y: calle, w: A - calle * 2, h: H - calle * 2 }, h.patron('tile_baldosa')); // vereda y caminos
+  h.borde({ x: calle, y: calle, w: A - calle * 2, h: H - calle * 2 }, p.solera);              // solera
+
+  // Línea amarilla punteada al medio de la calle
+  const ctx = h.ctx;
+  ctx.fillStyle = p.lineaCalle;
+  const m = Math.round(calle / 2 / E);
+  const fin = Math.round(Math.max(A, H) / E);
+  for (let i = 0; i < fin; i += 12) {
+    ctx.fillRect(i, m, 6, 1); ctx.fillRect(i, Math.round(H / E) - m, 6, 1);
+    ctx.fillRect(m, i, 1, 6); ctx.fillRect(Math.round(A / E) - m, i, 1, 6);
+  }
+
+  plaza.pastos.forEach((r) => { h.rect(r, h.patron('tile_pasto')); h.borde(r, p.bordePasto); });
+  plaza.senderos.forEach((r) => h.rect(r, h.patron('tile_tierra')));
+}
+
+// ---------------- Armar cualquier mapa ----------------
+
+// Pinta el suelo de todo el mapa en una sola imagen. Se pinta en tamaño chico y se agranda x3.
+// Solo se guarda el suelo del mapa actual (los otros se borran para no gastar memoria en el celular).
+function pintarSueloMapa(escena, def, mapa) {
+  const E = ESCALA_PIXEL;
+  const clave = 'suelo_' + def.id;
+  escena.textures.getTextureKeys().forEach((k) => {
+    if (k.indexOf('suelo_') === 0 && k !== clave) escena.textures.remove(k);
+  });
   if (!escena.textures.exists(clave)) {
     const textura = escena.textures.createCanvas(clave, Math.ceil(CONFIG.MAPA_ANCHO / E), Math.ceil(CONFIG.MAPA_ALTO / E));
     const ctx = textura.getContext();
-    const rect = (r, relleno) => {
-      ctx.fillStyle = relleno;
-      ctx.fillRect(Math.round(r.x / E), Math.round(r.y / E), Math.round(r.w / E), Math.round(r.h / E));
+    const h = {
+      ctx,
+      patron: (tile) => ctx.createPattern(escena.textures.get(tile).getSourceImage(), 'repeat'),
+      rect: (r, relleno) => {
+        ctx.fillStyle = relleno;
+        ctx.fillRect(Math.round(r.x / E), Math.round(r.y / E), Math.round(r.w / E), Math.round(r.h / E));
+      },
+      borde: (r, color) => {
+        const x = Math.round(r.x / E), y = Math.round(r.y / E), w = Math.round(r.w / E), hh = Math.round(r.h / E);
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y + hh - 1, w, 1);
+        ctx.fillRect(x, y, 1, hh); ctx.fillRect(x + w - 1, y, 1, hh);
+      }
     };
-    const patron = (tile) => ctx.createPattern(escena.textures.get(tile).getSourceImage(), 'repeat');
-    const borde = (r, color) => {
-      const x = Math.round(r.x / E), y = Math.round(r.y / E), w = Math.round(r.w / E), h = Math.round(r.h / E);
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y + h - 1, w, 1);
-      ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
-    };
-
-    const A = CONFIG.MAPA_ANCHO;
-    const H = CONFIG.MAPA_ALTO;
-    const calle = CONFIG.CALLE_ANCHO;
-
-    rect({ x: 0, y: 0, w: A, h: H }, patron('tile_asfalto'));                              // calle
-    rect({ x: calle, y: calle, w: A - calle * 2, h: H - calle * 2 }, patron('tile_baldosa')); // vereda y caminos
-    borde({ x: calle, y: calle, w: A - calle * 2, h: H - calle * 2 }, '#9a9a9a');            // solera
-
-    // Línea amarilla punteada al medio de la calle
-    ctx.fillStyle = '#8a7a2a';
-    const m = Math.round(calle / 2 / E);
-    const fin = Math.round(A / E);
-    for (let i = 0; i < fin; i += 12) {
-      ctx.fillRect(i, m, 6, 1); ctx.fillRect(i, Math.round(H / E) - m, 6, 1);
-      ctx.fillRect(m, i, 1, 6); ctx.fillRect(Math.round(A / E) - m, i, 1, 6);
-    }
-
-    plaza.pastos.forEach((r) => { rect(r, patron('tile_pasto')); borde(r, '#1a3517'); });
-    plaza.senderos.forEach((r) => rect(r, patron('tile_tierra')));
+    def.pintarSuelo(h, mapa, def.paleta);
     textura.refresh();
   }
   escena.add.image(0, 0, clave).setOrigin(0).setScale(E).setDepth(0);
 }
 
-// Arma la plaza completa en la escena: suelo, adornos y obstáculos sólidos.
-// Devuelve la plaza con:
+// Arma el mapa completo en la escena: suelo, adornos y obstáculos sólidos.
+// mapaId: id de src/mapas.js ('plaza', 'terminal', 'feria').
+// (Se llama "plaza" en el resto del código por costumbre: es el mapa que se esté jugando.)
+// Devuelve el mapa con:
 //   obstaculos: grupo de física (para los choques)
 //   libre(x, y, margen): true si no hay obstáculos cerca
 //   buscarLibre(x, y, margen): el punto libre más cercano
-function crearPlaza(escena) {
-  crearTexturasPlaza(escena);
-  const plaza = generarPlaza();
-  dibujarSueloPlaza(escena, plaza);
+function crearPlaza(escena, mapaId) {
+  const def = buscarMapa(mapaId);
+  aplicarTamanoMapa(def.id);
+  crearTexturasComunes(escena);
+  def.crearTexturas(escena, def.paleta);
+  const plaza = def.generar();
+  plaza.id = def.id;
+  pintarSueloMapa(escena, def, plaza);
 
   plaza.adornos.forEach((a) => {
     escena.add.image(a.x, a.y, a.clave).setScale(ESCALA_PIXEL).setAngle(a.angulo || 0).setDepth(a.profundidad);
@@ -507,7 +550,7 @@ function texturaLuz(escena, radio) {
   return clave;
 }
 
-// Capa oscura encima de la plaza (debajo de la pantalla de vida y nivel)
+// Capa oscura encima del mapa (debajo de la pantalla de vida y nivel)
 function crearOscuridad(escena) {
   if (!(CONFIG.OSCURIDAD > 0)) return null;
   const capa = escena.add.renderTexture(0, 0, escena.scale.width, escena.scale.height)

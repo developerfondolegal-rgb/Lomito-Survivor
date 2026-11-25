@@ -1,4 +1,5 @@
-// Pantalla de inicio: elegir la raza del perro (y abrir el Álbum de coleccionables,
+// Pantalla de inicio: elegir la raza del perro (después se elige el mapa en
+// src/scenes/MapaScene.js) (y abrir el Álbum de coleccionables,
 // el Árbol de habilidades, el Rincón de apuestas y el Ranking).
 // Arriba a la derecha: entrar con Google / salir y el apodo (src/online.js).
 // Arriba a la izquierda se ven los huesitos guardados (src/huesitos.js).
@@ -171,7 +172,7 @@ class MenuScene extends Phaser.Scene {
     const cy = this.scale.height - 26 - this.margenExtra / 2;
     const ancho = 196;
     const alto = 34;
-    const encontrados = cuantosEncontrados('plaza') + ' / ' + listaColeccionables('plaza').length;
+    const encontrados = cuantosEncontrados() + ' / ' + listaColeccionables().length; // de todos los mapas
     const g = this.add.graphics();
     const pintar = (encima) => {
       g.clear();
@@ -246,6 +247,6 @@ class MenuScene extends Phaser.Scene {
   elegir(indice) {
     const raza = this.razas[indice];
     if (!raza) return;
-    this.scene.start('GameScene', { raza: raza.id });
+    this.scene.start('MapaScene', { raza: raza.id }); // después se elige el mapa (src/scenes/MapaScene.js)
   }
 }

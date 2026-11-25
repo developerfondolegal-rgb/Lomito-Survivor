@@ -61,7 +61,7 @@ function actualizarPausa(escena, pidioPausa) {
     cerrarPausa(escena);
   } else if (teclado.JustDown(escena.teclaR)) {
     salirDePausa(escena);
-    escena.scene.restart({ raza: escena.razaId });
+    escena.scene.restart({ raza: escena.razaId, mapa: escena.mapaId });
   } else if (teclado.JustDown(escena.teclaM)) {
     salirDePausa(escena);
     escena.scene.start('MenuScene');
@@ -134,7 +134,7 @@ function dibujarPausa(escena) {
   botonPausa(escena, capa, w / 2 - 230, yb, 200, 'Continuar', () => cerrarPausa(escena));
   botonPausa(escena, capa, w / 2, yb, 200, modoTactil() ? 'Reiniciar' : 'Reiniciar (R)', () => {
     salirDePausa(escena);
-    escena.scene.restart({ raza: escena.razaId });
+    escena.scene.restart({ raza: escena.razaId, mapa: escena.mapaId });
   });
   botonPausa(escena, capa, w / 2 + 230, yb, 200, modoTactil() ? 'Salir al menú' : 'Salir al menú (M)', () => {
     salirDePausa(escena);

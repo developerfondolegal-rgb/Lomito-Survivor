@@ -23,10 +23,12 @@ class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  // Recibe la raza elegida en la pantalla de inicio
+  // Recibe la raza elegida en la pantalla de inicio y el mapa elegido
+  // en la pantalla de mapas (src/scenes/MapaScene.js)
   init(datos) {
     const id = datos && datos.raza;
     this.razaId = CONFIG.RAZAS[id] ? id : Object.keys(CONFIG.RAZAS)[0];
+    this.mapaId = buscarMapa(datos && datos.mapa).id; // mapa actual (src/mapas.js)
   }
 
   create() {
@@ -39,7 +41,6 @@ class GameScene extends Phaser.Scene {
 
     // Estado de la partida
     // (Sweater tejido a mano: los coleccionables guardados se aplican desde el inicio)
-    this.mapaId = 'plaza';        // mapa actual (los coleccionables dicen a qué mapa pertenecen)
     iniciarArbol(this);           // árbol de habilidades de la raza (src/arbol.js)
     this.vidaMax = this.base.VIDA + bonusColeccion('sweater', 'VIDA') + bonusArbol(this, 'VIDA');
     this.vida = this.vidaMax;
@@ -105,10 +106,11 @@ class GameScene extends Phaser.Scene {
     this.anims.resumeAll();
     this.tweens.resumeAll();      // por si venimos del menú de pausa
 
-    // Mapa y cámara
+    // Mapa y cámara (el tamaño depende del mapa elegido: CONFIG.MAPAS en config.js)
+    aplicarTamanoMapa(this.mapaId);
     this.physics.world.setBounds(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
     this.cameras.main.setBounds(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
-    this.plaza = crearPlaza(this); // suelo, pileta, bancas, árboles, autos... (src/mapa.js)
+    this.plaza = crearPlaza(this, this.mapaId); // suelo y obstáculos del mapa (src/mapa.js y src/mapas.js)
 
     // El perro (dibujo de su raza; el choque usa el RADIO de config.js)
     const inicio = this.plaza.buscarLibre(this.plaza.inicio.x, this.plaza.inicio.y, this.base.RADIO + 10);
@@ -194,7 +196,7 @@ class GameScene extends Phaser.Scene {
 
     if (this.gameOver) {
       if (Phaser.Input.Keyboard.JustDown(this.teclaR)) {
-        this.scene.restart({ raza: this.razaId }); // misma raza
+        this.scene.restart({ raza: this.razaId, mapa: this.mapaId }); // misma raza
       } else if (Phaser.Input.Keyboard.JustDown(this.teclaM)) {
         // Rincón de apuestas (src/scenes/ApuestasScene.js) y de ahí al inicio
         if (CONFIG.APUESTAS.EN_FIN_DE_PARTIDA) this.scene.start('ApuestasScene', { modo: 'fin' });
@@ -307,6 +309,7 @@ class GameScene extends Phaser.Scene {
     this.recogerObjetos();
     this.efectosObjetos(delta);
     actualizarColeccionables(this, delta); // ultra raros en el suelo, peluche, sweater y mantita
+    actualizarEventosMapa(this, delta);    // TODO (misiones): eventos del mapa, como escoltar guardias (src/mapas.js). Hoy no hace nada
     this.actualizarEstampida(delta);
     this.dibujarJaula();
     this.dibujarEscudo();
@@ -1184,7 +1187,7 @@ class GameScene extends Phaser.Scene {
       if (enemigo.elite) cantidad *= CONFIG.ELITE_HUESOS;
       if (enemigo.esJefe) this.derrotarJefe(enemigo);
       // Árbol: Hueso de regalo / Escarbador: a veces 1 hueso extra
-      if (Math.random() < bonusArbol(this, 'HUESO_EXTRA')) cantidad++;
+      if (Math.random() < bonusArbol(this, 'HUESO_EXTRA') + bonusColeccion('yapa', 'HUESO_EXTRA')) cantidad++; // + La yapa
       for (let i = 0; i < cantidad; i++) {
         if (Math.random() < probabilidad) {
           const ox = cantidad > 1 ? Phaser.Math.Between(-14, 14) : 0;
@@ -1372,7 +1375,7 @@ class GameScene extends Phaser.Scene {
     if (this.efectoZona.segura) return;
     const iman = this.radioIman();
     const distanciaRecoger = this.base.RADIO + CONFIG.HUESO_TAMANO;
-    const paso = CONFIG.IMAN_VELOCIDAD * (1 + bonusArbol(this, 'IMAN_RAPIDEZ')) * (delta / 1000); // Árbol: Nariz fina
+    const paso = CONFIG.IMAN_VELOCIDAD * (1 + bonusArbol(this, 'IMAN_RAPIDEZ') + bonusColeccion('jockey', 'IMAN_RAPIDEZ')) * (delta / 1000); // Árbol: Nariz fina; Jockey del auxiliar
 
     this.huesos.getChildren().slice().forEach((hueso) => {
       const d = Phaser.Math.Distance.Between(this.perro.x, this.perro.y, hueso.x, hueso.y);
@@ -1428,7 +1431,7 @@ class GameScene extends Phaser.Scene {
   aparecerComida(delta) {
     // De vez en cuando, en algún lugar libre cerca del perro
     this.esperaComida += delta;
-    if (this.esperaComida >= CONFIG.COMIDA_CADA_MS / (1 + bonusArbol(this, 'COMIDA_RAPIDEZ'))) { // Árbol: Huele la comida
+    if (this.esperaComida >= CONFIG.COMIDA_CADA_MS / (1 + bonusArbol(this, 'COMIDA_RAPIDEZ') + bonusColeccion('carro', 'COMIDA_RAPIDEZ'))) { // Árbol: Huele la comida; Carro de feria
       this.esperaComida = 0;
       for (let intento = 0; intento < 15; intento++) {
         const ang = Math.random() * Math.PI * 2;
@@ -1483,9 +1486,10 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  // Tomar agua: cura de a poco mientras el perro está pegado a la pileta
+  // Tomar agua: cura de a poco mientras el perro está pegado a la pileta (solo en mapas con pileta)
   beberAgua(delta) {
-    const c = this.plaza.centro;
+    const c = this.plaza.pileta;
+    if (!c) return;
     const d = Phaser.Math.Distance.Between(this.perro.x, this.perro.y, c.x, c.y);
     if (d > CONFIG.PILETA_RADIO + this.base.RADIO + CONFIG.AGUA_DISTANCIA || this.vida >= this.vidaMax) {
       this.esperaAgua = 0;
@@ -2069,7 +2073,7 @@ class GameScene extends Phaser.Scene {
     // Botones (se pueden tocar o clickear; también funcionan R y M)
     const tecla = (t) => (modoTactil() ? '' : ' (' + t + ')'); // en celular no se muestran las teclas
     const botones = [
-      { texto: 'Reiniciar' + tecla('R'), color: 0x9ccc65, accion: () => this.scene.restart({ raza: this.razaId }) }
+      { texto: 'Reiniciar' + tecla('R'), color: 0x9ccc65, accion: () => this.scene.restart({ raza: this.razaId, mapa: this.mapaId }) }
     ];
     if (CONFIG.APUESTAS.EN_FIN_DE_PARTIDA) {
       botones.push({ texto: 'Rincón de apuestas' + tecla('M'), color: 0xf2d64b, accion: () => this.scene.start('ApuestasScene', { modo: 'fin' }) });

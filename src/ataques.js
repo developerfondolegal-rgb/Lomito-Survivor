@@ -737,6 +737,7 @@ function golpearPerroCurao(escena, cu, hx, hy, pos) {
 
   // Mismas reducciones que un golpe normal (Collar, Cuero de calle, Zona peligrosa, árbol)
   let dano = C.DANO * Math.max(0, 1 - escena.nivelObjeto('collar') * CONFIG.OBJETOS.collar.MENOS_DANO);
+  dano *= Math.max(0, 1 - bonusColeccion('boleto', 'MENOS_DANO_CURAO')); // Boleto de micro (ultra raro de la Terminal)
   if (escena.fusiones.cuero && ahora < escena.cueroHasta) dano *= CONFIG.FUSIONES.cuero.MULTIPLICADOR;
   if (escena.efectoZona.peligro) dano *= CONFIG.ZONAS.peligro.DANO_MULTIPLICADOR || 1;
   dano *= Math.max(0, 1 - escena.reduccionArbol());

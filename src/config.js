@@ -7,28 +7,84 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.17';
+const VERSION_JUEGO = '0.18';
 
 const CONFIG = {
-  // Tamaño del mapa (en píxeles)
-  MAPA_ANCHO: 3000,
-  MAPA_ALTO: 3000,
+  // Tamaño del mapa que se está jugando (en píxeles).
+  // NO lo cambies aquí: el juego lo pone solo al empezar la partida con el
+  // ANCHO y ALTO del mapa elegido (sección MAPAS, justo aquí abajo).
+  MAPA_ANCHO: 6000,
+  MAPA_ALTO: 6000,
 
   // ---------------------------------------------------------------
-  //  PLAZA (el mapa). El dibujo y la ubicación están en src/mapa.js
+  //  MAPAS: se elige uno antes de cada partida (después de la raza).
+  //  Los nombres, colores, dibujos y la lista de ultra raros de cada
+  //  mapa están en src/mapas.js. Aquí van los números.
+  //  En todos los mapas: si no caben todas las cosas, se ponen las que quepan.
   // ---------------------------------------------------------------
-  MAPA_SEMILLA: 'lomito',       // cambia este texto para que las cosas salgan en otros lugares
+  MAPA_SEMILLA: 'lomito',       // cambia este texto para que las cosas salgan en otros lugares (todos los mapas)
+  MAPAS: {
+    INICIAL: 'plaza',           // mapa marcado la primera vez que se abre la pantalla de mapas
+    GUARDADO: 'lomitoSurvivor_mapa', // nombre del guardado en el navegador del último mapa elegido
+
+    // La plaza (el mapa de siempre, ahora el doble de ancho y de alto)
+    plaza: {
+      ANCHO: 6000,              // tamaño del mapa en píxeles (antes 3000 x 3000)
+      ALTO: 6000,
+      ARBOLES: 150,             // en los 4 prados
+      BANCAS: 56,               // a la orilla de los caminos en cruz
+      BASUREROS: 28,            // van al lado de las bancas (y sueltan comida)
+      FAROLES: 70,              // 4 alrededor de la pileta y el resto en caminos y senderos
+      FAROL_CADA: 350,          // distancia entre faroles a lo largo de los caminos
+      AUTOS: 40,                // estacionados en la calle de los bordes
+      SENDEROS_POR_PRADO: 2,    // senderos de tierra en cada uno de los 4 prados
+      ULTRA_MULTIPLICADOR: 1    // probabilidad de ultra raros en este mapa (1 = normal, 2 = el doble)
+    },
+
+    // Terminal de buses: andenes con buses estacionados
+    terminal: {
+      ANCHO: 5400,
+      ALTO: 4200,
+      VEREDA: 140,              // ancho de la vereda en los 4 bordes
+      ANDENES: 6,               // cuántos andenes (filas largas de cemento)
+      ANDEN_ALTO: 120,          // grosor de cada andén
+      ANDEN_SEPARACION: 560,    // distancia entre un andén y el siguiente
+      ANDEN_MARGEN: 480,        // espacio libre entre los extremos del andén y el borde del mapa
+      BUSES: 30,                // buses estacionados (con la trompa hacia el andén)
+      BUS_SEPARACION: 110,      // distancia entre un estacionamiento de bus y el siguiente
+      BANCAS: 34,               // sobre los andenes
+      BASUREROS: 18,            // al lado de las bancas (sueltan comida)
+      FAROLES: 48,              // sobre los andenes
+      FAROL_CADA: 380,          // distancia entre faroles en un andén
+      ULTRA_MULTIPLICADOR: 1
+    },
+
+    // Feria libre: corridas de puestos con toldos y cajones
+    feria: {
+      ANCHO: 4800,
+      ALTO: 4800,
+      VEREDA: 140,              // ancho de la vereda en los 4 bordes
+      CORRIDAS: 7,              // filas de puestos
+      CORRIDA_SEPARACION: 520,  // distancia entre una corrida y la siguiente
+      CORRIDA_MARGEN: 380,      // espacio libre entre los extremos de la corrida y el borde del mapa
+      PUESTO_SEPARACION: 130,   // distancia entre un puesto y el siguiente en la corrida
+      PASILLO_CADA: 5,          // cada 5 lugares de la corrida queda uno libre para pasar
+      PUESTOS: 120,             // mesones con fruta y verdura
+      TOLDOS: 70,               // toldos de lona detrás de algunos puestos
+      CAJONES: 70,              // pilas de cajones (sueltan comida, como los basureros)
+      FAROLES: 44,              // en los pasillos entre corridas
+      FAROL_CADA: 420,          // distancia entre faroles en un pasillo
+      MANCHAS: 160,             // cartones y hojas de lechuga tirados en el suelo (solo adorno)
+      ULTRA_MULTIPLICADOR: 1
+    }
+  },
+
+  // ---------------------------------------------------------------
+  //  PLAZA: medidas del dibujo (src/mapa.js). Las cantidades están en MAPAS.plaza
+  // ---------------------------------------------------------------
   CALLE_ANCHO: 160,             // ancho de la calle con autos en los 4 bordes
   PASILLO_ANCHO: 400,           // ancho de los caminos de baldosas en cruz
-  PILETA_RADIO: 108,            // tamaño de la pileta del centro
-  SENDEROS_POR_PRADO: 1,        // senderos de tierra en cada uno de los 4 prados
-
-  // Cuántas cosas hay (si no caben todas, se ponen las que quepan)
-  ARBOLES: 40,
-  BANCAS: 16,
-  BASUREROS: 8,                 // van al lado de las bancas
-  FAROLES: 16,                  // 4 alrededor de la pileta y el resto en los caminos
-  AUTOS: 14,
+  PILETA_RADIO: 108,            // tamaño de la pileta del centro (solo en la plaza)
 
   // Luz y oscuridad
   OSCURIDAD: 0.7,               // qué tan oscura es la noche (0 = de día, 1 = negro total)
@@ -613,7 +669,19 @@ const CONFIG = {
     // Cascabel: más experiencia por hueso
     cascabel: { XP_EXTRA: 0.06 },
     // Gorro de lana: el barro te frena menos y la Perrera te deja atrapado menos rato
-    gorro: { MENOS_LENTITUD: 0.15 }
+    gorro: { MENOS_LENTITUD: 0.15 },
+
+    // --- Solo en la Terminal de buses ---
+    // Boleto de micro: el curao al volante te hace menos daño (0.1 = 10% menos por nivel)
+    boleto: { MENOS_DANO_CURAO: 0.1 },
+    // Jockey del auxiliar: los huesos vuelan más rápido hacia ti (0.1 = 10% más rápido por nivel)
+    jockey: { IMAN_RAPIDEZ: 0.1 },
+
+    // --- Solo en la Feria libre ---
+    // La yapa: probabilidad de que cada enemigo suelte 1 hueso extra (0.04 = 4 de cada 100 por nivel)
+    yapa: { HUESO_EXTRA: 0.04 },
+    // Carro de feria: la comida aparece más seguido (0.08 = 8% más seguido por nivel)
+    carro: { COMIDA_RAPIDEZ: 0.08 }
   },
 
   // ---------------------------------------------------------------

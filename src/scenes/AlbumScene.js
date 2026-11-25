@@ -1,5 +1,5 @@
 // Álbum de coleccionables ultra raros (se abre desde la pantalla de inicio
-// con el botón "Álbum" o la tecla A).
+// con el botón "Álbum" o la tecla A). Una página por mapa: ← → o los botones ◀ ▶.
 // Los coleccionables, sus textos, dibujos y el guardado están en src/coleccionables.js
 // (marcoPixel viene de src/pausa.js; FUENTE, de MenuScene.js)
 
@@ -10,12 +10,14 @@ class AlbumScene extends Phaser.Scene {
 
   create() {
     crearTexturasColeccionables(this);
-    this.mapaId = 'plaza';
+    this.mapas = listaMapas();
+    this.mapaId = mapaGuardado(); // empieza en el último mapa elegido
     this.capa = [];
     this.capaConfirmar = [];
     this.brillos = [];
     this.teclaEsc = this.input.keyboard.addKey('ESC');
     this.teclaA = this.input.keyboard.addKey('A');
+    this.cursors = this.input.keyboard.createCursorKeys();
     this.dibujar();
   }
 
@@ -30,7 +32,19 @@ class AlbumScene extends Phaser.Scene {
       if (esc) this.cerrarConfirmar();
     } else if (esc || a) {
       this.scene.start('MenuScene');
+    } else if (teclado.JustDown(this.cursors.left)) {
+      this.cambiarMapa(-1);
+    } else if (teclado.JustDown(this.cursors.right)) {
+      this.cambiarMapa(1);
     }
+  }
+
+  // Pasa a la página del mapa anterior (-1) o siguiente (1)
+  cambiarMapa(paso) {
+    const n = this.mapas.length;
+    const i = this.mapas.findIndex((m) => m.id === this.mapaId);
+    this.mapaId = this.mapas[(i + paso + n) % n].id;
+    this.dibujar();
   }
 
   dibujar() {
@@ -42,9 +56,14 @@ class AlbumScene extends Phaser.Scene {
     const lista = listaColeccionables(this.mapaId);
     const capa = this.capa;
 
-    capa.push(this.add.text(w / 2, 24, 'Álbum de la plaza', {
+    capa.push(this.add.text(w / 2, 24, 'Álbum: ' + buscarMapa(this.mapaId).nombre, {
       fontFamily: FUENTE, fontSize: '30px', color: '#ffe082', fontStyle: 'bold'
     }).setOrigin(0.5));
+    // Botones para cambiar de mapa
+    if (this.mapas.length > 1) {
+      this.boton(w / 2 - 290, 24, 64, '◀', 0xce93d8, () => this.cambiarMapa(-1));
+      this.boton(w / 2 + 290, 24, 64, '▶', 0xce93d8, () => this.cambiarMapa(1));
+    }
 
     const desafios = (CONFIG.ULTRA_DESAFIOS || []).map((id) => buscarDesafio(id).nombre).join(' o ');
     capa.push(this.add.text(w / 2, 56,
@@ -108,7 +127,7 @@ class AlbumScene extends Phaser.Scene {
     if (!tiene) {
       texto(derecha, y + 12, '???', 18, '#8a8a99', { fontStyle: 'bold' });
       texto(derecha, y + 38, 'No encontrado', 12, '#77778a');
-      texto(x + 10, y + 74, 'Mapa: ' + (c.mapa === 'plaza' ? 'la plaza' : c.mapa), 11, '#6d6d80');
+      texto(x + 10, y + 74, 'Mapa: ' + buscarMapa(mapaDeColeccionable(c.id)).nombre, 11, '#6d6d80');
       texto(x + 10, y + 92, '¿Qué será? Sigue buscando...', 11, '#6d6d80', { fontStyle: 'italic' });
       return;
     }

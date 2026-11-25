@@ -12,8 +12,8 @@
 //
 //  Para agregar un coleccionable nuevo:
 //   1. Copia un bloque de COLECCIONABLES (aquí abajo) y cambia "id" por
-//      un nombre nuevo sin espacios ni tildes. En "mapa" pon el mapa
-//      donde se encuentra (por ahora solo existe 'plaza').
+//      un nombre nuevo sin espacios ni tildes. Luego agrega ese id a la
+//      lista "ultraRaros" del mapa donde se encuentra (src/mapas.js).
 //   2. Copia un dibujo en SPRITES_COLECCIONABLES con ese mismo id.
 //   3. En src/config.js, dentro de COLECCIONABLES, copia un bloque con ese id.
 //   4. Lo que HACE se programa en src/scenes/GameScene.js (busca
@@ -24,51 +24,67 @@
 // La rareza ultra rara (va por encima de Legendario)
 const RAREZA_ULTRA = { id: 'ultra', nombre: 'Ultra raro', colorTexto: '#f8bbd0' };
 
-// Un coleccionable por cada cosa perdida de la plaza.
-//  mapa: en qué mapa se puede encontrar
+// Un coleccionable por cada cosa perdida en los mapas.
+//  En qué mapa se encuentra cada uno lo dice "ultraRaros" de src/mapas.js.
 //  bonus: texto de lo que da en un nivel (c = sus números de config.js)
 const COLECCIONABLES = [
-  { id: 'chalequito', mapa: 'plaza', nombre: 'Chalequito reflectante',
+  { id: 'chalequito', nombre: 'Chalequito reflectante',
     frase: '«Para que los autos te vean... y los malos no tanto.»',
     bonus: (c, n) => 'Enemigos aparecen ' + Math.round(c.APARECE_LEJOS * n) + ' px más lejos · −' +
       porcentajeCol(c.MENOS_DANO_EMBESTIDA * n) + ' daño de embestidas' },
-  { id: 'sweater', mapa: 'plaza', nombre: 'Sweater tejido a mano',
+  { id: 'sweater', nombre: 'Sweater tejido a mano',
     frase: '«Lo tejió una abuelita. Pica un poquito.»',
     bonus: (c, n) => '+' + Math.round(c.VIDA * n) + ' vida máxima · recuperas 1 de vida cada ' +
       numeroCol(c.CURA_CADA_MS / n / 1000) + ' s' },
-  { id: 'peluche', mapa: 'plaza', nombre: 'Peluche de zombie',
+  { id: 'peluche', nombre: 'Peluche de zombie',
     frase: '«Da miedo, pero abraza rico.»',
     bonus: (c, n) => 'Un zombie gira a tu lado y hace ' + numeroCol(c.DANO * n) + ' de daño al tocar' },
-  { id: 'mantita', mapa: 'plaza', nombre: 'Mantita cuadrillé',
+  { id: 'mantita', nombre: 'Mantita cuadrillé',
     frase: '«Huele a picnic de domingo.»',
     bonus: (c, n) => 'Zona segura: 1 de vida cada ' + numeroCol(c.SEGURA_CURA_CADA_MS / n / 1000) +
       ' s · la pileta cura ' + porcentajeCol(c.PILETA_RAPIDEZ * n) + ' más rápido' },
-  { id: 'capa', mapa: 'plaza', nombre: 'Capa de superhéroe',
+  { id: 'capa', nombre: 'Capa de superhéroe',
     frase: '«No vuela, pero se siente como si sí.»',
     bonus: (c, n) => '+' + porcentajeCol(c.VELOCIDAD * n) + ' velocidad · el poder se recarga ' +
       porcentajeCol(c.RECARGA * n) + ' más rápido' },
-  { id: 'antifaz', mapa: 'plaza', nombre: 'Antifaz',
+  { id: 'antifaz', nombre: 'Antifaz',
     frase: '«Nadie sabrá que eres un perrito... excepto todos.»',
     bonus: (c, n) => porcentajeCol(c.ESQUIVAR * n) + ' de probabilidad de esquivar un golpe' },
-  { id: 'antipulgas', mapa: 'plaza', nombre: 'Collar antipulgas',
+  { id: 'antipulgas', nombre: 'Collar antipulgas',
     frase: '«Adiós, comezón. Hola, dignidad.»',
     bonus: (c, n) => '−' + porcentajeCol(c.MENOS_DANO * n) + ' daño de la manada y de los perros rivales' },
-  { id: 'lentes', mapa: 'plaza', nombre: 'Lentes',
+  { id: 'lentes', nombre: 'Lentes',
     frase: '«Ahora ve los huesos desde lejos. Y se ve intelectual.»',
     bonus: (c, n) => '+' + Math.round(c.ALCANCE * n) + ' alcance de mordida · +' + Math.round(c.IMAN * n) + ' imán de huesos' },
-  { id: 'zapatilla', mapa: 'plaza', nombre: 'Zapatilla perdida',
+  { id: 'zapatilla', nombre: 'Zapatilla perdida',
     frase: '«Nadie la reclamó. Ahora es tuya. Huele a gloria.»',
     bonus: (c, n) => 'La comida cura +' + Math.round(c.COMIDA_CURA * n) + ' de vida' },
-  { id: 'panuelo', mapa: 'plaza', nombre: 'Pañuelo rojo',
+  { id: 'panuelo', nombre: 'Pañuelo rojo',
     frase: '«Estilo vaquero, mordida de forajido.»',
     bonus: (c, n) => porcentajeCol(c.CRITICO * n) + ' de mordida crítica (hace el doble de daño)' },
-  { id: 'cascabel', mapa: 'plaza', nombre: 'Cascabel',
+  { id: 'cascabel', nombre: 'Cascabel',
     frase: '«Tilín, tilín: cada paso es una fiesta.»',
     bonus: (c, n) => '+' + porcentajeCol(c.XP_EXTRA * n) + ' experiencia por hueso' },
-  { id: 'gorro', mapa: 'plaza', nombre: 'Gorro de lana',
+  { id: 'gorro', nombre: 'Gorro de lana',
     frase: '«Orejas calentitas, patas valientes.»',
     bonus: (c, n) => 'El barro te frena ' + porcentajeCol(Math.min(1, c.MENOS_LENTITUD * n)) +
-      ' menos y la Perrera te atrapa menos rato' }
+      ' menos y la Perrera te atrapa menos rato' },
+
+  // --- Solo en la Terminal de buses ---
+  { id: 'boleto', nombre: 'Boleto de micro',
+    frase: '«Válido pa\' un viaje... y pa\' que no te pasen a llevar.»',
+    bonus: (c, n) => 'El curao al volante te hace −' + porcentajeCol(Math.min(1, c.MENOS_DANO_CURAO * n)) + ' de daño' },
+  { id: 'jockey', nombre: 'Jockey del auxiliar',
+    frase: '«"¡Súbanse, que atrás hay espacio!" Y los huesos le hacen caso.»',
+    bonus: (c, n) => 'Los huesos vuelan ' + porcentajeCol(c.IMAN_RAPIDEZ * n) + ' más rápido hacia ti' },
+
+  // --- Solo en la Feria libre ---
+  { id: 'yapa', nombre: 'La yapa',
+    frase: '«¡Lleve, casera! Y pa\'l perrito, la yapa.»',
+    bonus: (c, n) => porcentajeCol(c.HUESO_EXTRA * n) + ' de probabilidad de 1 hueso extra por enemigo' },
+  { id: 'carro', nombre: 'Carro de feria',
+    frase: '«Rueda chueca, pero siempre vuelve lleno.»',
+    bonus: (c, n) => 'La comida aparece ' + porcentajeCol(c.COMIDA_RAPIDEZ * n) + ' más seguido' }
 ];
 
 // ---------------------------------------------------------------
@@ -350,6 +366,98 @@ const SPRITES_COLECCIONABLES = {
       '................',
       '................'
     ]]
+  },
+
+  // Boleto de micro: papel crema con letras rojas y azules
+  boleto: {
+    colores: { P: 0xf3e9c6, p: 0xcbb98a, B: 0x3f6fb5 },
+    cuadros: [[
+      '................',
+      '................',
+      '................',
+      'KKKKKKKKKKKKKKKK',
+      'KPPPPPPPPPPPpPPK',
+      'KPRRRRRRPPPPpPPK',
+      'KPPPPPPPPPPPPPPK',
+      'KPBBBBBBBBPPpPPK',
+      'KPPPPPPPPPPPPPPK',
+      'KPBBBBBPPPPPpPPK',
+      'KPPPPPPPPPPPPPPK',
+      'KPPRRPPPPPPPpPPK',
+      'KKKKKKKKKKKKKKKK',
+      '................',
+      '................',
+      '................'
+    ]]
+  },
+
+  // Jockey del auxiliar: gorra azul con insignia amarilla
+  jockey: {
+    colores: { J: 0x2e5aa8, j: 0x1d3c72, Y: 0xffd54f },
+    cuadros: [[
+      '................',
+      '................',
+      '................',
+      '.....KKKKKK.....',
+      '...KKJJJJJJKK...',
+      '..KJJJJYYJJJJK..',
+      '..KJJJJYYJJJJK..',
+      '.KJJJJJJJJJJJJK.',
+      '.KjjjjjjjjjjjjK.',
+      '.KKKKKKKKKKKKKK.',
+      'KjjjjjjjjjjK....',
+      'KKKKKKKKKKKK....',
+      '................',
+      '................',
+      '................',
+      '................'
+    ]]
+  },
+
+  // La yapa: cucurucho de papel con un tomate y un limón
+  yapa: {
+    colores: { B: 0xc8a46a, b: 0x8d6e3f, R: 0xe53935, G: 0x43a047, Y: 0xfdd835 },
+    cuadros: [[
+      '................',
+      '.....G..........',
+      '....KRK..KYK....',
+      '...KRRRKKYYYK...',
+      '...KRRRKKYYYK...',
+      '....KKKBBKKK....',
+      '...KBBBBBBBBK...',
+      '...KBbBBBBbBK...',
+      '....KBBBBBBK....',
+      '....KBbBBbBK....',
+      '.....KBBBBK.....',
+      '.....KBbbBK.....',
+      '......KBBK......',
+      '......KbbK......',
+      '.......KK.......',
+      '................'
+    ]]
+  },
+
+  // Carro de feria: carrito de dos ruedas con bolsa escocesa
+  carro: {
+    colores: { T: 0xc62828, t: 0x1e3a8a, M: 0x9e9e9e },
+    cuadros: [[
+      '................',
+      '..........MM....',
+      '..........M.....',
+      '...KKKKKKKMK....',
+      '...KTtTtTtKK....',
+      '...KtTtTtTKM....',
+      '...KTtTtTtKM....',
+      '...KtTtTtTK.....',
+      '...KTtTtTtK.....',
+      '...KtTtTtTK.....',
+      '...KKKKKKKK.....',
+      '....M....M......',
+      '...KKK..KKK.....',
+      '...KMK..KMK.....',
+      '...KKK..KKK.....',
+      '................'
+    ]]
   }
 };
 
@@ -367,11 +475,18 @@ function porcentajeCol(x) {
   return Math.round(x * 100) + '%';
 }
 function buscarColeccionable(id) {
-  return COLECCIONABLES.find((c) => c.id === id) || { id, mapa: 'plaza', nombre: id, frase: '', bonus: () => '' };
+  return COLECCIONABLES.find((c) => c.id === id) || { id, nombre: id, frase: '', bonus: () => '' };
 }
-// Solo los que tienen textos (aquí) y números (config.js)
+// Solo los que tienen textos (aquí) y números (config.js).
+// Con mapa: solo los de ese mapa (lista "ultraRaros" de src/mapas.js). Sin mapa: todos.
 function listaColeccionables(mapa) {
-  return COLECCIONABLES.filter((c) => CONFIG.COLECCIONABLES[c.id] && (!mapa || c.mapa === mapa));
+  const delMapa = mapa ? buscarMapa(mapa).ultraRaros : null;
+  return COLECCIONABLES.filter((c) => CONFIG.COLECCIONABLES[c.id] && (!delMapa || delMapa.includes(c.id)));
+}
+// Id del mapa donde se encuentra un coleccionable ('' si no está en ninguno)
+function mapaDeColeccionable(id) {
+  const mapa = MAPAS.find((m) => m.ultraRaros.includes(id));
+  return mapa ? mapa.id : '';
 }
 function claveColeccionable(id) {
   return 'col_' + id;
@@ -507,7 +622,7 @@ function cuantosEncontrados(mapa) {
 // Se llama al empezar la partida (después de crear al perro)
 function iniciarColeccionables(escena) {
   crearTexturasColeccionables(escena);
-  escena.mapaId = escena.mapaId || 'plaza';
+  escena.mapaId = escena.mapaId || CONFIG.MAPAS.INICIAL;
   escena.ultrasSuelo = [];      // ultra raros tirados en el suelo
   escena.ultrasPartida = [];    // los que recogiste en esta partida (para el Game Over)
   escena.esperaSweater = 0;
@@ -612,6 +727,7 @@ function sorteoUltraAlDerrotar(escena, enemigo) {
   let p = CONFIG.ULTRA_PROBABILIDAD_ENEMIGO * (1 + bonusArbol(escena, 'ULTRA'));
   if (enemigo.esJefe) p = CONFIG.ULTRA_PROBABILIDAD_JEFE;
   else if (enemigo.elite) p = bonusArbol(escena, 'PATA_CONEJO') > 0 ? 1 : CONFIG.ULTRA_PROBABILIDAD_ELITE;
+  p *= multiplicadorUltraMapa(escena.mapaId); // cada mapa puede tener más o menos (config.js, MAPAS)
   if (Math.random() < p) soltarUltra(escena, enemigo.x, enemigo.y);
 }
 
