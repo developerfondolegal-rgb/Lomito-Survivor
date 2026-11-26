@@ -69,6 +69,9 @@ function iniciarAtaques(escena) {
       cuadros: [['.tt.', 'tTTt', 'tTtt', '.tt.']]
     });
   }
+
+  // v0.24: Patada trasera, Tirar caca, Meada, Ladrido fuerte y Hedor (src/ataques_nuevos.js)
+  iniciarAtaquesNuevos(escena);
 }
 
 // Lo llama GameScene.update en cada cuadro (después de la mordida)
@@ -79,17 +82,22 @@ function actualizarAtaques(escena, delta, puedeAtacar) {
   // Rasguño: zarpazo en abanico hacia el enemigo más cercano
   const nvR = escena.instintos.rasguno || 0;
   if (nvR > 0 && puedeAtacar) {
-    escena.esperaRasguno = Math.min(intervaloRasguno(nvR), escena.esperaRasguno + delta);
-    if (escena.esperaRasguno >= intervaloRasguno(nvR) && rasgunar(escena, nvR)) escena.esperaRasguno = 0;
+    const esperaR = intervaloRasguno(nvR) * factorEnfriamiento(escena); // Lomo ágil (src/ataques_nuevos.js)
+    escena.esperaRasguno = Math.min(esperaR, escena.esperaRasguno + delta);
+    if (escena.esperaRasguno >= esperaR && rasgunar(escena, nvR)) escena.esperaRasguno = 0;
   }
 
   // Escarbar: lanza terrones que dañan y frenan
   const nvE = escena.instintos.escarbar || 0;
   if (nvE > 0 && puedeAtacar) {
-    escena.esperaEscarbar = Math.min(intervaloEscarbar(nvE), escena.esperaEscarbar + delta);
-    if (escena.esperaEscarbar >= intervaloEscarbar(nvE) && escarbar(escena, nvE)) escena.esperaEscarbar = 0;
+    const esperaE = intervaloEscarbar(nvE) * factorEnfriamiento(escena);
+    escena.esperaEscarbar = Math.min(esperaE, escena.esperaEscarbar + delta);
+    if (escena.esperaEscarbar >= esperaE && escarbar(escena, nvE)) escena.esperaEscarbar = 0;
   }
   moverTerrones(escena, delta);
+
+  // v0.24: ataques nuevos y Lengüetazo (src/ataques_nuevos.js)
+  actualizarAtaquesNuevos(escena, delta, puedeAtacar);
 
   // Enemigos frenados por la tierra (el jefe no se frena)
   const lentitud = Math.max(0, 1 - A.ESCARBAR.LENTITUD);
@@ -611,6 +619,7 @@ function golpearPerroEvento(escena, op) {
   if (escena.fusiones.cuero && ahora < escena.cueroHasta) dano *= CONFIG.FUSIONES.cuero.MULTIPLICADOR;
   if (escena.efectoZona.peligro) dano *= CONFIG.ZONAS.peligro.DANO_MULTIPLICADOR || 1;
   dano *= Math.max(0, 1 - escena.reduccionArbol());
+  dano *= 1 - reduccionArmadura(escena); // Pelaje grueso (src/ataques_nuevos.js)
   dano = Math.max(1, Math.round(dano));
 
   escena.vida = Math.max(0, escena.vida - dano);
@@ -1201,15 +1210,18 @@ function filasAtaquesStats(escena) {
   const nvR = e.instintos.rasguno || 0;
   const r = datosRasguno(Math.max(1, nvR));
   filas.push({ id: 'rasguno', nombre: 'Rasguño', valor: nvR ? 'Nv ' + nvR + ' / ' + max : 'sin aprender', apagado: !nvR,
-    detalle: nvR ? numeroPausa(r.dano) + ' de daño en abanico de ' + Math.round(r.angulo) + '° cada ' + s(r.cadaMs)
+    detalle: nvR ? numeroPausa(r.dano) + ' de daño en abanico de ' + Math.round(r.angulo) + '° cada ' + s(r.cadaMs * factorEnfriamiento(e))
       : 'Sale como instinto al subir de nivel' });
 
   const nvE = e.instintos.escarbar || 0;
   const d = datosEscarbar(Math.max(1, nvE));
   filas.push({ id: 'escarbar', nombre: 'Escarbar', valor: nvE ? 'Nv ' + nvE + ' / ' + max : 'sin aprender', apagado: !nvE,
     detalle: nvE ? d.terrones + (d.terrones > 1 ? ' terrones' : ' terrón') + ' de ' + numeroPausa(d.dano) + ', frena ' +
-      Math.round(CONFIG.ATAQUES.ESCARBAR.LENTITUD * 100) + '% por ' + s(d.frenoMs) + ', cada ' + s(d.cadaMs)
+      Math.round(CONFIG.ATAQUES.ESCARBAR.LENTITUD * 100) + '% por ' + s(d.frenoMs) + ', cada ' + s(d.cadaMs * factorEnfriamiento(e))
       : 'Sale como instinto al subir de nivel' });
+
+  // v0.24: Patada trasera, Tirar caca, Meada, Ladrido fuerte y Hedor (src/ataques_nuevos.js)
+  filasAtaquesNuevosStats(e).forEach((f) => filas.push(f));
 
   // Evoluciones de la raza: a qué fila van
   evolucionesDeRaza(e.razaId).forEach((evo) => {

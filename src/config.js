@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.23';
+const VERSION_JUEGO = '0.24';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -457,6 +457,16 @@ const CONFIG = {
   LADRIDO_EMPUJE: 350,          // qué tan fuerte empuja a los enemigos
   LADRIDO_EMPUJE_MS: 250,       // cuánto dura el empujón
 
+  // --- v0.24: mejoras de stats (salen como cartas, hasta Nv 5) ---
+  // (Velocidad = "Patas ligeras" e imán = "Olfato" ya existían, aquí arriba)
+  MEJORAS: {
+    ENFRIAMIENTO: 0.06,         // "Lomo ágil": cada nivel, los ataques (todos menos la mordida) esperan 6% menos
+    REGENERACION: 0.25,         // "Lengüetazo": cada nivel, te curas esta vida por segundo (Nv 5 = 1,25/s)
+    ARMADURA: 0.04,             // "Pelaje grueso": cada nivel, 4% menos daño recibido (Nv 5 = 20%)
+    SUERTE: 0.2                 // "Pata de conejo": cada nivel, las rarezas raro, épico y legendario
+                                // salen 20% más seguido (Nv 5 = el doble)
+  },
+
   // ---------------------------------------------------------------
   //  ATAQUES: ataques secundarios nuevos y evoluciones de ataque.
   //  Los textos y el código están en src/ataques.js.
@@ -493,6 +503,82 @@ const CONFIG = {
       LENTITUD: 0.5,            // cuánto frena (0.5 = los enemigos van a la mitad de velocidad)
       FRENO_MS: 1500,           // cuánto dura el freno en el nivel 1...
       FRENO_EXTRA_MS: 250       // ...y cuánto más en cada nivel
+    },
+
+    // ---- v0.24: ataques nuevos (código en src/ataques_nuevos.js) ----
+
+    // Espacios de ataque: cuántos ataques distintos (instintos de ataque, sin contar la
+    // mordida) puedes tener a la vez. Con los espacios llenos solo salen cartas para
+    // subir los que ya tienes (y las mejoras de stats). 0 = sin límite
+    ESPACIOS_MAX: 6,
+
+    // "Patada trasera": golpe corto hacia atrás del perro, con empuje
+    PATADA: {
+      CADA_MS: 1600,            // cada cuánto patea (si hay alguien atrás o pegado)
+      DANO: 9,                  // daño en el nivel 1...
+      DANO_EXTRA: 4,            // ...y daño extra en cada nivel
+      EMPUJE: 380,              // qué tan fuerte empuja en el nivel 1...
+      EMPUJE_EXTRA: 70,         // ...y cuánto más en cada nivel
+      EMPUJE_MS: 260,           // cuánto dura el empujón
+      ALCANCE: 75,              // qué tan lejos llega la patada (px desde el borde del perro)
+      ANGULO: 110               // qué tan abierto es el golpe hacia atrás (grados)
+    },
+
+    // "Tirar caca": lanza cacas en arco al enemigo más cercano; al caer deja una mancha
+    // que daña y frena (con la misma LENTITUD que Escarbar)
+    CACA: {
+      CADA_MS: 3200,            // cada cuánto tira
+      CACAS: 1,                 // cacas por vez en el nivel 1...
+      CACA_CADA_NIVELES: 2,     // ...y 1 caca más cada 2 niveles (Nv 3 = 2, Nv 5 = 3)
+      DANO_GOLPE: 8,            // daño al caer en el nivel 1...
+      DANO_GOLPE_EXTRA: 3,      // ...y daño extra en cada nivel
+      DANO_MANCHA: 3,           // daño de la mancha (cada TICK_MS) en el nivel 1...
+      DANO_MANCHA_EXTRA: 1.5,   // ...y daño extra en cada nivel
+      TICK_MS: 500,             // cada cuánto daña la mancha a los que la pisan
+      FRENO_MS: 2000,           // los que pisan la mancha quedan frenados este rato
+      MANCHA_MS: 3000,          // cuánto dura la mancha en el suelo en el nivel 1...
+      MANCHA_EXTRA_MS: 600,     // ...y cuánto más en cada nivel
+      RADIO: 38,                // tamaño de la mancha (px)
+      ALCANCE: 360,             // a qué distancia busca enemigos
+      VUELO_MS: 650,            // cuánto demora en caer
+      ALTURA: 70                // qué tan alto sube el arco (px)
+    },
+
+    // "Meada": deja charcos detrás del perro mientras camina; dañan a los que los pisan
+    MEADA: {
+      CHARCO_CADA_PX: 55,       // deja un charco cada vez que camina esta distancia
+      DANO: 3,                  // daño de cada charco (cada TICK_MS) en el nivel 1...
+      DANO_EXTRA: 1.5,          // ...y daño extra en cada nivel
+      TICK_MS: 500,             // cada cuánto daña el charco a los que lo pisan
+      RADIO: 24,                // tamaño del charco en el nivel 1...
+      RADIO_EXTRA: 4,           // ...y cuánto más grande en cada nivel
+      DURA_MS: 2200,            // cuánto dura cada charco en el nivel 1...
+      DURA_EXTRA_MS: 400,       // ...y cuánto más en cada nivel
+      MAX_CHARCOS: 40           // como mucho estos charcos a la vez (para que no se ponga lento)
+    },
+
+    // "Ladrido fuerte": distinto del Ladrido (que empuja). Es una onda que daña y
+    // ATURDE (deja quietos) a todos los del círculo, sin empujarlos
+    LADRIDO_FUERTE: {
+      CADA_MS: 5000,            // cada cuánto ladra en el nivel 1...
+      CADA_MENOS_MS: 500,       // ...y cuánto antes en cada nivel (Nv 5 = cada 3 s)
+      RADIO: 140,               // tamaño del círculo en el nivel 1...
+      RADIO_EXTRA: 20,          // ...y cuánto más grande en cada nivel
+      DANO: 10,                 // daño en el nivel 1...
+      DANO_EXTRA: 5,            // ...y daño extra en cada nivel
+      ATURDE_MS: 500            // cuánto quedan aturdidos (0,5 s; el jefe no se aturde, pero recibe el daño)
+    },
+
+    // "Hedor": aura de olor siempre activa que daña a los que están dentro
+    HEDOR: {
+      TICK_MS: 500,             // cada cuánto daña
+      RADIO: 70,                // tamaño del aura en el nivel 1...
+      RADIO_MULT: 1.15,         // ...y en cada nivel se multiplica por esto (+15%: Nv 5 ≈ 122 px)
+      DANO: 2.5,                // daño en el nivel 1 (cada TICK_MS)...
+      DANO_MULT: 1.10,          // ...y en cada nivel se multiplica por esto (+10%)
+      OPACIDAD: 0.28,           // qué tan visible es la nube (0 = invisible, 1 = tapa todo)
+      MOSCAS: 3,                // moscas que vuelan en el nivel 1...
+      MOSCAS_EXTRA: 1           // ...y cuántas más en cada nivel
     },
 
     // EVOLUCIONES: cuando el INSTINTO está en su nivel máximo y tienes el

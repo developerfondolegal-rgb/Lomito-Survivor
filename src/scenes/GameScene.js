@@ -607,7 +607,7 @@ class GameScene extends Phaser.Scene {
 
   intervaloLadrido() {
     const extra = this.instintos.ladrido - 1;
-    return Math.max(300, CONFIG.LADRIDO_CADA_MS - extra * CONFIG.LADRIDO_CADA_MENOS_MS);
+    return Math.max(300, CONFIG.LADRIDO_CADA_MS - extra * CONFIG.LADRIDO_CADA_MENOS_MS) * factorEnfriamiento(this); // Lomo ágil
   }
 
   radioLadrido() {
@@ -1603,10 +1603,13 @@ class GameScene extends Phaser.Scene {
     const desde = minima ? Math.max(0, RAREZAS.findIndex((r) => r.id === minima)) : 0;
     const posibles = RAREZAS.slice(desde).filter((r) => CONFIG.RAREZAS[r.id] && CONFIG.RAREZAS[r.id].PESO > 0);
     if (posibles.length === 0) return RAREZAS[RAREZAS.length - 1].id;
-    const total = posibles.reduce((suma, r) => suma + CONFIG.RAREZAS[r.id].PESO, 0);
+    // Pata de conejo (src/ataques_nuevos.js): las rarezas mejores que la común pesan más
+    const suerte = multiplicadorSuerte(this);
+    const peso = (r) => CONFIG.RAREZAS[r.id].PESO * (r.id === RAREZAS[0].id ? 1 : suerte);
+    const total = posibles.reduce((suma, r) => suma + peso(r), 0);
     let sorteo = Math.random() * total;
     for (const r of posibles) {
-      sorteo -= CONFIG.RAREZAS[r.id].PESO;
+      sorteo -= peso(r);
       if (sorteo < 0) return r.id;
     }
     return posibles[posibles.length - 1].id;
@@ -1831,8 +1834,13 @@ class GameScene extends Phaser.Scene {
 
   // ---------------- Cartas de instintos ----------------
 
+  // v0.24: con los espacios de ataque llenos (CONFIG.ATAQUES.ESPACIOS_MAX) no salen ataques nuevos,
+  // solo subir los que ya tienes y las mejoras de stats
   instintosDisponibles() {
-    return INSTINTOS.filter((inst) => this.instintos[inst.id] < CONFIG.INSTINTO_NIVEL_MAX);
+    const espacios = CONFIG.ATAQUES.ESPACIOS_MAX || 0;
+    const llenos = espacios > 0 && espaciosAtaqueUsados(this) >= espacios;
+    return INSTINTOS.filter((inst) => this.instintos[inst.id] < CONFIG.INSTINTO_NIVEL_MAX &&
+      !(llenos && inst.ataque && !this.instintos[inst.id]));
   }
 
   mostrarCartas() {
@@ -1869,7 +1877,7 @@ class GameScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '36px', color: '#ffffff', fontStyle: 'bold'
     }).setOrigin(0.5));
     const como = modoTactil() ? '(toca una carta)' : '(clic o teclas 1, 2, 3)';
-    let titulo = 'Elige un instinto ' + como;
+    let titulo = 'Elige una mejora ' + como;
     if (evoluciones.length > 0) titulo = '¡Evolución disponible! Elige una carta ' + como;
     else if (fusiones.length > 0) titulo = '¡Fusión disponible! Elige una carta ' + como;
     // En celular, las cartas no se pueden tocar hasta pasado un ratito (evita toques sin querer)
@@ -1877,6 +1885,15 @@ class GameScene extends Phaser.Scene {
     capa.push(this.add.text(w / 2, 130, titulo, {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5));
+    // v0.24: espacios de ataque usados
+    const espacios = CONFIG.ATAQUES.ESPACIOS_MAX || 0;
+    if (espacios > 0) {
+      const usados = espaciosAtaqueUsados(this);
+      capa.push(this.add.text(w / 2, 158, 'Espacios de ataque: ' + usados + ' / ' + espacios +
+        (usados >= espacios ? '  (llenos: solo puedes subir los que tienes)' : ''), {
+        fontFamily: FUENTE, fontSize: '14px', color: usados >= espacios ? '#ffab40' : '#90a4ae'
+      }).setOrigin(0.5));
+    }
 
     const anchoCarta = 240;
     const altoCarta = 260;
@@ -1903,27 +1920,41 @@ class GameScene extends Phaser.Scene {
       fondo.on('pointerout', () => fondo.setStrokeStyle(3, 0x888899));
       fondo.on('pointerdown', () => this.tocarCarta(i));
 
-      const tecla = this.add.text(cx, cy - 105, '[' + (i + 1) + ']', {
-        fontFamily: FUENTE, fontSize: '18px', color: '#aaaaaa'
+      // v0.24: ícono, nombre, tipo (ataque o mejora), nivel y qué da el próximo nivel
+      const tecla = this.add.text(cx - anchoCarta / 2 + 12, cy - altoCarta / 2 + 10, '[' + (i + 1) + ']', {
+        fontFamily: FUENTE, fontSize: '16px', color: '#aaaaaa'
+      });
+      const tipo = this.add.text(cx + anchoCarta / 2 - 12, cy - altoCarta / 2 + 11, inst.ataque ? 'ATAQUE' : 'MEJORA', {
+        fontFamily: FUENTE, fontSize: '12px', color: inst.ataque ? '#ff8a65' : '#81d4fa', fontStyle: 'bold'
+      }).setOrigin(1, 0);
+
+      const clave = 'instinto_' + inst.id;
+      const icono = this.textures.exists(clave) ? this.add.image(cx, cy - 72, clave, 0).setScale(3) : null;
+
+      const nombre = this.add.text(cx, cy - 32, inst.nombre, {
+        fontFamily: FUENTE, fontSize: '23px', color: '#ffe082', fontStyle: 'bold'
       }).setOrigin(0.5);
 
-      const nombre = this.add.text(cx, cy - 65, inst.nombre, {
-        fontFamily: FUENTE, fontSize: '24px', color: '#ffe082', fontStyle: 'bold'
+      const frase = this.add.text(cx, cy + 8, inst.frase, {
+        fontFamily: FUENTE, fontSize: '15px', color: '#ffffff', align: 'center',
+        wordWrap: { width: anchoCarta - 28 }
       }).setOrigin(0.5);
 
-      const frase = this.add.text(cx, cy, inst.frase, {
-        fontFamily: FUENTE, fontSize: '17px', color: '#ffffff', align: 'center',
-        wordWrap: { width: anchoCarta - 30 }
-      }).setOrigin(0.5);
-
+      const max = CONFIG.INSTINTO_NIVEL_MAX;
       const textoNivel = nivelActual === 0
-        ? '¡Nuevo!'
-        : 'Nivel actual: ' + nivelActual + ' / ' + CONFIG.INSTINTO_NIVEL_MAX;
-      const nivel = this.add.text(cx, cy + 95, textoNivel, {
-        fontFamily: FUENTE, fontSize: '16px', color: '#9ccc65'
+        ? '¡Nuevo!  Nv 1 / ' + max
+        : 'Nv ' + nivelActual + ' → ' + (nivelActual + 1) + ' / ' + max;
+      const nivel = this.add.text(cx, cy + 50, textoNivel, {
+        fontFamily: FUENTE, fontSize: '16px', color: '#9ccc65', fontStyle: 'bold'
       }).setOrigin(0.5);
 
-      capa.push(fondo, tecla, nombre, frase, nivel);
+      const mejora = this.add.text(cx, cy + 90, textoMejoraInstinto(this, inst.id), {
+        fontFamily: FUENTE, fontSize: '14px', color: '#ffcc80', align: 'center',
+        wordWrap: { width: anchoCarta - 24 }
+      }).setOrigin(0.5);
+
+      capa.push(fondo, tecla, tipo, nombre, frase, nivel, mejora);
+      if (icono) capa.push(icono);
       return inst;
     });
 
@@ -2072,6 +2103,7 @@ class GameScene extends Phaser.Scene {
     // Árbol: Piel gruesa (menos daño), Inamovible (embestidas) y Manada (enemigos cerca)
     dano *= Math.max(0, 1 - this.reduccionArbol());
     if (enemigo.estado === 'embestir') dano *= Math.max(0, 1 - bonusArbol(this, 'INAMOVIBLE'));
+    dano *= 1 - reduccionArmadura(this); // Pelaje grueso (src/ataques_nuevos.js)
     dano = Math.max(1, Math.round(dano));
 
     this.vida = Math.max(0, this.vida - dano);

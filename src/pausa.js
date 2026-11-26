@@ -317,7 +317,8 @@ function calcularStats(escena) {
   if (arb('MENOS_DANO') || arb('GRUPO_DEFENSA')) red.push('Árbol −' + pct(e.reduccionArbol()) + ' ahora');
   if (arb('ESQUIVAR')) red.push('Árbol ' + pct(arb('ESQUIVAR')) + ' de esquivar');
   if (arb('INAMOVIBLE')) red.push('Inamovible −' + pct(arb('INAMOVIBLE')) + ' de embestidas, sin Perrera');
-  const reduccion = 1 - (1 - collar) * (1 - e.reduccionArbol());
+  if (inst('armadura')) red.push(nombreInstinto('armadura') + nvI('armadura') + ' −' + pct(reduccionArmadura(e)));
+  const reduccion = 1 - (1 - collar) * (1 - e.reduccionArbol()) * (1 - reduccionArmadura(e));
   stats.push({ nombre: 'Reducción de daño', valor: Math.round(reduccion * 100) + '%', partes: red });
 
   // Regeneración (curación con el tiempo)
@@ -346,6 +347,11 @@ function calcularStats(escena) {
     porSeg += lamer * mult;
     regen.push('Árbol +' + numeroPausa(lamer, 2) + '/s');
   }
+  if (inst('regeneracion')) {
+    const lengua = vidaPorSegundoLenguetazo(e);
+    porSeg += lengua * mult;
+    regen.push(nombreInstinto('regeneracion') + nvI('regeneracion') + ' +' + numeroPausa(lengua, 2) + '/s');
+  }
   if (arb('REGENERACION')) regen.push('Árbol +' + pct(arb('REGENERACION')));
   stats.push({ nombre: 'Regeneración', valor: numeroPausa(porSeg, 2) + ' de vida por seg.', partes: regen.concat(deSinergias('REGENERACION')) });
 
@@ -358,6 +364,16 @@ function calcularStats(escena) {
   if (col('cascabel')) xp.push(nombreCol('cascabel') + ' +' + Math.round(xpCascabel * 100) + '%');
   if (arb('XP')) xp.push('Árbol +' + pct(arb('XP')));
   stats.push({ nombre: 'Experiencia extra', valor: '+' + Math.round(xpExtra * 100) + '%', partes: xp });
+
+  // v0.24: Lomo ágil (enfriamiento) y Pata de conejo (suerte), src/ataques_nuevos.js
+  const enfr = 1 - factorEnfriamiento(e);
+  stats.push({ nombre: 'Enfriamiento de ataques', valor: '−' + pct(enfr),
+    partes: [inst('enfriamiento') ? nombreInstinto('enfriamiento') + nvI('enfriamiento') + ' −' + pct(enfr) + ' de espera (no la mordida)'
+      : 'Sin mejora (sale como carta: ' + nombreInstinto('enfriamiento') + ')'] });
+  const suerte = multiplicadorSuerte(e) - 1;
+  stats.push({ nombre: 'Suerte', valor: '+' + pct(suerte),
+    partes: [inst('suerte') ? nombreInstinto('suerte') + nvI('suerte') + ': raro, épico y legendario +' + pct(suerte) + ' más seguido'
+      : 'Sin mejora (sale como carta: ' + nombreInstinto('suerte') + ')'] });
 
   return stats;
 }
@@ -538,16 +554,22 @@ function pestanaInventario(escena, capa, area) {
   const anchoCol = area.ancho / 2 - 14;
   // Si hay muchos instintos, las filas se juntan para no tapar los botones de abajo
   const limite = escena.scale.height - 72 - 34;
-  const filas = Math.max(INSTINTOS.length, OBJETOS.length);
-  const paso = Math.min(48, (limite - (area.y + 46)) / Math.max(1, filas - 1));
+  const paso = Math.min(48, (limite - (area.y + 46)) / Math.max(1, OBJETOS.length - 1));
 
-  // Instintos (izquierda)
+  // Instintos (izquierda). v0.24: son muchos, así que van en dos columnas chicas
+  // (ícono, nombre y nivel; la descripción sale en la carta al subir de nivel)
   let x = area.x;
-  capa.push(textoPausa(escena, x, area.y, 'Instintos (máximo Nv ' + CONFIG.INSTINTO_NIVEL_MAX + ')', 16, '#ffe082', true));
+  const espacios = CONFIG.ATAQUES.ESPACIOS_MAX || 0;
+  capa.push(textoPausa(escena, x, area.y, 'Instintos (máximo Nv ' + CONFIG.INSTINTO_NIVEL_MAX + ')' +
+    (espacios ? '   Ataques ' + espaciosAtaqueUsados(escena) + ' / ' + espacios : ''), 16, '#ffe082', true));
+  const porColumna = Math.ceil(INSTINTOS.length / 2);
+  const pasoChico = Math.min(40, (limite - (area.y + 40)) / Math.max(1, porColumna - 1));
+  const anchoChico = anchoCol / 2 - 6;
   INSTINTOS.forEach((inst, i) => {
-    const y = area.y + 46 + i * paso;
+    const col = Math.floor(i / porColumna);
+    const y = area.y + 40 + (i % porColumna) * pasoChico;
     const nivel = escena.instintos[inst.id] || 0;
-    filaInventario(escena, capa, x, y, anchoCol, 'instinto_' + inst.id, 3, inst.nombre, nivel, CONFIG.INSTINTO_NIVEL_MAX, inst.frase);
+    filaInstintoChica(escena, capa, x + col * (anchoChico + 12), y, inst, nivel, CONFIG.INSTINTO_NIVEL_MAX);
   });
 
   // Objetos (derecha)
@@ -558,6 +580,25 @@ function pestanaInventario(escena, capa, area) {
     const y = area.y + 46 + i * paso;
     filaInventario(escena, capa, x, y, anchoCol, o.id, 2, o.nombre, escena.nivelObjeto(o.id), CONFIG.OBJETO_NIVEL_MAX, o.frase);
   });
+}
+
+// Fila chica de un instinto: casilla con ícono, nombre (naranjo si es ataque) y nivel
+function filaInstintoChica(escena, capa, x, y, inst, nivel, max) {
+  const tiene = nivel > 0;
+  const lado = 30;
+  capa.push(escena.add.rectangle(x + lado / 2, y, lado, lado, 0x000000, 0.6).setStrokeStyle(2, tiene ? 0x888899 : 0x555566));
+  const clave = 'instinto_' + inst.id;
+  if (escena.textures.exists(clave)) {
+    const icono = escena.add.image(x + lado / 2, y, clave, 0).setScale(2);
+    if (!tiene) icono.setAlpha(0.3);
+    capa.push(icono);
+  }
+  const color = !tiene ? '#8a8a99' : inst.ataque ? '#ffcc80' : '#ffffff';
+  capa.push(textoPausa(escena, x + lado + 8, y - 15, inst.nombre, 14, color, true));
+  const textoNivel = !tiene ? (inst.ataque ? 'ataque · no lo tienes' : 'mejora · no la tienes')
+    : nivel >= max ? 'MAX' : 'Nv ' + nivel + ' / ' + max;
+  capa.push(textoPausa(escena, x + lado + 8, y + 2, textoNivel, 12,
+    !tiene ? '#77778a' : nivel >= max ? '#ffd54f' : '#9ccc65', nivel >= max));
 }
 
 function filaInventario(escena, capa, x, y, ancho, clave, escala, nombre, nivel, max, frase) {
