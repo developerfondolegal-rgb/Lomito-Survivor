@@ -2,7 +2,7 @@
 
 Juego 2D con vista desde arriba (estilo Vampire Survivors). Controlas a un perro callejero que debe sobrevivir una noche en una plaza.
 
-Versión actual: **v0.19.1** — portada animada en pixel art chibi: un chow chow y un shar pei sentados juntos en una calle de noche (`src/portada.js`, números en `CONFIG.PORTADA`). v0.19: **mucho más difícil**: el perro empieza con 25% menos vida, los enemigos pegan y aguantan más a medida que avanza la noche, más enemigos en la 2ª mitad, el curao al volante viene el doble de seguido (y de a 2 o 3 autos al final), la nueva **jauría**, dificultad por mapa, un enemigo propio en cada mapa y mapas que se desbloquean. (v0.18.1: Stats rediseñada; v0.18: mapas nuevos.)
+Versión actual: **v0.20** — portada HD animada en pixel art (320 × 180 escalada en múltiplo entero): calle de noche con faroles, gato, estrella fugaz y un chow chow y un shar pei (`src/portada.js`, mapas de los perros en `src/portada_perros.js`, números en `CONFIG.PORTADA`). v0.19: **mucho más difícil**: el perro empieza con 25% menos vida, los enemigos pegan y aguantan más a medida que avanza la noche, más enemigos en la 2ª mitad, el curao al volante viene el doble de seguido (y de a 2 o 3 autos al final), la nueva **jauría**, dificultad por mapa, un enemigo propio en cada mapa y mapas que se desbloquean. (v0.18.1: Stats rediseñada; v0.18: mapas nuevos.)
 
 **Meta:** sobrevive la noche (de 22:00 a 06:00, 10 minutos de juego) y derrota al **Jefe de la Plaza**. Si lo logras, amanece y ganas.
 

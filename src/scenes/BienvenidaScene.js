@@ -1,24 +1,11 @@
 // Pantalla de bienvenida: es lo primero que se ve al abrir el juego.
-// Título en pixel art, la portada animada (src/portada.js: calle de noche con
-// un chow chow y un shar pei; el chow chow ladra de vez en cuando) y una frase
-// al azar (CONFIG.BIENVENIDA.FRASES).
+// La portada animada (src/portada.js: calle de noche con el título, un chow
+// chow y un shar pei; el chow chow ladra de vez en cuando) y una frase al
+// azar (CONFIG.BIENVENIDA.FRASES).
 // Al tocar la pantalla o presionar cualquier tecla, va al menú (MenuScene).
 // Si hay sesión de Google con apodo, saluda: "¡Guau, bienvenido de vuelta, [apodo]!".
 // (FUENTE viene de MenuScene.js; margenExtra y modoTactil, de src/tactil.js;
 //  ONLINE y alCambiarOnline, de src/online.js)
-
-// Letras del título (5 x 7 cuadritos, "1" = pintado)
-const LETRAS_TITULO = {
-  L: ['10000', '10000', '10000', '10000', '10000', '10000', '11111'],
-  O: ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
-  M: ['10001', '11011', '10101', '10101', '10001', '10001', '10001'],
-  I: ['11111', '00100', '00100', '00100', '00100', '00100', '11111'],
-  T: ['11111', '00100', '00100', '00100', '00100', '00100', '00100'],
-  S: ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
-  U: ['10001', '10001', '10001', '10001', '10001', '10001', '01110'],
-  R: ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
-  V: ['10001', '10001', '10001', '10001', '10001', '01010', '00100']
-};
 
 class BienvenidaScene extends Phaser.Scene {
   constructor() {
@@ -33,25 +20,20 @@ class BienvenidaScene extends Phaser.Scene {
     this.cfg = cfg;
     this.yendo = false;
 
-    // Portada animada (src/portada.js; números en CONFIG.PORTADA)
+    // Portada animada con el título incluido (src/portada.js; números en CONFIG.PORTADA)
     this.portada = crearPortada(this);
-
-    // Título
-    const p = cfg.TITULO_PIXEL;
-    const anchoTitulo = this.anchoTexto('LOMITO SURVIVOR') * p;
-    const titulo = this.add.graphics();
-    this.dibujarTitulo(titulo, 'LOMITO SURVIVOR', w / 2 - anchoTitulo / 2, 40 + e / 2, p);
-    this.tweens.add({ targets: titulo, y: 4, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    // Debajo del título (que termina en la fila 26 de la escena) y antes de las cabezas de los perros
+    const yFrase = this.portada.aPantalla(0, 31).y + e / 2;
 
     // Frase al azar (sin repetir la de la vez anterior)
-    this.add.text(w / 2, 40 + e / 2 + 7 * p + 34, '“' + this.fraseAlAzar() + '”', {
-      fontFamily: FUENTE, fontSize: '22px', color: '#ffffff', fontStyle: 'italic',
+    this.add.text(w / 2, yFrase, '“' + this.fraseAlAzar() + '”', {
+      fontFamily: FUENTE, fontSize: '20px', color: '#ffffff', fontStyle: 'italic',
       stroke: '#000000', strokeThickness: 4, align: 'center', wordWrap: { width: w - 2 * (40 + e) }
     }).setOrigin(0.5);
 
     // Saludo si ya hay sesión (se actualiza cuando termina de cargar)
-    this.saludo = this.add.text(w / 2, 40 + e / 2 + 7 * p + 74, '', {
-      fontFamily: FUENTE, fontSize: '19px', color: '#9ccc65', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+    this.saludo = this.add.text(w / 2, yFrase + 24, '', {
+      fontFamily: FUENTE, fontSize: '17px', color: '#9ccc65', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5);
     this.actualizarSaludo();
     const desuscribir = alCambiarOnline(() => this.actualizarSaludo());
@@ -60,13 +42,13 @@ class BienvenidaScene extends Phaser.Scene {
     // El chow chow ladra de vez en cuando
     this.programarLadrido();
 
-    // "Toca o presiona cualquier tecla para empezar" (parpadea)
-    const empezar = this.add.text(w / 2, h - 44 - e, cfg.TEXTO_EMPEZAR, {
-      fontFamily: FUENTE, fontSize: '22px', color: '#ffe082', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+    // "Toca o presiona cualquier tecla para empezar" (parpadea), abajo de las patas de los perros
+    const empezar = this.add.text(w / 2, h - 16 - e, cfg.TEXTO_EMPEZAR, {
+      fontFamily: FUENTE, fontSize: '20px', color: '#ffe082', fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
     }).setOrigin(0.5);
     this.tweens.add({ targets: empezar, alpha: 0.15, duration: 600, yoyo: true, repeat: -1 });
 
-    this.add.text(w - 10 - e, h - 8 - e, 'v' + VERSION_JUEGO, {
+    this.add.text(w - 10 - e, h - 4 - e, 'v' + VERSION_JUEGO, {
       fontFamily: FUENTE, fontSize: '13px', color: '#888888'
     }).setOrigin(1, 1);
 
@@ -101,32 +83,6 @@ class BienvenidaScene extends Phaser.Scene {
     if (frases.length > 1 && i === anterior) i = (i + 1) % frases.length;
     try { localStorage.setItem('lomito_frase_bienvenida', String(i)); } catch (err) { /* sin almacenamiento */ }
     return frases[i];
-  }
-
-  // ---------------- Título ----------------
-
-  anchoTexto(texto) {
-    return texto.split('').reduce((suma, letra) => suma + (letra === ' ' ? 3 : 6), 0) - 1;
-  }
-
-  dibujarTitulo(g, texto, x0, y0, p) {
-    const pintar = (dx, dy, color) => {
-      g.fillStyle(color, 1);
-      let x = x0;
-      texto.split('').forEach((letra) => {
-        const forma = LETRAS_TITULO[letra];
-        if (!forma) { x += 3 * p; return; }
-        forma.forEach((fila, fy) => {
-          for (let fx = 0; fx < fila.length; fx++) {
-            if (fila[fx] === '1') g.fillRect(x + fx * p + dx, y0 + fy * p + dy, p, p);
-          }
-        });
-        x += 6 * p;
-      });
-    };
-    pintar(Math.round(p / 2) + 2, Math.round(p / 2) + 2, 0x000000); // sombra
-    pintar(0, 2, 0x8b5a2b);  // borde de abajo
-    pintar(0, 0, 0xffe082);  // letras
   }
 
   // ---------------- Perro ----------------
