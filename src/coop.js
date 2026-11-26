@@ -3,7 +3,12 @@
 //  - J1: WASD (+ Espacio = Sprint). J2: flechas (+ Enter = Sprint) o un
 //    control (gamepad) si hay uno conectado.
 //  - Cada perro tiene su propia vida, su mordida y su poder de raza.
-//    Por ahora las cartas al subir de nivel son solo para J1.
+//  - v0.27 (parte 2): las cartas se turnan (un nivel elige J1, el siguiente J2)
+//    y la carta mejora solo al perro que la eligió: cada uno tiene sus propios
+//    ataques (con su propio límite de espacios), mejoras, fusiones y evoluciones.
+//    El nivel, la experiencia, los objetos y los huesitos son de los dos.
+//  - v0.27: un perro caído revive si su compañero se queda cerca un rato.
+//  - v0.27: con 2 jugadores los enemigos tienen más vida y aparecen más seguido.
 //  - Cámara compartida: sigue el punto medio y se aleja si se separan.
 //  - Correa invisible: no se pueden separar más que COOP.DISTANCIA_MAX.
 //  - Los enemigos persiguen al perro más cercano.
@@ -22,7 +27,15 @@ const COOP_CLAVES = [
   'invulnerableHasta', 'sprintHasta', 'atrapadoHasta', 'ultimaDireccion', 'poderCarga',
   'esperaMordida', 'esperaLadrido', 'esperaCura', 'esperaAgua', 'instintos', 'empujePerro',
   'direccionSprint', 'numeroSprint', 'lebrelListo', 'cueroHasta', 'controlJugador',
-  'evoluciones', 'fusiones', 'mordidasOmitidas'
+  'evoluciones', 'fusiones', 'mordidasOmitidas',
+  // v0.27: lo de cada perro para sus propios ataques, mejoras del árbol y fusiones
+  // (src/ataques.js, src/ataques_nuevos.js, src/arbol.js y GameScene)
+  'esperaRasguno', 'esperaEscarbar', 'terrones', 'agarre', 'agarreListoEn', 'capaMarcas',
+  'esperaPatada', 'esperaCaca', 'esperaLadridoFuerte', 'esperaHedor', 'esperaManchas', 'esperaCharcos',
+  'cacasVolando', 'manchasCaca', 'charcos', 'meadaRecorrido', 'meadaUltimo', 'regeneracionResto',
+  'nubesHedor', 'moscasHedor', 'radioHedorDibujado',
+  'esperaCuraArbol', 'esperaTesoro', 'esperaAullido', 'sieteVidasUsada', 'muertesDueno',
+  'rastro', 'esperaHuella', 'esperaGolpeRastro', 'escudo', 'jaula', 'esperaCaracu', 'sinergiasActivas'
 ];
 
 // ¿El cooperativo está activado? (lo cambia la tecla del menú o ?coop=1)
@@ -190,9 +203,24 @@ function iniciarCoop(escena) {
     ultimaDireccion: new Phaser.Math.Vector2(1, 0), poderCarga: escena.poderEsperaTotal,
     esperaMordida: 0, esperaLadrido: 0, esperaCura: 0, esperaAgua: 0, instintos, empujePerro: null,
     direccionSprint: new Phaser.Math.Vector2(1, 0), numeroSprint: 0, lebrelListo: false, cueroHasta: 0,
-    controlJugador: 2, evoluciones: {}, fusiones: {}, mordidasOmitidas: 0
+    controlJugador: 2, evoluciones: {}, fusiones: {}, mordidasOmitidas: 0,
+    // v0.27: sus propios ataques, mejoras del árbol y fusiones (empiezan como los de J1)
+    esperaRasguno: 0, esperaEscarbar: 0, terrones: [], agarre: null, agarreListoEn: 0,
+    capaMarcas: escena.add.graphics().setDepth(801),
+    esperaPatada: 0, esperaCaca: 0, esperaLadridoFuerte: 0, esperaHedor: 0, esperaManchas: 0, esperaCharcos: 0,
+    cacasVolando: [], manchasCaca: [], charcos: [], meadaRecorrido: 0, meadaUltimo: null, regeneracionResto: 0,
+    nubesHedor: [], moscasHedor: [], radioHedorDibujado: 0,
+    esperaCuraArbol: 0, esperaTesoro: 0, esperaAullido: 0, sieteVidasUsada: false, muertesDueno: 0,
+    rastro: [], esperaHuella: 0, esperaGolpeRastro: 0,
+    escudo: escena.add.graphics().setDepth(11), jaula: escena.add.graphics().setDepth(12),
+    esperaCaracu: 0, sinergiasActivas: {}
   };
   escena.enJ2 = false;
+  escena.turnoCartas = 1;       // v0.27: quién elige la próxima carta (1 o 2)
+  escena.eligeJ2 = false;       // true mientras J2 está eligiendo carta
+  // Círculo de progreso para revivir (sobre la oscuridad)
+  escena.capaRevivir = escena.add.graphics().setDepth(807);
+  COOP_ESTADO.padCartas = {};
 
   // Indicadores "P1" y "P2" sobre la cabeza
   const etiqueta = (texto, color) => escena.add.text(0, 0, texto, {
@@ -264,6 +292,15 @@ function conJugador2(escena, fn) {
     escena.enJ2 = false;
     cambiar();
   }
+  // HUD e inventario que se pidieron durante el turno de J2: se dibujan ahora (con los datos de J1)
+  if (escena.inventarioPendiente) {
+    escena.inventarioPendiente = false;
+    escena.actualizarInventario();
+  }
+  if (escena.hudPendiente) {
+    escena.hudPendiente = false;
+    escena.actualizarHUD();
+  }
   // Si J2 cayó y J1 ya estaba caído, se termina la partida (fuera del turno de J2,
   // para que la pantalla final muestre los datos de J1)
   if (escena.terminarCoopPendiente && !escena.gameOver) {
@@ -301,12 +338,24 @@ function actualizarJugador2(escena, delta) {
       escena.recogerObjetos();
     }
     if (escena.eligiendo || escena.gameOver) return;
-    escena.mordidaAutomatica(delta, escena.puedeAtacar());
-    if (!caido) escena.regenerarCalle(delta);
+    // v0.27: J2 usa sus propios ataques, instintos, fusiones y mejoras del árbol
+    const puedeAtacar = escena.puedeAtacar();
+    escena.mordidaAutomatica(delta, puedeAtacar);
+    escena.ladridoAutomatico(delta, puedeAtacar);
+    actualizarAtaques(escena, delta, puedeAtacar);
+    if (escena.gameOver) return;
+    if (!caido) {
+      escena.regenerarCalle(delta);
+      escena.efectosObjetos(delta);
+      actualizarArbol(escena, delta, puedeAtacar);
+    }
+    escena.actualizarEstampida(delta);
+    escena.dibujarJaula();
+    escena.dibujarEscudo();
     const invulnerable = escena.tiempoSobrevivido < escena.invulnerableHasta;
     escena.perro.setAlpha(caido ? 0.45 : invulnerable ? 0.5 : 1);
   });
-  // Las cartas de los huesos que juntó J2 se muestran ahora (las elige J1)
+  // Las cartas de los huesos que juntó J2 se muestran ahora (elige el del turno)
   if (escena.nivelesPendientes > 0 && !escena.eligiendo && !escena.gameOver) escena.mostrarCartas();
 }
 
@@ -440,9 +489,11 @@ function caerJugadorCoop(escena) {
     perro.caido = true;
     escena.vida = 0;
     perro.body.setVelocity(0, 0);
+    perro.progresoRevivir = 0;
+    perro.tinteOriginal = perro.isTinted ? perro.tintTopLeft : null; // para devolverle su color al revivir
     perro.setTint(0x777777).setAlpha(0.45);
     if (perro.anims) perro.anims.stop();
-    if (!otro.caido) escena.mostrarAviso('¡' + (escena.enJ2 ? 'P2' : 'P1') + ' cayó! Sigue tu compañero', '#ff8a80');
+    if (!otro.caido) escena.mostrarAviso('¡' + (escena.enJ2 ? 'P2' : 'P1') + ' cayó! Quédate cerca para revivirlo', '#ff8a80');
   }
   if (!otro.caido) return true;
   // Los dos cayeron: se termina la partida
@@ -484,4 +535,166 @@ function moverEtiquetasCoop(escena) {
   const arriba = escena.base.RADIO + 14;
   escena.etiquetaJ1.setPosition(a.x, a.y - arriba).setAlpha(a.caido ? 0.5 : 1);
   escena.etiquetaJ2.setPosition(b.x, b.y - arriba).setAlpha(b.caido ? 0.5 : 1);
+}
+
+// ---------------- Revivir (v0.27) ----------------
+
+// Lo llama GameScene.update en cada cuadro (fuera del turno de J2).
+// Si un perro está caído y el otro se queda a COOP.REVIVIR_RADIO, el progreso sube;
+// si se aleja, baja. Al llenarse, el caído vuelve con parte de su vida.
+function actualizarRevivir(escena, delta) {
+  if (!escena.jugador2 || escena.gameOver) return;
+  const C = CONFIG.COOP;
+  const g = escena.capaRevivir;
+  g.clear();
+  const total = Math.max(1, C.REVIVIR_SEGUNDOS * 1000);
+  const arriba = escena.base.RADIO + 32;
+  escena.perrosCoop.forEach((perro, i) => {
+    const otro = escena.perrosCoop[1 - i];
+    if (!perro.caido) {
+      perro.progresoRevivir = 0;
+      return;
+    }
+    if (otro.caido) return; // los dos caídos: la partida ya terminó
+    const d = Phaser.Math.Distance.Between(perro.x, perro.y, otro.x, otro.y);
+    const cerca = d <= C.REVIVIR_RADIO;
+    const antes = perro.progresoRevivir || 0;
+    perro.progresoRevivir = Phaser.Math.Clamp(antes + (cerca ? delta : -delta * C.REVIVIR_BAJA_MULT), 0, total);
+    if (perro.progresoRevivir >= total) {
+      revivirPerroCoop(escena, i);
+      return;
+    }
+    // Zona para revivir (anillo suave) y círculo de progreso sobre el perro caído
+    const color = i === 0 ? C.COLOR_J1 : C.COLOR_J2;
+    g.lineStyle(2, color, cerca ? 0.7 : 0.35);
+    g.strokeCircle(perro.x, perro.y, C.REVIVIR_RADIO);
+    const f = perro.progresoRevivir / total;
+    const x = perro.x;
+    const y = perro.y - arriba;
+    g.fillStyle(0x000000, 0.6);
+    g.fillCircle(x, y, 15);
+    g.lineStyle(2, COLOR_BLANCO, 0.5);
+    g.strokeCircle(x, y, 12);
+    if (f > 0) {
+      g.lineStyle(5, color, 1);
+      g.beginPath();
+      g.arc(x, y, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * f, false);
+      g.strokePath();
+    }
+    // una cruz chica al centro (símbolo de "revivir")
+    g.fillStyle(color, 1);
+    g.fillRect(x - 1.5, y - 5, 3, 10);
+    g.fillRect(x - 5, y - 1.5, 10, 3);
+  });
+}
+
+// El perro i (0 = J1, 1 = J2) vuelve a la partida
+function revivirPerroCoop(escena, i) {
+  const C = CONFIG.COOP;
+  const perro = escena.perrosCoop[i];
+  const estado = i === 0 ? escena : escena.jugador2; // fuera del turno de J2, J1 vive en la escena
+  perro.caido = false;
+  perro.progresoRevivir = 0;
+  if (perro.tinteOriginal !== null && perro.tinteOriginal !== undefined) perro.setTint(perro.tinteOriginal);
+  else perro.clearTint();
+  perro.setAlpha(1);
+  estado.vida = Math.max(1, Math.ceil(estado.vidaMax * C.REVIVIR_VIDA_PCT));
+  estado.vidaAnterior = estado.vida; // sin el dibujo de "daño" al volver
+  estado.invulnerableHasta = escena.tiempoSobrevivido + C.REVIVIR_INVULN_S * 1000;
+  estado.atrapadoHasta = 0;
+  estado.empujePerro = null;
+  escena.mostrarAviso('¡' + (i === 0 ? 'P1' : 'P2') + ' volvió a la pelea!', colorTextoJugador(i + 1));
+  escena.actualizarHUD();
+}
+
+// ---------------- Cartas por turno (v0.27) ----------------
+
+// Color de un jugador como texto ('#ffe082')
+function colorTextoJugador(n) {
+  const c = n === 2 ? CONFIG.COOP.COLOR_J2 : CONFIG.COOP.COLOR_J1;
+  return '#' + c.toString(16).padStart(6, '0');
+}
+
+// Lee el control para las cartas: { izq, der, a } = se apretó recién
+function leerPadCartas() {
+  const pad = controlConectado();
+  const antes = COOP_ESTADO.padCartas || {};
+  const ahora = { izq: false, der: false, a: false };
+  if (pad) {
+    const boton = (i) => !!(pad.buttons[i] && pad.buttons[i].pressed);
+    const eje = pad.axes[0] || 0;
+    ahora.izq = boton(14) || eje < -0.6;
+    ahora.der = boton(15) || eje > 0.6;
+    ahora.a = boton(0);
+  }
+  COOP_ESTADO.padCartas = ahora;
+  COOP_ESTADO.padAnterior.a = ahora.a; // así el botón A de la carta no hace un sprint al cerrar
+  return { izq: ahora.izq && !antes.izq, der: ahora.der && !antes.der, a: ahora.a && !antes.a };
+}
+
+// Al abrir las cartas: olvida teclas y botones apretados antes, y dibuja el
+// "Elige: Jugador N" y el marco de la carta seleccionada (lo llama GameScene.mostrarCartas)
+function prepararCartasCoop(escena, capa, posiciones, cy, anchoCarta, altoCarta) {
+  const n = escena.eligeJ2 ? 2 : 1;
+  const color = n === 2 ? CONFIG.COOP.COLOR_J2 : CONFIG.COOP.COLOR_J1;
+  [escena.wasd.A, escena.wasd.D, escena.teclaEspacio, escena.cursors.left, escena.cursors.right, escena.teclaSprintJ2]
+    .forEach((t) => Phaser.Input.Keyboard.JustDown(t));
+  leerPadCartas();
+  capa.push(escena.add.text(escena.scale.width / 2, 48, 'Elige: Jugador ' + n, {
+    fontFamily: FUENTE, fontSize: '30px', color: colorTextoJugador(n), fontStyle: 'bold', stroke: '#000000', strokeThickness: 5
+  }).setOrigin(0.5));
+  escena.cartaSeleccion = 0;
+  escena.posCartas = posiciones;
+  escena.marcoCarta = escena.add.rectangle(posiciones[0], cy, anchoCarta + 18, altoCarta + 18).setStrokeStyle(5, color);
+  capa.push(escena.marcoCarta);
+}
+
+// Cómo elegir (va en el título de las cartas)
+function textoComoElegirCoop(escena) {
+  return escena.eligeJ2 ? '(P2: flechas ← → y Enter, o cruceta y botón A)' : '(P1: clic, A / D y Espacio, o teclas 1, 2, 3)';
+}
+
+// Mientras se eligen cartas en cooperativo (lo llama GameScene.update).
+// J1: mouse (GameScene.tocarCarta), A / D + Espacio o 1 2 3. J2: flechas + Enter o el control.
+function elegirCartaCoop(escena) {
+  const j = Phaser.Input.Keyboard.JustDown;
+  // Se leen todas siempre, para que no queden "guardadas" para después
+  const t1 = escena.teclasCartas.map((t) => j(t));
+  const izq1 = j(escena.wasd.A);
+  const der1 = j(escena.wasd.D);
+  const ok1 = j(escena.teclaEspacio);
+  const izq2 = j(escena.cursors.left);
+  const der2 = j(escena.cursors.right);
+  const ok2 = j(escena.teclaSprintJ2);
+  const pad = leerPadCartas();
+  const total = escena.cartas.length;
+  if (total === 0) return;
+
+  let mover = 0;
+  let elegir = false;
+  if (escena.eligeJ2) {
+    if (izq2 || pad.izq) mover = -1;
+    if (der2 || pad.der) mover = 1;
+    elegir = ok2 || pad.a;
+  } else {
+    const tecla = t1.findIndex((x, i) => x && i < total);
+    if (tecla >= 0) {
+      escena.elegirCarta(tecla);
+      return;
+    }
+    if (izq1) mover = -1;
+    if (der1) mover = 1;
+    elegir = ok1;
+  }
+  if (mover !== 0) {
+    escena.cartaSeleccion = (escena.cartaSeleccion + mover + total) % total;
+    if (escena.marcoCarta) escena.marcoCarta.setX(escena.posCartas[escena.cartaSeleccion]);
+  }
+  if (elegir) escena.elegirCarta(escena.cartaSeleccion);
+}
+
+// Fusiones y evoluciones de J2 (para la línea del inventario)
+function nombresFusionesJ2(escena) {
+  if (!escena.jugador2 || escena.enJ2) return [];
+  return conJugador2(escena, () => escena.nombresFusionesPerro());
 }

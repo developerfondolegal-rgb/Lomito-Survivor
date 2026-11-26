@@ -232,6 +232,11 @@ class GameScene extends Phaser.Scene {
     }
 
     if (this.eligiendo) {
+      // Cooperativo (src/coop.js): elige el del turno, cada uno con sus teclas o el control
+      if (this.coop) {
+        elegirCartaCoop(this);
+        return;
+      }
       this.teclasCartas.forEach((tecla, i) => {
         if (Phaser.Input.Keyboard.JustDown(tecla) && i < this.cartas.length) {
           this.elegirCarta(i);
@@ -359,13 +364,7 @@ class GameScene extends Phaser.Scene {
     this.mordidaAutomatica(delta, puedeAtacar);
 
     // Ladrido automático (solo si ya tiene el instinto; tampoco ladra si no puede atacar)
-    if (this.instintos.ladrido > 0 && puedeAtacar) {
-      this.esperaLadrido += delta;
-      if (this.esperaLadrido >= this.intervaloLadrido()) {
-        this.esperaLadrido = 0;
-        this.ladrar();
-      }
-    }
+    this.ladridoAutomatico(delta, puedeAtacar);
 
     // Rasguño, Escarbar, enemigos frenados y evoluciones (src/ataques.js)
     actualizarAtaques(this, delta, puedeAtacar);
@@ -380,6 +379,7 @@ class GameScene extends Phaser.Scene {
     if (this.coop) {
       actualizarJugador2(this, delta);
       if (this.gameOver || this.eligiendo) return;
+      actualizarRevivir(this, delta); // v0.27: revivir al compañero caído
     }
 
     // Poder "Rastreo" (Beagle): flechas a enemigos fuera de pantalla
@@ -663,6 +663,17 @@ class GameScene extends Phaser.Scene {
     if (this.esperaMordida >= this.intervaloMordida()) {
       this.esperaMordida = puedeAtacar ? 0 : this.intervaloMordida();
       if (puedeAtacar) this.morder();
+    }
+  }
+
+  // Ladrido automático cada intervaloLadrido() (solo si ya tiene el instinto)
+  ladridoAutomatico(delta, puedeAtacar) {
+    if (this.instintos.ladrido > 0 && puedeAtacar) {
+      this.esperaLadrido += delta;
+      if (this.esperaLadrido >= this.intervaloLadrido()) {
+        this.esperaLadrido = 0;
+        this.ladrar();
+      }
     }
   }
 
@@ -1042,6 +1053,7 @@ class GameScene extends Phaser.Scene {
     if (this.jefeVivo()) multiplicador *= CONFIG.JEFE.APARICION_MIENTRAS;
     multiplicador *= multiplicadorAparicionDesafio(this); // desafío "Aguanta": más enemigos
     multiplicador /= factorDificultad(this.mapaId, 'CANTIDAD'); // dificultad del mapa y global (src/mapas.js)
+    if (this.coop) multiplicador /= CONFIG.COOP.SPAWN_MULT || 1; // v0.27: con 2 jugadores aparecen más
     return Math.max(CONFIG.APARICION_MINIMA_MS, intervalo) * multiplicador;
   }
 
@@ -1134,6 +1146,7 @@ class GameScene extends Phaser.Scene {
     // DIFICULTAD.MULTIPLICADOR_GLOBAL, más vida y daño (src/mapas.js)
     const fase = datosFase(faseDeLaNoche(this.tiempoSobrevivido));
     enemigo.vida = cfg.VIDA * (elite ? CONFIG.ELITE_VIDA : 1) * fase.VIDA * factorDificultad(this.mapaId, 'VIDA');
+    if (this.coop) enemigo.vida *= CONFIG.COOP.VIDA_ENEMIGOS_MULT || 1; // v0.27: con 2 jugadores tienen más vida
     // v0.21: los enemigos comunes pegan más (el jefe pone su propio multDano en src/jefe.js)
     enemigo.multDano = (fase.DANO || 1) * factorDificultad(this.mapaId, 'DANO') *
       (CONFIG.DIFICULTAD.DANIO_MOBS_COMUNES_MULT || 1);
@@ -1885,6 +1898,20 @@ class GameScene extends Phaser.Scene {
   }
 
   mostrarCartas() {
+    // Cooperativo (src/coop.js): las cartas se turnan. Si le toca a J2, se arman con sus datos.
+    if (this.coop && !this.enJ2) {
+      this.eligeJ2 = this.turnoCartas === 2;
+      if (this.eligeJ2) {
+        conJugador2(this, () => this.mostrarCartasPerro());
+        if (!this.eligiendo) this.eligeJ2 = false;
+        return;
+      }
+    }
+    this.mostrarCartasPerro();
+  }
+
+  // Cartas con los datos del perro del turno (en 1 jugador, siempre el perro)
+  mostrarCartasPerro() {
     // Primero las evoluciones y fusiones disponibles (cartas doradas), y el resto instintos al azar
     const evoluciones = evolucionesDisponibles(this).slice(0, 3).map((e) => ({ evolucion: e }));
     const fusiones = this.fusionesDisponibles().slice(0, 3 - evoluciones.length).map((f) => ({ fusion: f }));
@@ -1897,6 +1924,7 @@ class GameScene extends Phaser.Scene {
     if (opciones.length === 0) {
       for (let i = 0; i < this.nivelesPendientes; i++) this.darHuesitosRecompensa();
       this.nivelesPendientes = 0;
+      if (this.coop) this.turnoCartas = this.turnoCartas === 2 ? 1 : 2; // cooperativo: el próximo nivel elige el otro
       return;
     }
 
@@ -1917,7 +1945,8 @@ class GameScene extends Phaser.Scene {
     capa.push(this.add.text(w / 2, 90, '¡Subiste a nivel ' + this.nivel + '!', {
       fontFamily: FUENTE, fontSize: '36px', color: '#ffffff', fontStyle: 'bold'
     }).setOrigin(0.5));
-    const como = modoTactil() ? '(toca una carta)' : '(clic o teclas 1, 2, 3)';
+    let como = modoTactil() ? '(toca una carta)' : '(clic o teclas 1, 2, 3)';
+    if (this.coop) como = textoComoElegirCoop(this); // cooperativo: cómo elige el del turno (src/coop.js)
     let titulo = 'Elige una mejora ' + como;
     if (evoluciones.length > 0) titulo = '¡Evolución disponible! Elige una carta ' + como;
     else if (fusiones.length > 0) titulo = '¡Fusión disponible! Elige una carta ' + como;
@@ -1999,6 +2028,9 @@ class GameScene extends Phaser.Scene {
       return inst;
     });
 
+    // Cooperativo: "Elige: Jugador N" y marco de la carta seleccionada (src/coop.js)
+    if (this.coop) prepararCartasCoop(this, capa, opciones.map((o, i) => inicioX + i * separacion), cy, anchoCarta, altoCarta);
+
     capa.forEach((obj) => obj.setScrollFactor(0).setDepth(3000));
     this.capaCartas = capa;
   }
@@ -2041,6 +2073,7 @@ class GameScene extends Phaser.Scene {
   // Clic o toque en una carta (ignora toques justo cuando recién aparecen)
   tocarCarta(indice) {
     if (this.time.now < (this.cartasListasEn || 0)) return;
+    if (this.coop && this.eligeJ2) return; // cooperativo: el mouse es de J1
     this.elegirCarta(indice);
   }
 
@@ -2049,15 +2082,25 @@ class GameScene extends Phaser.Scene {
     const inst = this.cartas[indice];
     if (!inst) return;
 
-    if (inst.evolucion) aplicarEvolucion(this, inst.evolucion.id);
-    else if (inst.fusion) this.aplicarFusion(inst.fusion.id);
-    else this.aplicarInstinto(inst.id);
+    const aplicar = () => {
+      if (inst.evolucion) aplicarEvolucion(this, inst.evolucion.id);
+      else if (inst.fusion) this.aplicarFusion(inst.fusion.id);
+      else this.aplicarInstinto(inst.id);
+    };
+    // Cooperativo (src/coop.js): la carta mejora solo al perro que la eligió
+    if (this.coop && this.eligeJ2) conJugador2(this, aplicar);
+    else aplicar();
 
     this.capaCartas.forEach((obj) => { this.tweens.killTweensOf(obj); obj.destroy(); });
     this.capaCartas = [];
     this.cartas = [];
     this.eligiendo = false;
     this.nivelesPendientes--;
+    if (this.coop) {
+      this.turnoCartas = this.eligeJ2 ? 1 : 2; // el próximo nivel elige el otro
+      this.eligeJ2 = false;
+      this.marcoCarta = null;
+    }
 
     // Si subió varios niveles de golpe, mostrar las siguientes cartas
     if (this.nivelesPendientes > 0) {
@@ -2182,6 +2225,15 @@ class GameScene extends Phaser.Scene {
     limpiarZonas(this);
     ocultarDesafio(this);
     limpiarAtaques(this);         // auto del curao, terrones, miras (src/ataques.js)
+    if (this.coop) {
+      // Cooperativo: lo mismo con lo de J2 y el círculo de revivir (src/coop.js)
+      conJugador2(this, () => {
+        limpiarAtaques(this);
+        this.jaula.clear();
+        this.escudo.clear();
+      });
+      this.capaRevivir.clear();
+    }
     this.actualizarHUD();
     // el inventario se oculta: los objetos salen escritos en el Game Over
     this.capaInventario.forEach((obj) => obj.destroy());
@@ -2411,6 +2463,11 @@ class GameScene extends Phaser.Scene {
 
   // Redibuja el inventario (solo cuando cambia algo: al recoger un objeto o lograr una fusión)
   actualizarInventario() {
+    // Cooperativo: durante el turno de J2 se redibuja al terminar el turno (src/coop.js)
+    if (this.enJ2) {
+      this.inventarioPendiente = true;
+      return;
+    }
     this.capaInventario.forEach((obj) => obj.destroy());
     this.capaInventario = [];
 
@@ -2438,10 +2495,18 @@ class GameScene extends Phaser.Scene {
     }
 
     // Fusiones logradas, encima de las casillas
-    const fusiones = FUSIONES.filter((f) => this.fusiones[f.id]).map((f) => f.nombre)
-      .concat(nombresEvoluciones(this).map((n) => '★ ' + n)); // evoluciones de ataque (src/ataques.js)
-    if (fusiones.length > 0) {
-      capa.push(this.add.text(this.scale.width / 2, y - lado / 2 - 6, 'Fusiones: ' + fusiones.join(' · '), {
+    // (cooperativo: las de cada perro, "P1: ... | P2: ...")
+    const fusiones = this.nombresFusionesPerro();
+    let textoFusiones = fusiones.length > 0 ? 'Fusiones: ' + fusiones.join(' · ') : '';
+    if (this.coop) {
+      const deJ2 = nombresFusionesJ2(this);
+      const partes = [];
+      if (fusiones.length > 0) partes.push('P1: ' + fusiones.join(' · '));
+      if (deJ2.length > 0) partes.push('P2: ' + deJ2.join(' · '));
+      textoFusiones = partes.length > 0 ? 'Fusiones  ' + partes.join('   |   ') : '';
+    }
+    if (textoFusiones) {
+      capa.push(this.add.text(this.scale.width / 2, y - lado / 2 - 6, textoFusiones, {
         fontFamily: FUENTE, fontSize: '14px', color: '#ffd54f', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
       }).setOrigin(0.5, 1));
     }
@@ -2450,7 +2515,18 @@ class GameScene extends Phaser.Scene {
     this.capaInventario = capa;
   }
 
+  // Fusiones y evoluciones logradas por el perro (en cooperativo, el del turno)
+  nombresFusionesPerro() {
+    return FUSIONES.filter((f) => this.fusiones[f.id]).map((f) => f.nombre)
+      .concat(nombresEvoluciones(this).map((n) => '★ ' + n)); // evoluciones de ataque (src/ataques.js)
+  }
+
   actualizarHUD() {
+    // Cooperativo: durante el turno de J2 se redibuja al terminar el turno (src/coop.js)
+    if (this.enJ2) {
+      this.hudPendiente = true;
+      return;
+    }
     const w = this.scale.width;
 
     // Experiencia

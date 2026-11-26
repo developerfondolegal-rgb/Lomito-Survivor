@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.26.1';
+const VERSION_JUEGO = '0.27';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -91,7 +91,18 @@ const CONFIG = {
     SEPARACION_INICIO: 60,      // a qué distancia aparece J2 al lado de J1 al empezar
     ZONA_MUERTA_CONTROL: 0.25,  // el palito del control no mueve al perro si se inclina menos que esto
     COLOR_J1: 0xffe082,         // color del indicador "P1" (amarillo)
-    COLOR_J2: 0x4fc3f7          // color del indicador "P2" y de su barra de vida (celeste)
+    COLOR_J2: 0x4fc3f7,         // color del indicador "P2" y de su barra de vida (celeste)
+
+    // v0.27 (parte 2): cartas por turno, revivir y dificultad
+    // Cartas: al subir de nivel elige un jugador y al siguiente nivel el otro (empieza J1).
+    // La carta solo mejora al perro que la eligió. El nivel y la experiencia son de los dos.
+    REVIVIR_RADIO: 60,          // qué tan cerca (px) tiene que estar el compañero para revivir al perro caído
+    REVIVIR_SEGUNDOS: 3,        // cuántos segundos tiene que quedarse cerca para revivirlo
+    REVIVIR_BAJA_MULT: 1,       // si el que revive se aleja, el progreso baja a esta rapidez (1 = igual de rápido que sube)
+    REVIVIR_VIDA_PCT: 0.4,      // con qué parte de su vida máxima vuelve el perro (0.4 = 40%)
+    REVIVIR_INVULN_S: 2,        // segundos sin recibir daño después de revivir
+    VIDA_ENEMIGOS_MULT: 1.5,    // con 2 jugadores, los enemigos (y el jefe) tienen esta vida multiplicada (1.5 = 50% más)
+    SPAWN_MULT: 1.3             // con 2 jugadores aparecen esta cantidad de enemigos multiplicada (1.3 = 30% más seguido)
   },
 
   MAPA_SEMILLA: 'lomito',       // cambia este texto para que las cosas salgan en otros lugares (todos los mapas)

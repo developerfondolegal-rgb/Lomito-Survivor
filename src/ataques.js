@@ -100,8 +100,9 @@ function actualizarAtaques(escena, delta, puedeAtacar) {
   actualizarAtaquesNuevos(escena, delta, puedeAtacar);
 
   // Enemigos frenados por la tierra (el jefe no se frena)
+  // (cooperativo: solo en el turno de J1, para no frenarlos dos veces por cuadro, src/coop.js)
   const lentitud = Math.max(0, 1 - A.ESCARBAR.LENTITUD);
-  escena.enemigos.getChildren().forEach((en) => {
+  if (!escena.enJ2) escena.enemigos.getChildren().forEach((en) => {
     if (en.esJefe || !(ahora < en.lentoHasta) || ahora < en.empujadoHasta) return;
     en.body.velocity.scale(lentitud);
   });

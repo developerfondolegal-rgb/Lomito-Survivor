@@ -86,6 +86,7 @@ function crearJefe(escena) {
   jefe.radio = J.RADIO;
   // Dificultad del mapa y global (src/mapas.js): más vida y más daño
   jefe.vida = J.VIDA * factorDificultad(escena.mapaId, 'VIDA');
+  if (escena.coop) jefe.vida *= CONFIG.COOP.VIDA_ENEMIGOS_MULT || 1; // v0.27: cooperativo, más vida (src/coop.js)
   jefe.vidaMax = jefe.vida;
   jefe.multDano = factorDificultad(escena.mapaId, 'DANO');
   jefe.velocidad = J.VELOCIDAD;
