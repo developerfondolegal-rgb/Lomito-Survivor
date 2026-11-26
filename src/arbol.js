@@ -137,8 +137,10 @@ const ARBOL_RAMAS = {
 const ARBOL_NODOS = 4; // mejoras por rama
 
 // ---------------- Guardado en el navegador (localStorage) ----------------
-// Se guarda así: { version: 1, razas: { quiltro: { calle: 2, suerte: 0, ... } }, gastado: { quiltro: 170 } }
-// (el número de cada rama = cuántas mejoras de esa rama compraste, de 0 a 4)
+// Se guarda así: { version: 1, razas: { quiltro: { calle: 2, suerte: 0, ... } }, gastado: { quiltro: 170 },
+//                 general: { colmillosAfilados: 2 }, gastadoGeneral: 120 }
+// (el número de cada rama = cuántas mejoras de esa rama compraste, de 0 a 4;
+//  "general" = mejoras para todas las razas, como Colmillos afilados (v0.22))
 
 let ARBOL_EN_MEMORIA = null;
 
@@ -152,7 +154,7 @@ function datosArbol() {
     datos = null; // el navegador no deja guardar o el guardado está roto: se empieza de cero
   }
   if (!datos || typeof datos !== 'object') datos = {};
-  const limpio = { version: 1, razas: {}, gastado: {} };
+  const limpio = { version: 1, razas: {}, gastado: {}, general: {}, gastadoGeneral: 0 };
   const razas = datos.razas && typeof datos.razas === 'object' ? datos.razas : {};
   const gastado = datos.gastado && typeof datos.gastado === 'object' ? datos.gastado : {};
   Object.keys(ARBOL_RAMAS).forEach((razaId) => {
@@ -164,6 +166,12 @@ function datosArbol() {
     const g = Number(gastado[razaId]);
     limpio.gastado[razaId] = Number.isFinite(g) && g > 0 ? Math.floor(g) : 0;
   });
+  // Mejoras generales (todas las razas)
+  const general = datos.general && typeof datos.general === 'object' ? datos.general : {};
+  const nc = Number(general.colmillosAfilados);
+  limpio.general.colmillosAfilados = Number.isFinite(nc) ? Math.max(0, Math.min(nivelesColmillos(), Math.floor(nc))) : 0;
+  const gg = Number(datos.gastadoGeneral);
+  limpio.gastadoGeneral = Number.isFinite(gg) && gg > 0 ? Math.floor(gg) : 0;
   ARBOL_EN_MEMORIA = limpio;
   return limpio;
 }
@@ -247,6 +255,42 @@ function numeroArbol(n) {
   return String(Math.round(n * 100) / 100).replace('.', ',');
 }
 
+// ---------------- Colmillos afilados (mejora general, v0.22) ----------------
+// Sirve para todas las razas. "Reiniciar árbol" de una raza no la quita.
+
+function nivelesColmillos() {
+  return (CONFIG.ARBOL.COLMILLOS_COSTOS || []).length;
+}
+
+// Nivel comprado (0 = ninguno)
+function nivelColmillos() {
+  return datosArbol().general.colmillosAfilados || 0;
+}
+
+// Costo del siguiente nivel (null si ya está al máximo)
+function costoColmillos() {
+  const n = nivelColmillos();
+  if (n >= nivelesColmillos()) return null;
+  return Math.max(0, Math.floor(CONFIG.ARBOL.COLMILLOS_COSTOS[n] || 0));
+}
+
+// Daño extra que da (0.1 = +10%)
+function bonusColmillos(nivel) {
+  return (nivel === undefined ? nivelColmillos() : nivel) * (CONFIG.ARBOL.COLMILLOS_DANIO_POR_NIVEL || 0);
+}
+
+// Compra el siguiente nivel si alcanzan los huesitos. Devuelve true si se compró.
+function comprarColmillos() {
+  const costo = costoColmillos();
+  if (costo === null || huesitosGuardados() < costo) return false;
+  const datos = datosArbol();
+  datos.general.colmillosAfilados = nivelColmillos() + 1;
+  datos.gastadoGeneral += costo;
+  sumarHuesitos(-costo);
+  guardarArbol();
+  return true;
+}
+
 // ---------------- Comprar y reiniciar ----------------
 
 // Compra el siguiente nodo de la rama si alcanzan los huesitos. Devuelve true si se compró.
@@ -299,6 +343,7 @@ function bonusArbol(escena, clave) {
 // Lo comprado después de empezar no cambia la partida en curso.
 function iniciarArbol(escena) {
   escena.arbol = efectosArbol(escena.razaId);
+  escena.colmillosAfilados = nivelColmillos(); // mejora general (v0.22): se fija al empezar la partida
   escena.sieteVidasUsada = false;
   escena.muertesDueno = 0;
   escena.esperaCuraArbol = 0;
@@ -408,6 +453,7 @@ function partesArbolStats(escena) {
   const A = (k) => bonusArbol(escena, k);
   const pct = (v) => Math.round(v * 100) + '%';
   const p = [];
+  if (escena.colmillosAfilados) p.push('Colmillos afilados +' + pct(bonusColmillos(escena.colmillosAfilados)) + ' daño');
   if (A('HUESITOS')) p.push('+' + pct(A('HUESITOS')) + ' huesitos');
   if (A('HUESO_EXTRA')) p.push(pct(A('HUESO_EXTRA')) + ' hueso extra');
   if (A('OBJETO')) p.push('objetos +' + pct(A('OBJETO')));

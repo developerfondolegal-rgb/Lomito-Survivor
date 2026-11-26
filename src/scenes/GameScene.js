@@ -594,9 +594,11 @@ class GameScene extends Phaser.Scene {
     return CONFIG.MORDIDA_ALCANCE + bonusColeccion('lentes', 'ALCANCE');
   }
 
-  // Experiencia que da cada hueso (Placa de identificación y Cascabel)
+  // Experiencia que da cada hueso (Placa de identificación y Cascabel).
+  // v0.22: HUESOS.XP_MULT baja la experiencia de todos los huesos
   xpPorHueso() {
-    return CONFIG.HUESO_XP * (1 + this.nivelObjeto('placa') * CONFIG.OBJETOS.placa.XP_EXTRA +
+    const mult = CONFIG.HUESOS && CONFIG.HUESOS.XP_MULT !== undefined ? CONFIG.HUESOS.XP_MULT : 1;
+    return CONFIG.HUESO_XP * mult * (1 + this.nivelObjeto('placa') * CONFIG.OBJETOS.placa.XP_EXTRA +
       bonusColeccion('cascabel', 'XP_EXTRA') + bonusArbol(this, 'XP'));
   }
 
@@ -1193,9 +1195,17 @@ class GameScene extends Phaser.Scene {
     );
   }
 
-  // Quita vida a un enemigo; si muere, suelta huesos (más duro = más huesos)
-  danarEnemigo(enemigo, dano) {
+  // Multiplicador de todo el daño del perro (v0.22): JUGADOR.DANIO_BASE_MULT y Colmillos afilados (src/arbol.js)
+  multDanoJugador() {
+    const base = CONFIG.JUGADOR && CONFIG.JUGADOR.DANIO_BASE_MULT ? CONFIG.JUGADOR.DANIO_BASE_MULT : 1;
+    return base * (1 + bonusColmillos(this.colmillosAfilados || 0));
+  }
+
+  // Quita vida a un enemigo; si muere, suelta huesos (más duro = más huesos).
+  // ajeno = true si el daño no es del perro (curao al volante): no lleva el multiplicador del perro
+  danarEnemigo(enemigo, dano, ajeno) {
     if (!enemigo.active) return;
+    if (!ajeno) dano *= this.multDanoJugador();
     enemigo.vida -= danoContraMarcado(this, enemigo, dano); // Aullido rastreador: los marcados reciben más
 
     if (enemigo.vida <= 0) {
@@ -1421,6 +1431,23 @@ class GameScene extends Phaser.Scene {
         const avance = Math.min(paso, d);
         hueso.x += Math.cos(angulo) * avance;
         hueso.y += Math.sin(angulo) * avance;
+      }
+    });
+
+    // v0.22: las bolsas de huesitos (cualquier rareza, también la morada) se atraen igual que los huesos
+    this.objetosSuelo.getChildren().slice().forEach((cosa) => {
+      if (cosa.objetoId !== 'huesitos') return;
+      const d = Phaser.Math.Distance.Between(this.perro.x, this.perro.y, cosa.x, cosa.y);
+      if (d <= distanciaRecoger) {
+        this.recogerObjeto(cosa.objetoId, cosa.rarezaId);
+        cosa.destroy();
+        return;
+      }
+      if (d <= iman) {
+        const angulo = Phaser.Math.Angle.Between(cosa.x, cosa.y, this.perro.x, this.perro.y);
+        const avance = Math.min(paso, d);
+        cosa.x += Math.cos(angulo) * avance;
+        cosa.y += Math.sin(angulo) * avance;
       }
     });
   }

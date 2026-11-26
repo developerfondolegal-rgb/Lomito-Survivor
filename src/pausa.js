@@ -271,7 +271,13 @@ function calcularStats(escena) {
   if (col('panuelo')) danoExtra.push(nombreCol('panuelo') + ' ' + Math.round(bonusColeccion('panuelo', 'CRITICO') * 100) + '% de crítico (×2)');
   if (e.bonusDanoArbol()) danoExtra.push('Árbol +' + pct(e.bonusDanoArbol()) + ' ahora');
   if (arb('CRITICO')) danoExtra.push('Árbol ' + pct(arb('CRITICO')) + ' de crítico');
-  stats.push({ nombre: 'Daño de mordida', valor: numeroPausa(e.danoMordida()), partes: dano.concat(danoExtra) });
+  // v0.22: multiplicador de todo el daño del perro (también ladrido y ataques)
+  const multJ = e.multDanoJugador();
+  if (CONFIG.JUGADOR && CONFIG.JUGADOR.DANIO_BASE_MULT && CONFIG.JUGADOR.DANIO_BASE_MULT !== 1) {
+    danoExtra.push('Daño del perro ×' + numeroPausa(CONFIG.JUGADOR.DANIO_BASE_MULT, 2) + ' (todos los ataques)');
+  }
+  if (e.colmillosAfilados) danoExtra.push('Colmillos afilados Nv ' + e.colmillosAfilados + ' +' + pct(bonusColmillos(e.colmillosAfilados)) + ' (todos los ataques)');
+  stats.push({ nombre: 'Daño de mordida', valor: numeroPausa(e.danoMordida() * multJ), partes: dano.concat(danoExtra) });
 
   // Frecuencia de mordida
   const ms = e.intervaloMordida();
@@ -384,9 +390,16 @@ function seccionesStats(escena) {
       detalle: activos.length ? activos.join('  ·  ') : 'Sin mejoras en esta rama'
     };
   });
-  const efectos = partesArbolStats(e).filter((t) => t.indexOf('★') !== 0);
+  // Colmillos afilados: mejora general, para todas las razas (v0.22)
+  const nc = e.colmillosAfilados || 0;
+  arbol.push({
+    nombre: 'Colmillos afilados', valor: nc + ' / ' + nivelesColmillos(), apagado: nc === 0,
+    detalle: nc ? '+' + Math.round(bonusColmillos(nc) * 100) + '% de daño en todos los ataques (todas las razas)'
+      : 'Mejora general: se compra con huesitos en el Árbol'
+  });
+  const efectos = partesArbolStats(e).filter((t) => t.indexOf('★') !== 0 && t.indexOf('Colmillos afilados') !== 0);
   if (efectos.length) arbol.push({ nombre: 'Efectos extra', valor: '', detalle: efectos.join('  ·  ') });
-  if (mejorasCompradas(e.razaId) === 0) {
+  if (mejorasCompradas(e.razaId) === 0 && !nc) {
     arbol.push({ nombre: 'Sin mejoras', valor: '', detalle: 'Se compran con huesitos en el menú (Árbol)', apagado: true });
   }
 

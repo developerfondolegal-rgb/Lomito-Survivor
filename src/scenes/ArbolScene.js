@@ -5,11 +5,15 @@
 // (marcoPixel viene de src/pausa.js; FUENTE, de MenuScene.js; botonPantalla,
 //  margenExtra, avisoBreve y modoTactil, de src/tactil.js)
 //
+// Abajo de las ramas está "Colmillos afilados" (v0.22): mejora general para todas
+// las razas, por niveles (▼ desde la última mejora de una rama para elegirla).
+//
 // Teclado: ◄ ► rama · ▲ ▼ mejora · Q / E (o 1 a 4) raza · Enter o Espacio comprar
 //          R reiniciar el árbol de la raza · Esc o G volver
 
 const ARBOL_COMPRADO = 0xffd54f;   // borde de las mejoras compradas
 const ARBOL_BLOQUEADO = 0x55556a;  // borde de las mejoras bloqueadas
+const ARBOL_COLMILLOS = 0xe0e0e0;  // color de Colmillos afilados (mejora general)
 
 class ArbolScene extends Phaser.Scene {
   constructor() {
@@ -73,6 +77,7 @@ class ArbolScene extends Phaser.Scene {
   // Al cambiar de raza: la primera mejora disponible (o la primera de todas)
   elegirPrimerNodo() {
     const razaId = this.raza().id;
+    this.selGeneral = false; // true = está elegido Colmillos afilados
     this.selRama = 0;
     this.selNodo = 0;
     const ramas = ramasDeRaza(razaId);
@@ -94,12 +99,24 @@ class ArbolScene extends Phaser.Scene {
   }
 
   moverSeleccion(dx, dy) {
+    if (this.selGeneral) {
+      // Desde Colmillos afilados: ▲ vuelve a la última mejora de la rama
+      if (dy < 0) { this.selGeneral = false; this.selNodo = ARBOL_NODOS - 1; this.dibujar(); }
+      return;
+    }
+    if (dy > 0 && this.selNodo === ARBOL_NODOS - 1) { this.selGeneral = true; this.dibujar(); return; }
     this.selRama = (this.selRama + dx + this.ramas().length) % this.ramas().length;
     this.selNodo = Phaser.Math.Clamp(this.selNodo + dy, 0, ARBOL_NODOS - 1);
     this.dibujar();
   }
 
+  seleccionarGeneral() {
+    this.selGeneral = true;
+    this.dibujar();
+  }
+
   seleccionar(rama, nodo) {
+    this.selGeneral = false;
     this.selRama = rama;
     this.selNodo = nodo;
     this.dibujar();
@@ -108,6 +125,7 @@ class ArbolScene extends Phaser.Scene {
   // ---------------- Comprar ----------------
 
   comprar() {
+    if (this.selGeneral) { this.comprarGeneral(); return; }
     const razaId = this.raza().id;
     const rama = this.ramas()[this.selRama];
     const i = this.selNodo;
@@ -124,6 +142,18 @@ class ArbolScene extends Phaser.Scene {
     if (this.selNodo < ARBOL_NODOS - 1) this.selNodo++;
     this.dibujar();
     aviso('¡' + rama.nodos[i].nombre + ' comprada!');
+  }
+
+  // Colmillos afilados (mejora general)
+  comprarGeneral() {
+    const aviso = (texto) => avisoBreve(this, this.scale.width / 2, this.scale.height / 2, texto);
+    const costo = costoColmillos();
+    if (costo === null) { aviso('Colmillos afilados ya está al máximo'); return; }
+    const tienes = huesitosGuardados();
+    if (tienes < costo) { aviso('Te faltan ' + (costo - tienes) + ' huesitos'); return; }
+    if (!comprarColmillos()) return;
+    this.dibujar();
+    aviso('¡Colmillos afilados nivel ' + nivelColmillos() + '!');
   }
 
   // ---------------- Dibujo ----------------
@@ -175,9 +205,16 @@ class ArbolScene extends Phaser.Scene {
     const paso = 78;
     this.ramas().forEach((rama, r) => this.dibujarRama(rama, r, izquierda + r * anchoCol, anchoCol, arriba, paso));
 
+    // Colmillos afilados (mejora general), debajo de las ramas
+    const yGeneral = arriba + ARBOL_NODOS * paso - 4;
+    this.dibujarGeneral(izquierda, yGeneral, this.ramas().length * anchoCol - 8, 56);
+
     // Panel con la mejora elegida
     const px = izquierda + this.ramas().length * anchoCol + 8;
-    this.dibujarPanel(px, 96 + e / 2, w - 16 - e - px, h - 60 - e - (96 + e / 2));
+    const yPanel = 96 + e / 2;
+    const altoPanel = h - 60 - e - yPanel;
+    if (this.selGeneral) this.dibujarPanelGeneral(px, yPanel, w - 16 - e - px, altoPanel);
+    else this.dibujarPanel(px, yPanel, w - 16 - e - px, altoPanel);
 
     // Botones de abajo
     const yb = h - 26 - e / 2;
@@ -216,7 +253,7 @@ class ArbolScene extends Phaser.Scene {
       const cy = arriba + i * paso;
       const estado = estadoNodo(razaId, rama.id, i);
       const especial = i === ARBOL_NODOS - 1;
-      const elegido = r === this.selRama && i === this.selNodo;
+      const elegido = !this.selGeneral && r === this.selRama && i === this.selNodo;
 
       // Cuadro del nodo
       const borde = estado === 'comprado' ? ARBOL_COMPRADO : estado === 'disponible' ? rama.color : ARBOL_BLOQUEADO;
@@ -261,6 +298,101 @@ class ArbolScene extends Phaser.Scene {
       zona.on('pointerdown', () => this.seleccionar(r, i));
       capa.push(zona);
     }
+  }
+
+  // Fila de Colmillos afilados: ícono, nombre, un cuadrito por nivel y el costo del siguiente
+  dibujarGeneral(x, cy, ancho, alto) {
+    const capa = this.capa;
+    const nivel = nivelColmillos();
+    const total = nivelesColmillos();
+    const costo = costoColmillos();
+    const g = this.add.graphics();
+    capa.push(g);
+    marcoPixel(g, x, cy - alto / 2, ancho, alto, nivel >= total ? ARBOL_COMPRADO : ARBOL_COLMILLOS, 0x23213a);
+    dibujarIconoArbol(g, x + 12, cy - 16, 'mordida', 4, nivel > 0 ? 0xffffff : ARBOL_COLMILLOS);
+    capa.push(this.add.text(x + 54, cy - 20, 'Colmillos afilados', {
+      fontFamily: FUENTE, fontSize: '15px', color: '#ffffff', fontStyle: 'bold'
+    }));
+    capa.push(this.add.text(x + 54, cy + 2, 'Todas las razas · +' + Math.round((CONFIG.ARBOL.COLMILLOS_DANIO_POR_NIVEL || 0) * 100) + '% de daño por nivel', {
+      fontFamily: FUENTE, fontSize: '12px', color: '#cfd8dc'
+    }));
+    // Un cuadrito por nivel (dorado = comprado)
+    const lado = 18;
+    const x0 = x + ancho - 150 - total * (lado + 6);
+    for (let i = 0; i < total; i++) {
+      marcoPixel(g, x0 + i * (lado + 6), cy - lado / 2 - 8, lado, lado, i < nivel ? ARBOL_COMPRADO : ARBOL_BLOQUEADO, i < nivel ? 0x4a3a12 : 0x1d1b2e);
+    }
+    capa.push(this.add.text(x0, cy + 6, 'Nivel ' + nivel + ' / ' + total, { fontFamily: FUENTE, fontSize: '12px', color: '#ffd54f' }));
+    const detalle = costo === null ? '✔ Al máximo' : 'Siguiente: ' + costo + ' huesitos';
+    const colorDetalle = costo === null ? '#ffd54f' : huesitosGuardados() >= costo ? '#9ccc65' : '#ef9a9a';
+    capa.push(this.add.text(x + ancho - 12, cy, detalle, {
+      fontFamily: FUENTE, fontSize: '13px', color: colorDetalle, fontStyle: 'bold', align: 'right', wordWrap: { width: 130 }
+    }).setOrigin(1, 0.5));
+    if (this.selGeneral) {
+      const cursor = this.add.graphics();
+      cursor.lineStyle(3, 0xffffff, 1);
+      cursor.strokeRect(x - 4, cy - alto / 2 - 4, ancho + 8, alto + 8);
+      this.tweens.add({ targets: cursor, alpha: 0.35, duration: 450, yoyo: true, repeat: -1 });
+      capa.push(cursor);
+    }
+    const zona = this.add.zone(x + ancho / 2, cy, ancho, alto).setInteractive({ useHandCursor: true });
+    zona.on('pointerdown', () => this.seleccionarGeneral());
+    capa.push(zona);
+  }
+
+  // Panel de la derecha cuando está elegido Colmillos afilados
+  dibujarPanelGeneral(x, y, ancho, alto) {
+    const capa = this.capa;
+    const nivel = nivelColmillos();
+    const total = nivelesColmillos();
+    const costo = costoColmillos();
+    const alcanza = costo !== null && huesitosGuardados() >= costo;
+    const texto = (tx, ty, t, tam, color, extra) => {
+      const obj = this.add.text(tx, ty, t, { fontFamily: FUENTE, fontSize: tam + 'px', color, ...extra });
+      capa.push(obj);
+      return obj;
+    };
+    const g = this.add.graphics();
+    marcoPixel(g, x, y, ancho, alto, ARBOL_COLMILLOS, 0x1d1b2e);
+    g.fillStyle(0x000000, 0.4);
+    g.fillRect(x + 14, y + 14, 52, 52);
+    dibujarIconoArbol(g, x + 20, y + 20, 'mordida', 5, ARBOL_COLMILLOS);
+    capa.push(g);
+    texto(x + 76, y + 16, 'Mejora general', 14, '#e0e0e0', { fontStyle: 'bold' });
+    texto(x + 76, y + 36, 'Nivel ' + nivel + ' de ' + total + ' · todas las razas', 13, '#cfd8dc');
+    const anchoTexto = ancho - 28;
+    const nombre = texto(x + 14, y + 78, 'Colmillos afilados', 20, '#ffffff', { fontStyle: 'bold' });
+    const por = Math.round((CONFIG.ARBOL.COLMILLOS_DANIO_POR_NIVEL || 0) * 100);
+    const efecto = texto(x + 14, nombre.y + nombre.height + 8,
+      '+' + por + '% de daño en todos tus ataques por nivel (máximo ' + total + ' niveles: +' + por * total + '%).\n' +
+      'Ahora: +' + Math.round(bonusColmillos() * 100) + '%. Sirve para todas las razas y no se quita al reiniciar el árbol de una raza.',
+      14, '#e0e0e0', { wordWrap: { width: anchoTexto }, lineSpacing: 3 });
+    const yEstado = Math.max(efecto.y + efecto.height + 14, y + alto - 120);
+    if (costo === null) {
+      texto(x + 14, yEstado, '✔ Al máximo', 16, '#ffd54f', { fontStyle: 'bold' });
+    } else {
+      texto(x + 14, yEstado, 'Nivel ' + (nivel + 1) + ': ' + costo + ' huesitos', 16, alcanza ? '#9ccc65' : '#ef9a9a', { fontStyle: 'bold' });
+      if (!alcanza) texto(x + 14, yEstado + 22, 'Te faltan ' + (costo - huesitosGuardados()) + ' huesitos', 13, '#b0bec5');
+    }
+    const bx = x + ancho / 2;
+    const by = y + alto - 34;
+    const anchoB = ancho - 28;
+    const altoB = 40;
+    const bg = this.add.graphics();
+    const pintar = (encima) => {
+      bg.clear();
+      if (alcanza) marcoPixel(bg, bx - anchoB / 2, by - altoB / 2, anchoB, altoB, encima ? 0xffffff : 0x9ccc65, encima ? 0x3d5a2a : 0x26381c);
+      else marcoPixel(bg, bx - anchoB / 2, by - altoB / 2, anchoB, altoB, ARBOL_BLOQUEADO, 0x232232);
+    };
+    pintar(false);
+    capa.push(bg);
+    const etiqueta = costo === null ? 'Al máximo' : 'Comprar nivel ' + (nivel + 1) + (modoTactil() ? '' : ' (Enter)');
+    texto(bx, by, etiqueta, 17, alcanza ? '#c5e1a5' : '#77778a', { fontStyle: 'bold' }).setOrigin(0.5);
+    const zona = this.add.zone(bx, by, anchoB, altoB).setInteractive({ useHandCursor: alcanza });
+    zona.on('pointerover', () => pintar(true));
+    zona.on('pointerout', () => pintar(false));
+    zona.on('pointerdown', () => this.comprar());
+    capa.push(zona);
   }
 
   // Panel de la derecha: nombre, efecto, costo y botón Comprar

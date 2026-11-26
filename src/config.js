@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.21';
+const VERSION_JUEGO = '0.22';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -39,14 +39,25 @@ const CONFIG = {
   },
 
   // ---------------------------------------------------------------
-  //  HUESOS (v0.21): cuándo sueltan huesos (la experiencia de la partida)
-  //  los enemigos al morir. Cuánta experiencia da cada hueso: HUESO_XP.
+  //  HUESOS (v0.21 / v0.22): cuándo sueltan huesos (la experiencia de la
+  //  partida) los enemigos al morir y cuánta experiencia dan.
   // ---------------------------------------------------------------
   HUESOS: {
-    PROBABILIDAD_DROP: 0.35,    // probabilidad de que un enemigo común suelte sus huesos (0.35 = 35 de cada 100).
-                                // Después se aplica la de la raza (HUESO_PROBABILIDAD) a cada hueso, como antes.
+    PROBABILIDAD_DROP: 1.0,     // probabilidad de que un enemigo común suelte sus huesos (1 = siempre, como antes de v0.21;
+                                // en v0.21 era 0.35). Después se aplica la de la raza (HUESO_PROBABILIDAD) a cada hueso.
                                 // Los jefes, los élites y los TIPOS_SIEMPRE sueltan siempre.
-    TIPOS_SIEMPRE: ['perrera']  // enemigos especiales que siempre sueltan sus huesos
+    TIPOS_SIEMPRE: ['perrera'], // enemigos especiales que siempre sueltan sus huesos
+    XP_MULT: 0.65               // v0.22: la experiencia de cada hueso se multiplica por esto (HUESO_XP × XP_MULT).
+                                // 0.65 = cada hueso da 35% menos experiencia que en v0.20. 1 = como antes
+  },
+
+  // ---------------------------------------------------------------
+  //  JUGADOR (v0.22): daño del perro
+  // ---------------------------------------------------------------
+  JUGADOR: {
+    DANIO_BASE_MULT: 1.15       // todo el daño que hace el perro (mordida, ladrido, ataques, poderes, fusiones,
+                                // árbol y compañeros) se multiplica por esto. 1.15 = 15% más. No cambia la vida.
+                                // No cuenta el curao al volante (no es del perro)
   },
 
   // ---------------------------------------------------------------
@@ -939,6 +950,10 @@ const CONFIG = {
   // ---------------------------------------------------------------
   ARBOL: {
     COSTOS: [50, 120, 250, 500],  // huesitos que cuesta cada nivel de la rama (1º, 2º, 3º y 4º)
+    // Colmillos afilados (v0.22): mejora GENERAL (sirve para todas las razas), aparte de las ramas.
+    // Se compra por niveles; cada nivel suma daño a todo el daño del perro.
+    COLMILLOS_COSTOS: [40, 80, 150, 250, 400], // huesitos que cuesta cada nivel (la cantidad de niveles es el largo de la lista)
+    COLMILLOS_DANIO_POR_NIVEL: 0.05,           // daño extra por nivel (0.05 = +5%; con 5 niveles, +25%)
     DEVOLUCION: 1,                // "Reiniciar árbol" devuelve esta parte de lo gastado (1 = el 100%)
     GUARDADO: 'lomitoSurvivor_arbol', // nombre del guardado en el navegador (no lo cambies o se "pierde" el árbol)
 

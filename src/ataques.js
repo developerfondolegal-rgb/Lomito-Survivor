@@ -851,7 +851,7 @@ function atropellar(escena, cu, pos) {
     if (!toca(en.x, en.y, en.radio)) return;
     en.atropellado = cu.id;
     if (en.esJefe) {
-      escena.danarEnemigo(en, C.DANO_JEFE);
+      escena.danarEnemigo(en, C.DANO_JEFE, true); // true: daño del curao, no del perro
       escena.cameras.main.shake(150, 0.006);
       return;
     }
@@ -868,7 +868,7 @@ function atropellar(escena, cu, pos) {
       });
     }
     if (!en.dePrueba) cu.atropellados++;
-    escena.danarEnemigo(en, C.DANO_ENEMIGOS);
+    escena.danarEnemigo(en, C.DANO_ENEMIGOS, true); // true: daño del curao, no del perro
   });
 }
 
