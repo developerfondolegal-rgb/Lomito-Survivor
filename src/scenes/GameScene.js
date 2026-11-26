@@ -1075,7 +1075,9 @@ class GameScene extends Phaser.Scene {
     // DIFICULTAD.MULTIPLICADOR_GLOBAL, más vida y daño (src/mapas.js)
     const fase = datosFase(faseDeLaNoche(this.tiempoSobrevivido));
     enemigo.vida = cfg.VIDA * (elite ? CONFIG.ELITE_VIDA : 1) * fase.VIDA * factorDificultad(this.mapaId, 'VIDA');
-    enemigo.multDano = (fase.DANO || 1) * factorDificultad(this.mapaId, 'DANO');
+    // v0.21: los enemigos comunes pegan más (el jefe pone su propio multDano en src/jefe.js)
+    enemigo.multDano = (fase.DANO || 1) * factorDificultad(this.mapaId, 'DANO') *
+      (CONFIG.DIFICULTAD.DANIO_MOBS_COMUNES_MULT || 1);
     enemigo.velocidad = cfg.VELOCIDAD * fase.VELOCIDAD;
     enemigo.huyendoHasta = 0;     // huyendo del Aullido hasta este momento
     enemigo.empujadoHasta = 0;
@@ -1207,8 +1209,13 @@ class GameScene extends Phaser.Scene {
       let cantidad = enemigo.cfg.HUESOS === undefined ? 1 : enemigo.cfg.HUESOS;
       if (enemigo.elite) cantidad *= CONFIG.ELITE_HUESOS;
       if (enemigo.esJefe) this.derrotarJefe(enemigo);
-      // Árbol: Hueso de regalo / Escarbador: a veces 1 hueso extra
-      if (Math.random() < bonusArbol(this, 'HUESO_EXTRA') + bonusColeccion('yapa', 'HUESO_EXTRA')) cantidad++; // + La yapa
+      // v0.21: un enemigo común suelta huesos solo a veces (CONFIG.HUESOS.PROBABILIDAD_DROP);
+      // jefes, élites y especiales (TIPOS_SIEMPRE) sueltan siempre
+      const H = CONFIG.HUESOS || {};
+      const especial = enemigo.esJefe || enemigo.elite || (H.TIPOS_SIEMPRE || []).includes(enemigo.tipo);
+      if (!especial && Math.random() >= (H.PROBABILIDAD_DROP === undefined ? 1 : H.PROBABILIDAD_DROP)) cantidad = 0;
+      // Árbol: Hueso de regalo / Escarbador: a veces 1 hueso extra (solo si soltó huesos)
+      if (cantidad > 0 && Math.random() < bonusArbol(this, 'HUESO_EXTRA') + bonusColeccion('yapa', 'HUESO_EXTRA')) cantidad++; // + La yapa
       for (let i = 0; i < cantidad; i++) {
         if (Math.random() < probabilidad) {
           const ox = cantidad > 1 ? Phaser.Math.Between(-14, 14) : 0;
@@ -1559,10 +1566,33 @@ class GameScene extends Phaser.Scene {
     return posibles[posibles.length - 1].id;
   }
 
+  // Objetos que todavía sirven: no están al máximo y caben en el inventario (v0.21)
+  objetosUtiles() {
+    const max = CONFIG.OBJETO_NIVEL_MAX;
+    const hayEspacio = this.inventario.length < CONFIG.INVENTARIO_MAX;
+    return OBJETOS.filter((o) => this.objetos[o.id] === undefined ? hayEspacio : this.objetos[o.id] < max);
+  }
+
+  // En vez de una recompensa ya al máximo: huesitos de la partida (src/huesitos.js)
+  darHuesitosRecompensa() {
+    const n = (CONFIG.RECOMPENSAS && CONFIG.RECOMPENSAS.HUESOS_SI_MAXEADO) || 0;
+    this.huesitosRecompensas = (this.huesitosRecompensas || 0) + n;
+    this.textoFlotante('+' + n + ' huesitos', '#ffd54f');
+    this.actualizarHUD();
+    return n;
+  }
+
   // Deja un objeto en el suelo, con brillo del color de su rareza.
-  // Si objetoId es null, se elige un objeto al azar.
+  // Si objetoId es null, se elige al azar entre los que todavía sirven.
   soltarObjeto(x, y, objetoId, rarezaId) {
-    const objeto = objetoId ? buscarObjeto(objetoId) : Phaser.Math.RND.pick(OBJETOS);
+    // v0.21: si no queda ningún objeto que sirva, cae una bolsa de huesitos (con el dibujo del hueso)
+    let objeto;
+    if (objetoId) {
+      objeto = buscarObjeto(objetoId);
+    } else {
+      const utiles = this.objetosUtiles();
+      objeto = utiles.length ? Phaser.Math.RND.pick(utiles) : { id: 'huesitos', icono: 'hueso' };
+    }
     const rareza = buscarRareza(rarezaId);
     if (!this.plaza.libre(x, y, 8)) {
       const lugar = this.plaza.buscarLibre(x, y, 12);
@@ -1572,8 +1602,10 @@ class GameScene extends Phaser.Scene {
 
     // Va encima de la oscuridad para que se vea brillar de noche
     const brillo = this.add.image(0, 0, 'brillo_objeto').setScale(ESCALA_PIXEL).setTint(rareza.color);
-    const borde = this.add.image(0, 0, texturaBorde(this, objeto.id), 0).setScale(2).setTint(rareza.color);
-    const icono = this.add.image(0, 0, objeto.id, 0).setScale(2);
+    const textura = objeto.icono || objeto.id;
+    const escalaIcono = objeto.icono ? 3 : 2;
+    const borde = this.add.image(0, 0, texturaBorde(this, textura), 0).setScale(escalaIcono).setTint(rareza.color);
+    const icono = this.add.image(0, 0, textura, 0).setScale(escalaIcono);
     const cosa = this.add.container(x, y, [brillo, borde, icono]).setDepth(805);
     cosa.objetoId = objeto.id;
     cosa.rarezaId = rareza.id;
@@ -1626,8 +1658,17 @@ class GameScene extends Phaser.Scene {
     const cfgRareza = CONFIG.RAREZAS[rareza.id] || { SUBE: 1 };
     const max = CONFIG.OBJETO_NIVEL_MAX;
 
+    // v0.21: nunca una recompensa inútil. La bolsa de huesitos, un objeto que ya está al
+    // máximo o uno que no cabe en el inventario se cambian por huesitos.
+    const yaNoSirve = objetoId === 'huesitos' ||
+      (this.objetos[objetoId] === undefined ? this.inventario.length >= CONFIG.INVENTARIO_MAX : this.objetos[objetoId] >= max);
+    if (yaNoSirve) {
+      this.darHuesitosRecompensa();
+      if (cfgRareza.CURA_TODO) this.curar(this.vidaMax - this.vida, '#ffd54f'); // el legendario igual cura
+      return true;
+    }
+
     if (this.objetos[objetoId] === undefined) {
-      if (this.inventario.length >= CONFIG.INVENTARIO_MAX) return false;
       this.inventario.push(objetoId);
       this.objetos[objetoId] = 0;
     }
@@ -1647,7 +1688,7 @@ class GameScene extends Phaser.Scene {
 
     const nombre = buscarObjeto(objetoId).nombre;
     const nivelTexto = ahora >= max ? 'MAX' : 'Nv ' + ahora;
-    this.textoFlotante(nombre + ' ' + (ganados > 0 ? nivelTexto : '(ya al máximo)'), rareza.colorTexto);
+    this.textoFlotante(nombre + ' ' + nivelTexto, rareza.colorTexto);
 
     // Legendario: además cura toda la vida
     if (cfgRareza.CURA_TODO) this.curar(this.vidaMax - this.vida, '#ffd54f');
@@ -1756,8 +1797,10 @@ class GameScene extends Phaser.Scene {
     const instintos = Phaser.Utils.Array.Shuffle(this.instintosDisponibles().slice()).slice(0, 3 - doradas.length);
     const opciones = doradas.concat(instintos);
 
-    // Si ya tiene todos los instintos al máximo, no hay nada que elegir
+    // Si ya tiene todos los instintos al máximo (y no hay evoluciones ni fusiones),
+    // cada nivel subido se cambia por huesitos (v0.21: nunca cartas inútiles)
     if (opciones.length === 0) {
+      for (let i = 0; i < this.nivelesPendientes; i++) this.darHuesitosRecompensa();
       this.nivelesPendientes = 0;
       return;
     }

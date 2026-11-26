@@ -71,6 +71,7 @@ function borrarHuesitos() {
 function iniciarHuesitos(escena) {
   escena.huesitosApuestas = 0;     // lo ganado (+) o perdido (−) en el rincón durante la partida
   escena.jefesDerrotados = 0;
+  escena.huesitosRecompensas = 0; // huesitos ganados por recompensas que ya estaban al máximo (v0.21)
   escena.huesitosCobrados = false; // true cuando ya se sumaron al total guardado
 }
 
@@ -84,6 +85,8 @@ function desgloseHuesitos(escena, victoria) {
     { nombre: 'Enemigos', cantidad: Math.floor(escena.derrotados / Math.max(1, H.ENEMIGOS_POR_HUESITO)) },
     { nombre: 'Desafíos', cantidad: (escena.desafiosCompletados || []).length * H.POR_DESAFIO },
     { nombre: 'Jefe', cantidad: (escena.jefesDerrotados || 0) * H.POR_JEFE },
+    // v0.21: recompensas que ya estaban al máximo (CONFIG.RECOMPENSAS.HUESOS_SI_MAXEADO)
+    { nombre: 'Recompensas', cantidad: escena.huesitosRecompensas || 0 },
     { nombre: 'Amanecer', cantidad: victoria ? H.BONUS_AMANECER : 0 }
   ];
   // Árbol de habilidades (Moneda en el suelo / Coleccionista): un % más de lo ganado (src/arbol.js)

@@ -19,7 +19,7 @@ const RAZAS = [
     fortalezas: 'Equilibrado y resistente (vigor de mestizo).',
     debilidades: 'No destaca en nada en particular.',
     poder: 'Calle',
-    poderTexto: 'Los enemigos siempre sueltan hueso y te curas un poco con el tiempo.'
+    poderTexto: 'Cuando un enemigo suelta huesos, no se pierde ninguno, y te curas un poco con el tiempo.'
   },
   {
     id: 'pitbull',

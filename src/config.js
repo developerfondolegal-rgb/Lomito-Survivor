@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.20';
+const VERSION_JUEGO = '0.21';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -31,7 +31,32 @@ const CONFIG = {
   //  La dificultad de cada mapa está en MAPAS (más abajo), en DIFICULTAD.
   // ---------------------------------------------------------------
   DIFICULTAD: {
-    MULTIPLICADOR_GLOBAL: 1.0
+    MULTIPLICADOR_GLOBAL: 1.0,
+    // v0.21: daño de los enemigos comunes (perro rival, manada, borracho, los de cada mapa, sus
+    // élites y los que llama el jefe). NO cuenta al jefe ni a los eventos (curao al volante y jauría).
+    // 1.3 = pegan 30% más · 1 = como antes de v0.21
+    DANIO_MOBS_COMUNES_MULT: 1.3
+  },
+
+  // ---------------------------------------------------------------
+  //  HUESOS (v0.21): cuándo sueltan huesos (la experiencia de la partida)
+  //  los enemigos al morir. Cuánta experiencia da cada hueso: HUESO_XP.
+  // ---------------------------------------------------------------
+  HUESOS: {
+    PROBABILIDAD_DROP: 0.35,    // probabilidad de que un enemigo común suelte sus huesos (0.35 = 35 de cada 100).
+                                // Después se aplica la de la raza (HUESO_PROBABILIDAD) a cada hueso, como antes.
+                                // Los jefes, los élites y los TIPOS_SIEMPRE sueltan siempre.
+    TIPOS_SIEMPRE: ['perrera']  // enemigos especiales que siempre sueltan sus huesos
+  },
+
+  // ---------------------------------------------------------------
+  //  RECOMPENSAS (v0.21): nunca se ofrece algo que ya está al máximo.
+  //  Si el objeto que caería (o el de un desafío) ya no sirve, o si al
+  //  subir de nivel ya no queda ningún instinto por mejorar, se ganan
+  //  huesitos de la partida en su lugar.
+  // ---------------------------------------------------------------
+  RECOMPENSAS: {
+    HUESOS_SI_MAXEADO: 25       // huesitos que se ganan en vez de una recompensa ya al máximo
   },
 
   MAPA_SEMILLA: 'lomito',       // cambia este texto para que las cosas salgan en otros lugares (todos los mapas)
@@ -162,7 +187,7 @@ const CONFIG = {
       MORDIDA_DANO: 10,
       MORDIDA_CADA_MS: 1000,
       RADIO: 20,
-      HUESO_PROBABILIDAD: 1,    // poder "Calle": los enemigos siempre sueltan hueso
+      HUESO_PROBABILIDAD: 1,    // poder "Calle": cuando un enemigo suelta huesos, no se pierde ninguno
       IMAN_EXTRA: 0,
       PODER: 'calle',
       PODER_ESPERA_MS: 0,

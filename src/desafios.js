@@ -329,9 +329,10 @@ function terminarDesafio(escena) {
 // Devuelve el texto de lo que ganó.
 function darRecompensaDesafio(escena) {
   if (Math.random() < CONFIG.DESAFIO_OBJETO_PROBABILIDAD) {
-    // Si el inventario está lleno, sube uno de los que ya tienes
-    const lleno = escena.inventario.length >= CONFIG.INVENTARIO_MAX;
-    const posibles = lleno ? escena.inventario.map((id) => buscarObjeto(id)) : OBJETOS;
+    // Solo objetos que todavía sirven (no al máximo y que quepan en el inventario).
+    // Si no queda ninguno, huesitos en vez del objeto (v0.21)
+    const posibles = escena.objetosUtiles();
+    if (posibles.length === 0) return '+' + escena.darHuesitosRecompensa() + ' huesitos';
     const objeto = Phaser.Math.RND.pick(posibles);
     const rareza = escena.sortearRareza(CONFIG.DESAFIO_RAREZA_MINIMA);
     if (objeto && escena.recogerObjeto(objeto.id, rareza)) {
