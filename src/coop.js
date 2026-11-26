@@ -66,6 +66,13 @@ function alternarCoop() {
   return true;
 }
 
+// Nombre de una tecla para Phaser: '2' -> 'TWO' (Phaser no entiende los números escritos así)
+function nombreTeclaPhaser(tecla) {
+  const numeros = ['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
+  const t = String(tecla);
+  return /^[0-9]$/.test(t) ? numeros[Number(t)] : t.toUpperCase();
+}
+
 // ---------------- Aviso de sesión (v0.26, lo usa MenuScene) ----------------
 // La ventana "¿Jugar sin guardar?" sale una sola vez por sesión del navegador
 const CLAVE_AVISO_SESION = 'lomitoSurvivor_avisoSesion';

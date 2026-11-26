@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.26';
+const VERSION_JUEGO = '0.26.1';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -80,7 +80,7 @@ const CONFIG = {
   // ---------------------------------------------------------------
   COOP: {
     ACTIVO: false,              // true = el juego empieza en cooperativo (si el dispositivo lo permite)
-    TECLA_MENU: 'C',            // tecla del menú que activa / desactiva el cooperativo (los números 1 a 4 eligen raza)
+    TECLA_MENU: '2',            // tecla del menú que activa / desactiva el cooperativo (v0.26.1: la raza se elige solo con clic)
     ZOOM_MIN: 0.7,              // lo más lejos que se aleja la cámara cuando los perros se separan (1 = sin zoom)
     ZOOM_SUAVIDAD: 0.06,        // qué tan rápido cambia el zoom (0.06 = suave; 1 = de golpe)
     CAMARA_SUAVIDAD: 0.1,       // qué tan rápido sigue la cámara al punto medio (igual que en 1 jugador)

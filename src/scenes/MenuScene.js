@@ -37,7 +37,8 @@ class MenuScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '48px', color: '#ffe082', fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    const como = modoTactil() ? 'toca una carta para empezar' : 'clic o teclas 1 a ' + this.listaRazas().length;
+    // v0.26.1: la raza se elige solo con clic / toque (la tecla 2 es para el cooperativo)
+    const como = modoTactil() ? 'toca una carta para empezar' : 'haz clic en una carta';
     this.add.text(w / 2, 95, 'Elige tu raza (' + como + ')', {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5);
@@ -89,11 +90,9 @@ class MenuScene extends Phaser.Scene {
     this.capaCoop = [];
     this.coopPermitidoAntes = coopPermitido();
     this.dibujarCoop();
-    this.teclaCoop = this.input.keyboard.addKey(CONFIG.COOP.TECLA_MENU);
+    this.teclaCoop = this.input.keyboard.addKey(nombreTeclaPhaser(CONFIG.COOP.TECLA_MENU));
     this.capaAvisoSesion = []; // ventana "¿Jugar sin guardar?" (v0.26)
 
-    const nombresTeclas = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
-    this.teclas = this.razas.map((_, i) => this.input.keyboard.addKey(nombresTeclas[i]));
     this.teclaAlbum = this.input.keyboard.addKey('A');
     this.teclaRincon = this.input.keyboard.addKey('B');
     this.teclaArbol = this.input.keyboard.addKey('G');
@@ -118,11 +117,11 @@ class MenuScene extends Phaser.Scene {
       return;
     }
     const activo = coopActivo();
-    const tecla = modoTactil() ? 'toca aquí' : CONFIG.COOP.TECLA_MENU;
+    const tecla = CONFIG.COOP.TECLA_MENU;
     const texto = activo
-      ? '👥 COOP: 2 jugadores (' + tecla + ' para quitar)\n' +
+      ? '👥 COOP: 2 jugadores (' + (modoTactil() ? 'toca aquí' : 'presiona ' + tecla) + ' para quitar)\n' +
         (modoTactil() ? 'P1: joystick · P2: control' : 'P1: WASD + Espacio · P2: flechas + Enter o control')
-      : '👤 1 jugador · ' + tecla + ' = COOP local (2 jugadores)';
+      : '👤 1 jugador · ' + (modoTactil() ? 'Toca aquí' : 'Presiona ' + tecla) + ' para COOP local';
     const t = this.add.text(x, y, texto, estilo(activo ? '#9ccc65' : '#b0bec5')).setInteractive({ useHandCursor: true });
     t.on('pointerdown', () => this.cambiarCoop());
     this.capaCoop.push(t);
@@ -215,14 +214,11 @@ class MenuScene extends Phaser.Scene {
     }
     // Con la ventana de sesión abierta solo funciona Esc (la cierra)
     if (this.capaAvisoSesion.length > 0) {
-      this.teclas.forEach((tecla) => Phaser.Input.Keyboard.JustDown(tecla));
+      Phaser.Input.Keyboard.JustDown(this.teclaCoop); // no se guarda para después
       if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey('ESC'))) this.cerrarAvisoSesion();
       return;
     }
     if (Phaser.Input.Keyboard.JustDown(this.teclaCoop)) this.cambiarCoop();
-    this.teclas.forEach((tecla, i) => {
-      if (Phaser.Input.Keyboard.JustDown(tecla)) this.elegir(i);
-    });
     if (Phaser.Input.Keyboard.JustDown(this.teclaAlbum)) this.scene.start('AlbumScene');
     if (Phaser.Input.Keyboard.JustDown(this.teclaRincon)) this.scene.start('ApuestasScene', { modo: 'fin' });
     if (Phaser.Input.Keyboard.JustDown(this.teclaArbol)) this.scene.start('ArbolScene');
@@ -288,9 +284,6 @@ class MenuScene extends Phaser.Scene {
       fondo.on('pointerout', () => fondo.setStrokeStyle(3, 0x888899));
       fondo.on('pointerdown', () => this.elegir(i));
 
-      this.add.text(cx - anchoCarta / 2 + 8, arriba + 6, '[' + (i + 1) + ']', {
-        fontFamily: FUENTE, fontSize: '15px', color: '#aaaaaa'
-      });
 
       // El perro corre en su lugar sobre la carta (sprites nuevos v0.23; si no, el dibujo viejo caminando)
       const perroCarta = dibujarPerro(this, cx, arriba + 38, raza.id);
