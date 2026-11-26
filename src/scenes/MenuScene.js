@@ -6,10 +6,15 @@
 
 const FUENTE = 'Arial, sans-serif';
 
-// Dibuja un perro en pixel art (los dibujos están en src/sprites.js).
-// Si la raza no tiene dibujo, usa uno por defecto pintado con su COLOR.
+// Dibuja un perro en pixel art. v0.23: las razas jugables usan los sprites
+// nuevos de 32 x 32 (src/razas_sprites.js, escala 2, empieza quieto: idle).
+// Si la raza no tiene sprite nuevo, usa el dibujo viejo (src/sprites.js) o
+// uno por defecto pintado con su COLOR.
 // La usan la pantalla de inicio y la escena de juego.
 function dibujarPerro(escena, x, y, razaId) {
+  crearSpritesRazas(escena);
+  const nueva = claveSpriteRaza(razaId);
+  if (nueva) return escena.add.sprite(x, y, nueva, 0).setScale(RAZAS_SPRITE_ESCALA).play(nueva + '_idle');
   const clave = claveSprite(razaId, SPRITE_PERRO_POR_DEFECTO);
   const perro = agregarSprite(escena, x, y, clave);
   if (clave !== razaId && CONFIG.RAZAS[razaId]) perro.setTint(CONFIG.RAZAS[razaId].COLOR);
@@ -219,8 +224,10 @@ class MenuScene extends Phaser.Scene {
         fontFamily: FUENTE, fontSize: '15px', color: '#aaaaaa'
       });
 
-      // El perro camina en su lugar sobre la carta
-      dibujarPerro(this, cx, arriba + 38, raza.id).play(claveSprite(raza.id, SPRITE_PERRO_POR_DEFECTO) + '_caminar');
+      // El perro corre en su lugar sobre la carta (sprites nuevos v0.23; si no, el dibujo viejo caminando)
+      const perroCarta = dibujarPerro(this, cx, arriba + 38, raza.id);
+      const animCarta = claveSpriteRaza(raza.id) ? claveSpriteRaza(raza.id) + '_correr' : claveSprite(raza.id, SPRITE_PERRO_POR_DEFECTO) + '_caminar';
+      if (this.anims.exists(animCarta)) perroCarta.play(animCarta);
 
       // Textos apilados uno debajo del otro
       let y = arriba + 68;

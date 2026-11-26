@@ -46,6 +46,9 @@ class GameScene extends Phaser.Scene {
     this.vida = this.vidaMax;
     this.tiempoSobrevivido = 0;   // reloj del juego en ms (se detiene en pausa)
     this.invulnerableHasta = 0;
+    this.vidaAnterior = undefined;  // v0.23: para mostrar el sprite de daño cuando baja la vida
+    this.danoVisualHasta = 0;       // sprite de daño hasta este momento
+    this.ataqueVisualHasta = 0;     // sprite de ataque hasta este momento
     this.sprintHasta = 0;
     this.atrapadoHasta = 0;       // la Perrera te deja quieto hasta este momento
     this.ultimaDireccion = new Phaser.Math.Vector2(1, 0);
@@ -643,7 +646,21 @@ class GameScene extends Phaser.Scene {
   moverPerro() {
     this.moverPerroSinAnimar();
     const v = this.perro.body.velocity;
-    animarCaminar(this.perro, v.x, v.y);
+    if (claveSpriteRaza(this.razaId)) {
+      // v0.23: sprites nuevos (src/razas_sprites.js). Daño: cuando baja la vida (cualquier golpe);
+      // ataque: al morder o ladrar
+      const ahora = this.tiempoSobrevivido;
+      if (this.vidaAnterior !== undefined && this.vida < this.vidaAnterior) this.danoVisualHasta = ahora + 250;
+      this.vidaAnterior = this.vida;
+      animarPerroRaza(this.perro, v.x, v.y, ahora < (this.danoVisualHasta || 0), ahora < (this.ataqueVisualHasta || 0));
+    } else {
+      animarCaminar(this.perro, v.x, v.y);
+    }
+  }
+
+  // Muestra el sprite de ataque un momento (mordida y ladrido)
+  marcarAtaqueVisual() {
+    this.ataqueVisualHasta = this.tiempoSobrevivido + 200;
   }
 
   moverPerroSinAnimar() {
@@ -1282,6 +1299,7 @@ class GameScene extends Phaser.Scene {
       .slice(0, cuantos)
       .map((o) => o.enemigo);
     if (lebrel && objetivos.length > 0) this.lebrelListo = false;
+    if (objetivos.length > 0) this.marcarAtaqueVisual();
     const berserker = this.enBerserker();
 
     objetivos.forEach((objetivo, i) => {
@@ -1363,6 +1381,7 @@ class GameScene extends Phaser.Scene {
   // opciones (opcional, para el Aullido de la manada del árbol): { radio, dano, huirMs, color }
   ladrar(opciones) {
     const op = opciones || {};
+    this.marcarAtaqueVisual();
     const radio = op.radio || this.radioLadrido();
     const dano = op.dano || this.danoLadrido();
 
