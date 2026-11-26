@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.24';
+const VERSION_JUEGO = '0.26';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -68,6 +68,30 @@ const CONFIG = {
   // ---------------------------------------------------------------
   RECOMPENSAS: {
     HUESOS_SI_MAXEADO: 25       // huesitos que se ganan en vez de una recompensa ya al máximo
+  },
+
+  // ---------------------------------------------------------------
+  //  COOP (v0.26): cooperativo local, dos perros en el mismo computador.
+  //  J1: WASD (+ Espacio para el Sprint). J2: flechas (+ Enter para el Sprint),
+  //  o un control (gamepad) si hay uno conectado.
+  //  Se activa en el menú con la tecla TECLA_MENU, o con ?coop=1 en la dirección.
+  //  En celular / tablet no se puede (salvo que haya un control conectado).
+  //  El código está en src/coop.js.
+  // ---------------------------------------------------------------
+  COOP: {
+    ACTIVO: false,              // true = el juego empieza en cooperativo (si el dispositivo lo permite)
+    TECLA_MENU: 'C',            // tecla del menú que activa / desactiva el cooperativo (los números 1 a 4 eligen raza)
+    ZOOM_MIN: 0.7,              // lo más lejos que se aleja la cámara cuando los perros se separan (1 = sin zoom)
+    ZOOM_SUAVIDAD: 0.06,        // qué tan rápido cambia el zoom (0.06 = suave; 1 = de golpe)
+    CAMARA_SUAVIDAD: 0.1,       // qué tan rápido sigue la cámara al punto medio (igual que en 1 jugador)
+    MARGEN_PANTALLA: 70,        // espacio que se deja entre cada perro y el borde de la pantalla (px)
+    DISTANCIA_MAX: 600,         // correa invisible: los perros no se separan más que esto (px).
+                                // Con ZOOM_MIN 0.7 se ven 771 px de alto: 600 + 2 × 70 de margen = 740, así
+                                // los dos quedan siempre en pantalla aunque se separen hacia arriba y abajo
+    SEPARACION_INICIO: 60,      // a qué distancia aparece J2 al lado de J1 al empezar
+    ZONA_MUERTA_CONTROL: 0.25,  // el palito del control no mueve al perro si se inclina menos que esto
+    COLOR_J1: 0xffe082,         // color del indicador "P1" (amarillo)
+    COLOR_J2: 0x4fc3f7          // color del indicador "P2" y de su barra de vida (celeste)
   },
 
   MAPA_SEMILLA: 'lomito',       // cambia este texto para que las cosas salgan en otros lugares (todos los mapas)

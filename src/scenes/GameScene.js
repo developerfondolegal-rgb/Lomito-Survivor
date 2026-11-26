@@ -195,6 +195,13 @@ class GameScene extends Phaser.Scene {
 
     // Ataques secundarios, evoluciones y el curao al volante (src/ataques.js)
     iniciarAtaques(this);
+
+    // Cooperativo local (src/coop.js): segundo perro y cámara compartida. En 1 jugador no hace nada.
+    iniciarCoop(this);
+    if (this.coop) {
+      actualizarCamaraCoop(this, true);
+      this.actualizarHUD();
+    }
   }
 
   update(time, delta) {
@@ -235,13 +242,7 @@ class GameScene extends Phaser.Scene {
 
     this.tiempoSobrevivido += delta;
 
-    // Cargar el poder (si tiene espera). No carga mientras está en sprint.
-    // Capa de superhéroe: se recarga más rápido
-    if (this.poderEsperaTotal > 0 && !this.enSprint()) {
-      // Árbol: Mandíbula ansiosa (Pitbull) y Pulmones de atleta (Galgo)
-      const rapidez = 1 + bonusColeccion('capa', 'RECARGA') + bonusArbol(this, 'MANDIBULA_RECARGA') + bonusArbol(this, 'SPRINT_RECARGA');
-      this.poderCarga = Math.min(this.poderEsperaTotal, this.poderCarga + delta * rapidez);
-    }
+    this.cargarPoder(delta);
 
     // Sprint del Galgo (no se puede si la Perrera lo atrapó)
     const sprintTactil = pidioSprintTactil(this); // botón SPRINT del celular (se lee siempre)
@@ -310,6 +311,7 @@ class GameScene extends Phaser.Scene {
     actualizarZonas(this);
 
     this.moverPerro();
+    if (this.coop) moverJugador2(this, delta); // J2 y la correa (src/coop.js)
     this.moverEnemigos();
     if (this.jefeVivo() && !this.amaneciendo) actualizarJefe(this, this.jefe);
     frenarEnemigosEnBarro(this);
@@ -354,11 +356,7 @@ class GameScene extends Phaser.Scene {
 
     // Mordida automática (no muerde en la Zona de miedo ni en el desafío "Sin morder")
     const puedeAtacar = this.puedeAtacar();
-    this.esperaMordida += delta;
-    if (this.esperaMordida >= this.intervaloMordida()) {
-      this.esperaMordida = puedeAtacar ? 0 : this.intervaloMordida();
-      if (puedeAtacar) this.morder();
-    }
+    this.mordidaAutomatica(delta, puedeAtacar);
 
     // Ladrido automático (solo si ya tiene el instinto; tampoco ladra si no puede atacar)
     if (this.instintos.ladrido > 0 && puedeAtacar) {
@@ -373,32 +371,39 @@ class GameScene extends Phaser.Scene {
     actualizarAtaques(this, delta, puedeAtacar);
 
     // Poder "Calle" (Quiltro): se cura un poco con el tiempo
-    if (this.poder === 'calle') {
-      this.esperaCura += delta;
-      if (this.esperaCura >= this.base.CALLE_CURA_CADA_MS / this.multiplicadorRegeneracion() / this.rapidezCalle()) {
-        this.esperaCura = 0;
-        this.vida = Math.min(this.vidaMax, this.vida + this.curaCalle());
-      }
-    }
+    if (!this.perro.caido) this.regenerarCalle(delta);
 
     // Mejoras especiales del árbol de habilidades (src/arbol.js)
     actualizarArbol(this, delta, puedeAtacar);
+
+    // Cooperativo (src/coop.js): mordida, poder y recoger cosas de J2
+    if (this.coop) {
+      actualizarJugador2(this, delta);
+      if (this.gameOver || this.eligiendo) return;
+    }
 
     // Poder "Rastreo" (Beagle): flechas a enemigos fuera de pantalla
     if (this.poder === 'rastreo') {
       this.dibujarFlechas();
     }
 
-    // Parpadeo mientras es invulnerable
+    // Parpadeo mientras es invulnerable (cooperativo: medio transparente si está caído)
     const invulnerable = this.tiempoSobrevivido < this.invulnerableHasta;
-    this.perro.setAlpha(invulnerable ? 0.5 : 1);
+    this.perro.setAlpha(this.perro.caido ? 0.45 : invulnerable ? 0.5 : 1);
+
+    // Cooperativo: cámara compartida e indicadores P1 / P2 (src/coop.js)
+    if (this.coop) {
+      actualizarCamaraCoop(this);
+      moverEtiquetasCoop(this);
+    }
 
     // La oscuridad baja al acercarse el amanecer; el jefe lleva su propia luz
     // (en celular se redibuja cada MOVIL.OSCURIDAD_CADA_CUADROS cuadros, para ir más fluido)
     const luces = this.jefeVivo() ? [this.jefe] : [];
     const cada = modoTactil() ? Math.max(1, CONFIG.MOVIL.OSCURIDAD_CADA_CUADROS) : 1;
     if (this.cuadro++ % cada === 0) {
-      actualizarOscuridad(this, this.oscuridad, this.plaza, this.perro, this.nivelOscuridad(), luces);
+      if (this.coop) actualizarOscuridadCoop(this, this.oscuridad, this.plaza, this.nivelOscuridad(), luces);
+      else actualizarOscuridad(this, this.oscuridad, this.plaza, this.perro, this.nivelOscuridad(), luces);
     }
     this.actualizarHUD();
   }
@@ -637,8 +642,38 @@ class GameScene extends Phaser.Scene {
   }
 
   // No puede atacar dentro de la Zona de miedo ni durante el desafío "Sin morder"
+  // (cooperativo: tampoco si el perro está caído)
   puedeAtacar() {
-    return !this.efectoZona.miedo && !desafioSinAtacar(this);
+    return !this.perro.caido && !this.efectoZona.miedo && !desafioSinAtacar(this);
+  }
+
+  // Cargar el poder (si tiene espera). No carga mientras está en sprint.
+  // Capa de superhéroe: se recarga más rápido
+  cargarPoder(delta) {
+    if (this.poderEsperaTotal > 0 && !this.enSprint()) {
+      // Árbol: Mandíbula ansiosa (Pitbull) y Pulmones de atleta (Galgo)
+      const rapidez = 1 + bonusColeccion('capa', 'RECARGA') + bonusArbol(this, 'MANDIBULA_RECARGA') + bonusArbol(this, 'SPRINT_RECARGA');
+      this.poderCarga = Math.min(this.poderEsperaTotal, this.poderCarga + delta * rapidez);
+    }
+  }
+
+  // Mordida automática cada intervaloMordida()
+  mordidaAutomatica(delta, puedeAtacar) {
+    this.esperaMordida += delta;
+    if (this.esperaMordida >= this.intervaloMordida()) {
+      this.esperaMordida = puedeAtacar ? 0 : this.intervaloMordida();
+      if (puedeAtacar) this.morder();
+    }
+  }
+
+  // Poder "Calle" (Quiltro): se cura un poco con el tiempo
+  regenerarCalle(delta) {
+    if (this.poder !== 'calle') return;
+    this.esperaCura += delta;
+    if (this.esperaCura >= this.base.CALLE_CURA_CADA_MS / this.multiplicadorRegeneracion() / this.rapidezCalle()) {
+      this.esperaCura = 0;
+      this.vida = Math.min(this.vidaMax, this.vida + this.curaCalle());
+    }
   }
 
   // ---------------- Movimiento ----------------
@@ -664,21 +699,18 @@ class GameScene extends Phaser.Scene {
   }
 
   moverPerroSinAnimar() {
-    let dx = 0;
-    let dy = 0;
-    if (this.cursors.left.isDown || this.wasd.A.isDown) dx -= 1;
-    if (this.cursors.right.isDown || this.wasd.D.isDown) dx += 1;
-    if (this.cursors.up.isDown || this.wasd.W.isDown) dy -= 1;
-    if (this.cursors.down.isDown || this.wasd.S.isDown) dy += 1;
-
-    // Joystick del celular (src/tactil.js): dirección e intensidad
-    let intensidad = 1;
-    const joy = direccionJoystick(this);
-    if (joy && dx === 0 && dy === 0) {
-      dx = joy.dx;
-      dy = joy.dy;
-      intensidad = joy.fuerza;
+    // Cooperativo: el perro caído no se mueve (la correa lo arrastra, src/coop.js)
+    if (this.perro.caido) {
+      this.perro.body.setVelocity(0, 0);
+      return;
     }
+
+    // Teclas y joystick del celular (src/coop.js). En 1 jugador: WASD, flechas
+    // y joystick, como siempre. En cooperativo: J1 WASD; J2 flechas o control.
+    const pedido = direccionJugador(this, this.controlJugador);
+    const dx = pedido.dx;
+    const dy = pedido.dy;
+    const intensidad = pedido.intensidad;
 
     if (dx !== 0 || dy !== 0) {
       this.ultimaDireccion.set(dx, dy).normalize();
@@ -743,7 +775,8 @@ class GameScene extends Phaser.Scene {
         enemigo.estado = 'acercarse';
       } else if (ahora < enemigo.huyendoHasta) {
         // Lo asustó el Aullido: corre alejándose del perro
-        const angulo = Phaser.Math.Angle.Between(this.perro.x, this.perro.y, enemigo.x, enemigo.y);
+        const perro = perroMasCercano(this, enemigo.x, enemigo.y);
+        const angulo = Phaser.Math.Angle.Between(perro.x, perro.y, enemigo.x, enemigo.y);
         enemigo.body.setVelocity(Math.cos(angulo) * enemigo.velocidad, Math.sin(angulo) * enemigo.velocidad);
         enemigo.estado = 'acercarse';
       } else if (cfg.COMPORTAMIENTO === 'zigzag') {
@@ -803,8 +836,10 @@ class GameScene extends Phaser.Scene {
 
   // Hacia dónde camina un enemigo: directo al perro, o de lado si está
   // rodeando un obstáculo que chocó hace poco
+  // (cooperativo: hacia el perro más cercano, src/coop.js)
   anguloHaciaPerro(enemigo, ahora) {
-    const directo = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, this.perro.x, this.perro.y);
+    const perro = perroMasCercano(this, enemigo.x, enemigo.y);
+    const directo = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, perro.x, perro.y);
     if (ahora >= enemigo.rodeandoHasta || !enemigo.rodeoObstaculo) return directo;
     const o = enemigo.rodeoObstaculo;
     return Phaser.Math.Angle.Between(o.x, o.y, enemigo.x, enemigo.y) + enemigo.rodeoLado * Math.PI / 2;
@@ -824,7 +859,8 @@ class GameScene extends Phaser.Scene {
 
     if (ahora >= enemigo.rodeandoHasta || enemigo.rodeoObstaculo !== zona) {
       const desde = Phaser.Math.Angle.Between(zona.x, zona.y, enemigo.x, enemigo.y);
-      const directo = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, this.perro.x, this.perro.y);
+      const perro = perroMasCercano(this, enemigo.x, enemigo.y);
+      const directo = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, perro.x, perro.y);
       enemigo.rodeoLado = Math.cos(desde + Math.PI / 2 - directo) >= Math.cos(desde - Math.PI / 2 - directo) ? 1 : -1;
       enemigo.rodeoInicio = ahora;
       enemigo.rodeoX = enemigo.x;
@@ -848,11 +884,12 @@ class GameScene extends Phaser.Scene {
     const cfg = enemigo.cfg;
 
     if (enemigo.estado === 'acercarse') {
-      const d = Phaser.Math.Distance.Between(enemigo.x, enemigo.y, this.perro.x, this.perro.y);
+      const perro = perroMasCercano(this, enemigo.x, enemigo.y);
+      const d = Phaser.Math.Distance.Between(enemigo.x, enemigo.y, perro.x, perro.y);
       if (d <= cfg.DISTANCIA_EMBESTIDA) {
         // Fija la dirección ahora: el perro puede esquivar moviéndose
         enemigo.estado = 'avisar';
-        enemigo.anguloEmbestida = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, this.perro.x, this.perro.y);
+        enemigo.anguloEmbestida = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, perro.x, perro.y);
         enemigo.estadoHasta = ahora + cfg.AVISO_MS;
         enemigo.body.setVelocity(0, 0);
       } else {
@@ -953,7 +990,10 @@ class GameScene extends Phaser.Scene {
     // Cosas fuera de la pantalla, las más cercanas primero
     const fueraDePantalla = (lista, maximo) => lista
       .filter((e) => e.active)
-      .map((e) => ({ sx: e.x - cam.scrollX, sy: e.y - cam.scrollY, d: Phaser.Math.Distance.Between(this.perro.x, this.perro.y, e.x, e.y) }))
+      .map((e) => { // posición en pantalla (con el zoom del cooperativo, src/coop.js)
+        const s = pantallaDesdeMundo(this, e.x, e.y);
+        return { sx: s.x, sy: s.y, d: Phaser.Math.Distance.Between(this.perro.x, this.perro.y, e.x, e.y) };
+      })
       .filter((p) => p.sx < 0 || p.sx > w || p.sy < 0 || p.sy > h)
       .sort((a, b) => a.d - b.d)
       .slice(0, maximo);
@@ -1478,7 +1518,8 @@ class GameScene extends Phaser.Scene {
       this.nivel++;
       this.nivelesPendientes++;
     }
-    if (this.nivelesPendientes > 0 && !this.eligiendo) {
+    // (cooperativo: si los juntó J2, las cartas se muestran al terminar su turno, src/coop.js)
+    if (this.nivelesPendientes > 0 && !this.eligiendo && !this.enJ2) {
       this.mostrarCartas();
     }
   }
@@ -2058,6 +2099,7 @@ class GameScene extends Phaser.Scene {
 
   recibirGolpe(perro, enemigo) {
     if (this.gameOver || this.eligiendo || this.pausado || this.amaneciendo) return; // al amanecer ya nadie ataca
+    if (this.perro.caido) return; // cooperativo: ya está caído (src/coop.js)
     if (this.enSprint()) return; // el Galgo no recibe daño ni lo atrapan durante el sprint
     if (this.agarre && this.agarre.enemigo === enemigo) return; // lo tiene sujeto en el hocico (Agarre de pitbull)
 
@@ -2123,6 +2165,8 @@ class GameScene extends Phaser.Scene {
 
   // victoria = true: sobreviviste la noche; si no, Game Over
   terminarJuego(victoria) {
+    // Cooperativo (src/coop.js): si cae un perro y el otro sigue de pie, la partida sigue
+    if (!victoria && caerJugadorCoop(this)) return;
     this.gameOver = true;
     this.avisosJefe.clear();
     dibujarBarraJefe(this, null);
@@ -2268,10 +2312,18 @@ class GameScene extends Phaser.Scene {
 
     if (this.partidaDePrueba) {
       poner('Partida de prueba (usaste teclas de prueba): no se envía al ranking', '#ffb74d');
+    } else if (this.coop) {
+      // v0.26: el ranking cooperativo llega en la parte 3 (así no se mezcla con el de 1 jugador)
+      poner('Partida cooperativa: todavía no va al ranking', '#b0bec5');
     } else if (!onlineDisponible()) {
       poner(TEXTO_SOLO_ONLINE, '#b0bec5');
     } else if (!ONLINE.usuario) {
-      poner('Entra con Google en el menú para aparecer en el ranking', '#b0bec5');
+      // v0.26: aviso llamativo y botón para entrar con Google
+      poner('⚠ Tu puntaje no se guardó. Inicia sesión para entrar al ranking', '#ffd54f');
+      const yb = texto.y + texto.height + 22;
+      botonPantalla(this, cx, yb, ancho, 34, 'Entrar con Google', 0x81d4fa, () => {
+        entrarConGoogle().catch((err) => avisoBreve(this, this.scale.width / 2, 470, 'No se pudo entrar: ' + mensajeError(err)).setScrollFactor(0));
+      }, 15).forEach((o) => fijo(o).setDepth(2002));
     } else if (!ONLINE.apodo) {
       poner('Elige tu apodo en el menú para aparecer en el ranking', '#b0bec5');
     } else {
@@ -2453,6 +2505,9 @@ class GameScene extends Phaser.Scene {
     this.textoTiempo.setText(horaDeLaNoche(this.tiempoSobrevivido));
     const fase = datosFase(Math.max(0, this.faseActual)).NOMBRE;
     this.textoFase.setText((fase ? fase + ' · ' : '') + this.formatearTiempo(this.tiempoSobrevivido));
+
+    // Cooperativo: barra de vida de J2 (src/coop.js)
+    if (this.coop) actualizarHUDCoop(this);
   }
 
   formatearTiempo(ms) {

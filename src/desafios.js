@@ -265,8 +265,9 @@ function dibujarFlechasDesafio(escena, d) {
   const cy = h / 2;
   const margen = 34;
   puntos.forEach((p) => {
-    const sx = p.x - cam.scrollX;
-    const sy = p.y - cam.scrollY;
+    const s = pantallaDesdeMundo(escena, p.x, p.y); // con el zoom del cooperativo (src/coop.js)
+    const sx = s.x;
+    const sy = s.y;
     if (sx >= 0 && sx <= w && sy >= 0 && sy <= h) return; // se ve en pantalla
     const dx = sx - cx;
     const dy = sy - cy;

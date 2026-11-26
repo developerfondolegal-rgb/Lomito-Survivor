@@ -599,6 +599,7 @@ function jauriaEnCamino(escena) {
 function golpearPerroEvento(escena, op) {
   const ahora = escena.tiempoSobrevivido;
   if (escena.gameOver || escena.amaneciendo) return 0;
+  if (escena.perro.caido) return 0; // cooperativo: ya está caído (src/coop.js)
   if (escena.enSprint()) { // Sprint del Galgo: pasa justo al lado sin tocarlo
     escena.textoFlotante('¡Esquivado por un pelo!', '#e1bee7');
     return 0;
@@ -640,8 +641,9 @@ function flechaEvento(g, escena, inicio, dir, color) {
   const h = escena.scale.height;
   const cam = escena.cameras.main;
   const m = 46 + margenExtra();
-  const sx = Phaser.Math.Clamp(inicio.x - cam.scrollX, m, w - m);
-  const sy = Phaser.Math.Clamp(inicio.y - cam.scrollY, m, h - m);
+  const s = pantallaDesdeMundo(escena, inicio.x, inicio.y); // con el zoom del cooperativo (src/coop.js)
+  const sx = Phaser.Math.Clamp(s.x, m, w - m);
+  const sy = Phaser.Math.Clamp(s.y, m, h - m);
   const ax = -dir.x;
   const ay = -dir.y;
   const px = -ay;
@@ -847,9 +849,16 @@ function atropellar(escena, cu, pos) {
   };
 
   // El perro (el Galgo es más difícil de atropellar)
-  if (!cu.golpeoPerro) {
+  // (cooperativo: también revisa a J2, con su propio "ya lo golpeó", src/coop.js)
+  const revisarPerro = () => {
+    if (cu[claveGolpeCoop(escena, 'golpeoPerro')]) return;
     const r = Math.max(4, escena.base.RADIO - (escena.poder === 'sprint' ? C.GALGO_MARGEN : 0));
     if (toca(escena.perro.x, escena.perro.y, r)) golpearPerroCurao(escena, cu, hx, hy, pos);
+  };
+  revisarPerro();
+  if (escena.gameOver) return;
+  if (escena.coop) {
+    conJugador2(escena, revisarPerro);
     if (escena.gameOver) return;
   }
 
@@ -887,7 +896,7 @@ function golpearPerroCurao(escena, cu, hx, hy, pos) {
   const ahora = escena.tiempoSobrevivido;
   if (escena.gameOver || escena.amaneciendo) return;
   if (!escena.enSprint() && ahora < escena.invulnerableHasta) return; // sigue pudiendo pegarle después
-  cu.golpeoPerro = true;
+  cu[claveGolpeCoop(escena, 'golpeoPerro')] = true;
 
   // Empujón: hacia adelante del auto y hacia el lado donde estaba el perro
   const lado = -(escena.perro.x - pos.x) * hy + (escena.perro.y - pos.y) * hx >= 0 ? 1 : -1;
@@ -1014,6 +1023,7 @@ function iniciarJauria(escena) {
     }));
   });
   escena.jauriaGolpeo = false; // pega una sola vez por jauría
+  escena.jauriaGolpeo2 = false; // (cooperativo: una vez a J2 también)
 
   mostrarTextoEvento(escena, 'textoJauria', carriles > 1 ? '¡Vienen ' + carriles + ' jaurías!' : TEXTO_JAURIA, 218, '#ffb74d');
   tocarLadridos(escena);
@@ -1066,10 +1076,15 @@ function avanzarJaurias(escena, delta) {
       const x = ja.inicio.x + ja.dir.x * s + ja.perp.x * l.lateral;
       const y = ja.inicio.y + ja.dir.y * s + ja.perp.y * l.lateral;
       l.sprite.setPosition(x, y);
-      // ¿Pilló al perro? (una vez por jauría)
-      if (!escena.jauriaGolpeo && Phaser.Math.Distance.Between(x, y, escena.perro.x, escena.perro.y) <= radioPerro + 14) {
-        golpearPerroJauria(escena, ja);
-      }
+      // ¿Pilló al perro? (una vez por jauría; cooperativo: también a J2, src/coop.js)
+      const revisarPerro = () => {
+        if (!escena[claveGolpeCoop(escena, 'jauriaGolpeo')] &&
+            Phaser.Math.Distance.Between(x, y, escena.perro.x, escena.perro.y) <= radioPerro + 14) {
+          golpearPerroJauria(escena, ja);
+        }
+      };
+      revisarPerro();
+      if (escena.coop && !escena.gameOver) conJugador2(escena, revisarPerro);
     });
     if (escena.gameOver || !escena.jaurias.includes(ja)) return;
 
@@ -1087,7 +1102,7 @@ function golpearPerroJauria(escena, ja) {
   const J = CONFIG.JAURIA;
   const ahora = escena.tiempoSobrevivido;
   if (!escena.enSprint() && ahora < escena.invulnerableHasta) return;
-  escena.jauriaGolpeo = true;
+  escena[claveGolpeCoop(escena, 'jauriaGolpeo')] = true;
   // Lo arrastran hacia adelante y lo tiran hacia el lado del carril donde estaba
   const lado = (escena.perro.x - ja.inicio.x) * ja.perp.x + (escena.perro.y - ja.inicio.y) * ja.perp.y >= 0 ? 1 : -1;
   const ex = ja.dir.x * 0.5 + ja.perp.x * lado;

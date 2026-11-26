@@ -118,7 +118,7 @@ function crearJefe(escena) {
 function actualizarJefe(escena, jefe) {
   const J = CONFIG.JEFE;
   const ahora = escena.tiempoSobrevivido;
-  const perro = escena.perro;
+  const perro = perroMasCercano(escena, jefe.x, jefe.y); // cooperativo: el más cercano (src/coop.js)
   const g = escena.avisosJefe;
   g.clear();
 

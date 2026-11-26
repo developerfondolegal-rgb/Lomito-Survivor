@@ -84,6 +84,14 @@ class MenuScene extends Phaser.Scene {
     });
     this.actualizarHuesitos();
 
+    // v0.26: cooperativo local (src/coop.js). En PC se activa con la tecla COOP.TECLA_MENU
+    // o tocando el texto; en celular sin control solo se avisa que existe en PC.
+    this.capaCoop = [];
+    this.coopPermitidoAntes = coopPermitido();
+    this.dibujarCoop();
+    this.teclaCoop = this.input.keyboard.addKey(CONFIG.COOP.TECLA_MENU);
+    this.capaAvisoSesion = []; // ventana "¿Jugar sin guardar?" (v0.26)
+
     const nombresTeclas = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
     this.teclas = this.razas.map((_, i) => this.input.keyboard.addKey(nombresTeclas[i]));
     this.teclaAlbum = this.input.keyboard.addKey('A');
@@ -94,11 +102,55 @@ class MenuScene extends Phaser.Scene {
     this.teclaApodo = this.input.keyboard.addKey('N'); // cambiar apodo (con sesión)
   }
 
+  // Línea del cooperativo, arriba a la izquierda debajo de los huesitos (v0.26)
+  dibujarCoop() {
+    this.capaCoop.forEach((o) => o.destroy());
+    this.capaCoop = [];
+    const x = 14 + this.margenExtra;
+    const y = 38 + this.margenExtra / 2;
+    const estilo = (color) => ({
+      fontFamily: FUENTE, fontSize: '13px', color, fontStyle: 'bold', stroke: '#000000', strokeThickness: 3,
+      wordWrap: { width: 250 }
+    });
+    if (!coopPermitido()) {
+      // Celular / tablet sin control: solo informativo (no hace nada al tocarlo)
+      this.capaCoop.push(this.add.text(x, y, '🎮 Jugar COOP local en PC (teclado o control)', estilo('#90caf9')));
+      return;
+    }
+    const activo = coopActivo();
+    const tecla = modoTactil() ? 'toca aquí' : CONFIG.COOP.TECLA_MENU;
+    const texto = activo
+      ? '👥 COOP: 2 jugadores (' + tecla + ' para quitar)\n' +
+        (modoTactil() ? 'P1: joystick · P2: control' : 'P1: WASD + Espacio · P2: flechas + Enter o control')
+      : '👤 1 jugador · ' + tecla + ' = COOP local (2 jugadores)';
+    const t = this.add.text(x, y, texto, estilo(activo ? '#9ccc65' : '#b0bec5')).setInteractive({ useHandCursor: true });
+    t.on('pointerdown', () => this.cambiarCoop());
+    this.capaCoop.push(t);
+  }
+
+  cambiarCoop() {
+    if (this.capaAvisoSesion.length > 0) return;
+    alternarCoop();
+    this.dibujarCoop();
+  }
+
+  // Aviso de cuenta: sin sesión el puntaje no se guarda (v0.26)
+  sinSesion() {
+    return onlineDisponible() && !ONLINE.cargando && !ONLINE.usuario;
+  }
+
   // Arriba a la derecha (en celular, debajo del botón de pantalla completa)
   dibujarCuenta() {
     this.capaCuenta.forEach((o) => o.destroy());
     this.capaCuenta = [];
     const capa = this.capaCuenta;
+
+    // v0.26: sin sesión, aviso llamativo arriba de las cartas de raza (donde se elige para jugar)
+    if (this.sinSesion()) {
+      capa.push(this.add.text(this.scale.width / 2, 117, '⚠ Inicia sesión con Google para guardar tu puntaje en el ranking', {
+        fontFamily: FUENTE, fontSize: '14px', color: '#ffd54f', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
+      }).setOrigin(0.5));
+    }
     const e = this.margenExtra;
     const derecha = this.scale.width - 10 - e;
     const ancho = 172;
@@ -151,7 +203,23 @@ class MenuScene extends Phaser.Scene {
     this.textoHuesitos.setText('Huesitos: ' + huesitosGuardados());
   }
 
-  update() {
+  update(time) {
+    // v0.26: si se conecta o desconecta un control, se actualiza la línea del cooperativo
+    if (!this.revisarControlEn || time >= this.revisarControlEn) {
+      this.revisarControlEn = time + 1000;
+      const permitido = coopPermitido();
+      if (permitido !== this.coopPermitidoAntes) {
+        this.coopPermitidoAntes = permitido;
+        this.dibujarCoop();
+      }
+    }
+    // Con la ventana de sesión abierta solo funciona Esc (la cierra)
+    if (this.capaAvisoSesion.length > 0) {
+      this.teclas.forEach((tecla) => Phaser.Input.Keyboard.JustDown(tecla));
+      if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey('ESC'))) this.cerrarAvisoSesion();
+      return;
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.teclaCoop)) this.cambiarCoop();
     this.teclas.forEach((tecla, i) => {
       if (Phaser.Input.Keyboard.JustDown(tecla)) this.elegir(i);
     });
@@ -253,7 +321,46 @@ class MenuScene extends Phaser.Scene {
 
   elegir(indice) {
     const raza = this.razas[indice];
-    if (!raza) return;
+    if (!raza || this.capaAvisoSesion.length > 0) return;
+    // v0.26: sin sesión, una vez por sesión del navegador se pregunta si quiere entrar con Google
+    if (this.sinSesion() && !avisoSesionYaVisto()) {
+      marcarAvisoSesionVisto();
+      this.mostrarAvisoSesion(raza);
+      return;
+    }
     this.scene.start('MapaScene', { raza: raza.id }); // después se elige el mapa (src/scenes/MapaScene.js)
+  }
+
+  // Ventana: "Iniciar sesión con Google" o "Jugar sin guardar" (v0.26)
+  mostrarAvisoSesion(raza) {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const capa = this.capaAvisoSesion;
+    const fondo = this.add.rectangle(w / 2, h / 2, w, h, 0x000000, 0.7).setInteractive(); // no deja tocar lo de atrás
+    capa.push(fondo);
+    const ancho = 520;
+    const alto = 210;
+    const g = this.add.graphics();
+    marcoPixel(g, w / 2 - ancho / 2, h / 2 - alto / 2, ancho, alto, 0xffd54f, 0x2b2333);
+    capa.push(g);
+    capa.push(this.add.text(w / 2, h / 2 - 70, '⚠ No has iniciado sesión', {
+      fontFamily: FUENTE, fontSize: '22px', color: '#ffd54f', fontStyle: 'bold'
+    }).setOrigin(0.5));
+    capa.push(this.add.text(w / 2, h / 2 - 28, 'Si juegas sin sesión, tu puntaje no se guarda en el ranking.', {
+      fontFamily: FUENTE, fontSize: '15px', color: '#ffffff', align: 'center', wordWrap: { width: ancho - 40 }
+    }).setOrigin(0.5));
+    capa.push(...botonPantalla(this, w / 2 - 125, h / 2 + 45, 230, 38, 'Iniciar sesión con Google', 0x81d4fa, () => {
+      entrarConGoogle().catch((err) => avisoBreve(this, w / 2, h / 2 + 120, 'No se pudo entrar: ' + mensajeError(err)));
+    }, 15));
+    capa.push(...botonPantalla(this, w / 2 + 125, h / 2 + 45, 230, 38, 'Jugar sin guardar', 0x9ccc65, () => {
+      this.cerrarAvisoSesion();
+      this.scene.start('MapaScene', { raza: raza.id });
+    }, 15));
+    capa.forEach((o) => o.setDepth(3000));
+  }
+
+  cerrarAvisoSesion() {
+    this.capaAvisoSesion.forEach((o) => o.destroy());
+    this.capaAvisoSesion = [];
   }
 }
