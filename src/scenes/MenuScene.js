@@ -38,8 +38,10 @@ class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // v0.26.1: la raza se elige solo con clic / toque (la tecla 2 es para el cooperativo)
-    const como = modoTactil() ? 'toca una carta para empezar' : 'haz clic en una carta';
-    this.add.text(w / 2, 95, 'Elige tu raza (' + como + ')', {
+    // v0.28: en cooperativo eligen los dos, primero J1 y después J2 (ver elegir)
+    this.razaJ1 = null;           // raza que ya eligió J1 (cooperativo)
+    this.marcasRaza = [];         // marcas "P1" / "P2" sobre las cartas
+    this.textoTitulo = this.add.text(w / 2, 95, '', {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
     }).setOrigin(0.5);
 
@@ -49,6 +51,7 @@ class MenuScene extends Phaser.Scene {
 
     this.crearCartas();
     this.crearBotonAlbum();
+    this.dibujarTitulo();
 
     // Botones de abajo: Álbum, Árbol y Rincón (dejan libre la esquina de la versión)
     const yBotones = this.scale.height - 26 - e / 2;
@@ -131,6 +134,46 @@ class MenuScene extends Phaser.Scene {
     if (this.capaAvisoSesion.length > 0) return;
     alternarCoop();
     this.dibujarCoop();
+    this.reiniciarEleccion(); // v0.28: si se apaga (o prende) a mitad de la elección, se empieza de nuevo
+  }
+
+  // v0.28: título de arriba de las cartas. 1 jugador: como siempre.
+  // Cooperativo: "Jugador 1 elige su raza" y después "Jugador 2 elige su raza"
+  dibujarTitulo() {
+    if (!coopActivo()) {
+      const como = modoTactil() ? 'toca una carta para empezar' : 'haz clic en una carta';
+      this.textoTitulo.setText('Elige tu raza (' + como + ')').setColor('#dddddd');
+      return;
+    }
+    const comoCoop = modoTactil() ? 'toca una carta' : 'haz clic en una carta';
+    if (!this.razaJ1) {
+      this.textoTitulo.setText('Jugador 1 elige su raza (' + comoCoop + ')').setColor(colorTextoJugador(1));
+    } else {
+      this.textoTitulo.setText('Jugador 2 elige su raza  ·  J1: ' + this.razaJ1.nombre)
+        .setColor(colorTextoJugador(2));
+    }
+  }
+
+  // v0.28: borra lo elegido y vuelve a "Jugador 1 elige" (o a 1 jugador)
+  reiniciarEleccion() {
+    this.razaJ1 = null;
+    this.marcasRaza.forEach((o) => o.destroy());
+    this.marcasRaza = [];
+    this.dibujarTitulo();
+  }
+
+  // v0.28: marco y "P1" / "P2" en la carta elegida (P1 a la izquierda, P2 a la derecha,
+  // así se ven las dos si eligen la misma raza)
+  marcarRaza(indice, n) {
+    const c = this.posCartas[indice];
+    const color = n === 2 ? CONFIG.COOP.COLOR_J2 : CONFIG.COOP.COLOR_J1;
+    const extra = n === 2 ? 16 : 8;
+    const marco = this.add.rectangle(c.x, c.y, c.ancho + extra, c.alto + extra).setStrokeStyle(4, color);
+    const lado = n === 2 ? 1 : -1;
+    const t = this.add.text(c.x + lado * (c.ancho / 2 - 8), c.arriba + 8, 'P' + n, {
+      fontFamily: FUENTE, fontSize: '18px', color: colorTextoJugador(n), fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(n === 2 ? 1 : 0, 0);
+    this.marcasRaza.push(marco, t);
   }
 
   // Aviso de cuenta: sin sesión el puntaje no se guarda (v0.26)
@@ -215,7 +258,10 @@ class MenuScene extends Phaser.Scene {
     // Con la ventana de sesión abierta solo funciona Esc (la cierra)
     if (this.capaAvisoSesion.length > 0) {
       Phaser.Input.Keyboard.JustDown(this.teclaCoop); // no se guarda para después
-      if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey('ESC'))) this.cerrarAvisoSesion();
+      if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey('ESC'))) {
+        this.cerrarAvisoSesion();
+        if (coopActivo()) this.reiniciarEleccion(); // cooperativo: se vuelve a elegir desde J1
+      }
       return;
     }
     if (Phaser.Input.Keyboard.JustDown(this.teclaCoop)) this.cambiarCoop();
@@ -272,10 +318,12 @@ class MenuScene extends Phaser.Scene {
     const arriba = 135;
     const inicioX = w / 2 - ((n - 1) * separacion) / 2;
     const anchoTexto = anchoCarta - 20;
+    this.posCartas = []; // v0.28: para marcar la raza elegida en cooperativo
 
     this.razas.forEach((raza, i) => {
       const cfg = CONFIG.RAZAS[raza.id];
       const cx = inicioX + i * separacion;
+      this.posCartas.push({ x: cx, y: arriba + altoCarta / 2, ancho: anchoCarta, alto: altoCarta, arriba });
 
       const fondo = this.add.rectangle(cx, arriba + altoCarta / 2, anchoCarta, altoCarta, 0x2b2b3a)
         .setStrokeStyle(3, 0x888899)
@@ -315,17 +363,32 @@ class MenuScene extends Phaser.Scene {
   elegir(indice) {
     const raza = this.razas[indice];
     if (!raza || this.capaAvisoSesion.length > 0) return;
+    let datos = { raza: raza.id };
+    // v0.28: cooperativo: el primer clic es la raza de J1; el segundo, la de J2
+    if (coopActivo()) {
+      if (!this.razaJ1) {
+        this.razaJ1 = raza;
+        this.marcarRaza(indice, 1);
+        this.dibujarTitulo();
+        return;
+      }
+      this.marcarRaza(indice, 2);
+      this.textoTitulo.setText('J1: ' + this.razaJ1.nombre + '  ·  J2: ' + raza.nombre).setColor('#9ccc65');
+      datos = { raza: this.razaJ1.id, razaJ2: raza.id };
+    }
     // v0.26: sin sesión, una vez por sesión del navegador se pregunta si quiere entrar con Google
+    // (cooperativo: sale una sola vez, después de que eligieron los dos)
     if (this.sinSesion() && !avisoSesionYaVisto()) {
       marcarAvisoSesionVisto();
-      this.mostrarAvisoSesion(raza);
+      this.mostrarAvisoSesion(datos);
       return;
     }
-    this.scene.start('MapaScene', { raza: raza.id }); // después se elige el mapa (src/scenes/MapaScene.js)
+    this.scene.start('MapaScene', datos); // después se elige el mapa (src/scenes/MapaScene.js)
   }
 
   // Ventana: "Iniciar sesión con Google" o "Jugar sin guardar" (v0.26)
-  mostrarAvisoSesion(raza) {
+  // datos: lo que recibe MapaScene ({ raza } o, en cooperativo, { raza, razaJ2 })
+  mostrarAvisoSesion(datos) {
     const w = this.scale.width;
     const h = this.scale.height;
     const capa = this.capaAvisoSesion;
@@ -347,7 +410,7 @@ class MenuScene extends Phaser.Scene {
     }, 15));
     capa.push(...botonPantalla(this, w / 2 + 125, h / 2 + 45, 230, 38, 'Jugar sin guardar', 0x9ccc65, () => {
       this.cerrarAvisoSesion();
-      this.scene.start('MapaScene', { raza: raza.id });
+      this.scene.start('MapaScene', datos);
     }, 15));
     capa.forEach((o) => o.setDepth(3000));
   }

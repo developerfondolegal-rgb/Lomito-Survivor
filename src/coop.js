@@ -9,6 +9,8 @@
 //    El nivel, la experiencia, los objetos y los huesitos son de los dos.
 //  - v0.27: un perro caído revive si su compañero se queda cerca un rato.
 //  - v0.27: con 2 jugadores los enemigos tienen más vida y aparecen más seguido.
+//  - v0.28 (parte 3): cada jugador elige su raza; cada perro tiene sus stats,
+//    su poder (con su propia carga) y el árbol de su raza.
 //  - Cámara compartida: sigue el punto medio y se aleja si se separan.
 //  - Correa invisible: no se pueden separar más que COOP.DISTANCIA_MAX.
 //  - Los enemigos persiguen al perro más cercano.
@@ -35,7 +37,9 @@ const COOP_CLAVES = [
   'cacasVolando', 'manchasCaca', 'charcos', 'meadaRecorrido', 'meadaUltimo', 'regeneracionResto',
   'nubesHedor', 'moscasHedor', 'radioHedorDibujado',
   'esperaCuraArbol', 'esperaTesoro', 'esperaAullido', 'sieteVidasUsada', 'muertesDueno',
-  'rastro', 'esperaHuella', 'esperaGolpeRastro', 'escudo', 'jaula', 'esperaCaracu', 'sinergiasActivas'
+  'rastro', 'esperaHuella', 'esperaGolpeRastro', 'escudo', 'jaula', 'esperaCaracu', 'sinergiasActivas',
+  // v0.28: la raza de cada perro (stats, poder y árbol)
+  'razaId', 'base', 'textosRaza', 'poder', 'poderEsperaTotal', 'arbol'
 ];
 
 // ¿El cooperativo está activado? (lo cambia la tecla del menú o ?coop=1)
@@ -180,12 +184,19 @@ function iniciarCoop(escena) {
   escena.teclaSprintJ2 = escena.input.keyboard.addKey('ENTER');
   escena.padJ2 = null;
 
-  // El segundo perro (misma raza que J1 por ahora), al lado de J1
+  // v0.28: la raza de J2 (la eligió en el menú; si no viene, la misma de J1)
+  const razaJ2 = CONFIG.RAZAS[escena.razaJ2] ? escena.razaJ2 : escena.razaId;
+  const base2 = CONFIG.RAZAS[razaJ2];
+  const arbol2 = efectosArbol(razaJ2);
+  const vidaMax2 = base2.VIDA + bonusColeccion('sweater', 'VIDA') + (arbol2.VIDA || 0); // igual que J1 en GameScene.create
+  const espera2 = base2.PODER_ESPERA_MS || 0;
+
+  // El segundo perro, al lado de J1
   const p1 = escena.perro;
-  const lugar = escena.plaza.buscarLibre(p1.x + C.SEPARACION_INICIO, p1.y, escena.base.RADIO + 10);
-  const p2 = dibujarPerro(escena, lugar.x, lugar.y, escena.razaId);
+  const lugar = escena.plaza.buscarLibre(p1.x + C.SEPARACION_INICIO, p1.y, base2.RADIO + 10);
+  const p2 = dibujarPerro(escena, lugar.x, lugar.y, razaJ2);
   escena.physics.add.existing(p2);
-  ponerChoqueCircular(p2, escena.base.RADIO);
+  ponerChoqueCircular(p2, base2.RADIO);
   p2.body.setCollideWorldBounds(true);
   p2.setDepth(10);
   escena.physics.add.collider(p2, escena.plaza.obstaculos);
@@ -198,9 +209,9 @@ function iniciarCoop(escena) {
   const instintos = {};
   INSTINTOS.forEach((inst) => { instintos[inst.id] = 0; });
   escena.jugador2 = {
-    perro: p2, vida: escena.vidaMax, vidaMax: escena.vidaMax, vidaAnterior: undefined,
+    perro: p2, vida: vidaMax2, vidaMax: vidaMax2, vidaAnterior: undefined,
     danoVisualHasta: 0, ataqueVisualHasta: 0, invulnerableHasta: 0, sprintHasta: 0, atrapadoHasta: 0,
-    ultimaDireccion: new Phaser.Math.Vector2(1, 0), poderCarga: escena.poderEsperaTotal,
+    ultimaDireccion: new Phaser.Math.Vector2(1, 0), poderCarga: espera2, // el poder empieza listo
     esperaMordida: 0, esperaLadrido: 0, esperaCura: 0, esperaAgua: 0, instintos, empujePerro: null,
     direccionSprint: new Phaser.Math.Vector2(1, 0), numeroSprint: 0, lebrelListo: false, cueroHasta: 0,
     controlJugador: 2, evoluciones: {}, fusiones: {}, mordidasOmitidas: 0,
@@ -213,7 +224,10 @@ function iniciarCoop(escena) {
     esperaCuraArbol: 0, esperaTesoro: 0, esperaAullido: 0, sieteVidasUsada: false, muertesDueno: 0,
     rastro: [], esperaHuella: 0, esperaGolpeRastro: 0,
     escudo: escena.add.graphics().setDepth(11), jaula: escena.add.graphics().setDepth(12),
-    esperaCaracu: 0, sinergiasActivas: {}
+    esperaCaracu: 0, sinergiasActivas: {},
+    // v0.28: su raza, su poder y el árbol de su raza
+    razaId: razaJ2, base: base2, textosRaza: RAZAS.find((r) => r.id === razaJ2) || { nombre: razaJ2, poder: '' },
+    poder: base2.PODER || '', poderEsperaTotal: espera2, arbol: arbol2
   };
   escena.enJ2 = false;
   escena.turnoCartas = 1;       // v0.27: quién elige la próxima carta (1 o 2)
@@ -235,10 +249,14 @@ function iniciarCoop(escena) {
   escena.textoVidaJ2 = escena.add.text(0, 0, '', {
     fontFamily: FUENTE, fontSize: '14px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
   }).setOrigin(0.5).setScrollFactor(0).setDepth(1001);
-  escena.textoNombreJ2 = escena.add.text(0, 0, 'P2', {
+  // v0.28: quién es y qué raza ("P2 · Galgo"), y la carga de su poder debajo de la barra
+  escena.textoNombreJ2 = escena.add.text(0, 0, 'P2 · ' + escena.jugador2.textosRaza.nombre, {
     fontFamily: FUENTE, fontSize: '15px', color: '#4fc3f7', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
   }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(1001);
-  escena.textoNombreJ1 = escena.add.text(escena.margenHud + 204, 57 + escena.margenHudExtra, 'P1', {
+  escena.textoPoderJ2 = escena.add.text(0, 0, '', {
+    fontFamily: FUENTE, fontSize: '13px', color: '#bbbbbb', stroke: '#000000', strokeThickness: 3
+  }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(1001);
+  escena.textoNombreJ1 = escena.add.text(escena.margenHud + 204, 57 + escena.margenHudExtra, 'P1 · ' + escena.textosRaza.nombre, {
     fontFamily: FUENTE, fontSize: '15px', color: '#ffe082', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
   }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(1001);
 
@@ -526,15 +544,50 @@ function actualizarHUDCoop(escena) {
   escena.textoVidaJ2.setPosition(x + ancho / 2, y + alto / 2)
     .setText(j2.perro.caido ? 'caído' : Math.round(j2.vida) + ' / ' + j2.vidaMax);
   escena.textoNombreJ2.setPosition(x - 6, y + alto / 2);
+
+  // v0.28: poder de J2 debajo de su barra (carga si tiene espera; si no, "pasivo")
+  const yp = y + alto + 6;
+  const nombrePoder = String(j2.textosRaza.poder || '').replace(/\s*\[[^\]]*\]/g, '');
+  if (j2.poderEsperaTotal > 0) {
+    const carga = Math.min(1, j2.poderCarga / j2.poderEsperaTotal);
+    const listo = j2.poderCarga >= j2.poderEsperaTotal;
+    g.fillStyle(0x000000, 0.6);
+    g.fillRect(x, yp, ancho, 8);
+    g.fillStyle(listo && !j2.perro.caido ? COLOR_HUESO : 0x9e9e9e, 1);
+    g.fillRect(x, yp, ancho * carga, 8);
+    g.lineStyle(1, COLOR_BLANCO, 0.6);
+    g.strokeRect(x, yp, ancho, 8);
+    const tecla = j2.poder === 'sprint' ? ' [Enter]' : '';
+    const estado = listo ? '¡Listo!' + tecla : ((j2.poderEsperaTotal - j2.poderCarga) / 1000).toFixed(1) + ' s';
+    escena.textoPoderJ2.setPosition(x - 6, yp + 4).setText(nombrePoder + ': ' + estado)
+      .setColor(listo ? '#ffe082' : '#bbbbbb');
+  } else {
+    escena.textoPoderJ2.setPosition(x + ancho, yp + 6).setText(nombrePoder ? nombrePoder + ' (pasivo)' : '')
+      .setColor('#ffe082');
+  }
+}
+
+// v0.28: flechas del Rastreo en cooperativo: las dibuja cada perro que sea Beagle
+// (lo llama GameScene.update en vez de dibujarFlechas)
+function dibujarFlechasCoop(escena) {
+  escena.flechas.clear();
+  if (escena.poder === 'rastreo' && !escena.perro.caido) escena.dibujarFlechas(true);
+  const j2 = escena.jugador2;
+  if (j2 && j2.poder === 'rastreo' && !j2.perro.caido) conJugador2(escena, () => escena.dibujarFlechas(true));
+}
+
+// v0.28: radio de choque de la raza de un perro (0 = J1, 1 = J2), fuera del turno de J2
+function radioPerroCoop(escena, i) {
+  const estado = i === 0 ? escena : escena.jugador2;
+  return (estado && estado.base && estado.base.RADIO) || escena.base.RADIO;
 }
 
 // Indicadores sobre la cabeza (después de que la física movió a los perros)
 function moverEtiquetasCoop(escena) {
   if (!escena.jugador2) return;
   const [a, b] = escena.perrosCoop;
-  const arriba = escena.base.RADIO + 14;
-  escena.etiquetaJ1.setPosition(a.x, a.y - arriba).setAlpha(a.caido ? 0.5 : 1);
-  escena.etiquetaJ2.setPosition(b.x, b.y - arriba).setAlpha(b.caido ? 0.5 : 1);
+  escena.etiquetaJ1.setPosition(a.x, a.y - radioPerroCoop(escena, 0) - 14).setAlpha(a.caido ? 0.5 : 1);
+  escena.etiquetaJ2.setPosition(b.x, b.y - radioPerroCoop(escena, 1) - 14).setAlpha(b.caido ? 0.5 : 1);
 }
 
 // ---------------- Revivir (v0.27) ----------------
@@ -548,8 +601,8 @@ function actualizarRevivir(escena, delta) {
   const g = escena.capaRevivir;
   g.clear();
   const total = Math.max(1, C.REVIVIR_SEGUNDOS * 1000);
-  const arriba = escena.base.RADIO + 32;
   escena.perrosCoop.forEach((perro, i) => {
+    const arriba = radioPerroCoop(escena, i) + 32;
     const otro = escena.perrosCoop[1 - i];
     if (!perro.caido) {
       perro.progresoRevivir = 0;

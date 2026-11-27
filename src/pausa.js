@@ -65,7 +65,7 @@ function actualizarPausa(escena, pidioPausa) {
     cerrarPausa(escena);
   } else if (teclado.JustDown(escena.teclaR)) {
     salirDePausa(escena);
-    escena.scene.restart({ raza: escena.razaId, mapa: escena.mapaId });
+    escena.scene.restart(escena.datosReinicio()); // misma raza (o las dos en cooperativo)
   } else if (teclado.JustDown(escena.teclaM)) {
     salirDePausa(escena);
     escena.scene.start('MenuScene');
@@ -147,7 +147,7 @@ function dibujarPausa(escena) {
   botonPausa(escena, capa, w / 2 - 230, yb, 200, 'Continuar', () => cerrarPausa(escena));
   botonPausa(escena, capa, w / 2, yb, 200, modoTactil() ? 'Reiniciar' : 'Reiniciar (R)', () => {
     salirDePausa(escena);
-    escena.scene.restart({ raza: escena.razaId, mapa: escena.mapaId });
+    escena.scene.restart(escena.datosReinicio()); // misma raza (o las dos en cooperativo)
   });
   botonPausa(escena, capa, w / 2 + 230, yb, 200, modoTactil() ? 'Salir al menú' : 'Salir al menú (M)', () => {
     salirDePausa(escena);
@@ -381,11 +381,34 @@ function calcularStats(escena) {
 // Tarjetas de la pestaña Stats. Cada fila: { nombre, valor, detalle, color, apagado }
 function seccionesStats(escena) {
   const e = escena;
+  const deJ1 = seccionesPerroStats(e);
+  const partida = filasPartidaStats(e);
+
+  // Cooperativo (v0.28, src/coop.js): las tarjetas de J2 se arman con sus datos.
+  // Izquierda: J1 · Derecha: J2 y la partida (que es de los dos)
+  if (e.coop && e.jugador2 && !e.enJ2) {
+    const deJ2 = conJugador2(e, () => seccionesPerroStats(e));
+    const conNombre = (secs, n) => secs.map((sec) => ({ ...sec, titulo: 'P' + n + ' · ' + sec.titulo }));
+    return {
+      izquierda: conNombre(deJ1, 1),
+      derecha: conNombre(deJ2, 2).concat([{ titulo: 'Partida', color: '#90caf9', filas: partida }])
+    };
+  }
+
+  return {
+    izquierda: [deJ1[0]],
+    derecha: [deJ1[1], deJ1[2], { titulo: 'Partida', color: '#90caf9', filas: partida }]
+  };
+}
+
+// Tarjetas de un perro (el del turno en cooperativo): Perro, Ataques y Árbol de habilidades
+function seccionesPerroStats(escena) {
+  const e = escena;
   const stats = calcularStats(e);
 
   // Perro: raza, nivel, vida, velocidad, daño (y el resto de sus números)
   const perro = [
-    { nombre: 'Raza', valor: e.textosRaza.nombre, detalle: 'Poder: ' + sinTeclas(e.textosRaza.poder || 'ninguno') },
+    { nombre: 'Raza', valor: e.textosRaza.nombre, detalle: 'Poder: ' + sinTeclas(textoPoderStats(e)) },
     { nombre: 'Nivel', valor: String(e.nivel), detalle: numeroPausa(e.xp) + ' / ' + e.xpParaSubir() + ' huesos para el siguiente' }
   ].concat(stats.map((st) => ({ nombre: st.nombre, valor: st.valor, detalle: st.partes.join('  ·  ') })));
 
@@ -419,6 +442,22 @@ function seccionesStats(escena) {
     arbol.push({ nombre: 'Sin mejoras', valor: '', detalle: 'Se compran con huesitos en el menú (Árbol)', apagado: true });
   }
 
+  return [
+    { titulo: e.coop ? 'Perro: ' + e.textosRaza.nombre : 'Perro', color: '#ffe082', filas: perro },
+    { titulo: 'Ataques', color: '#ffab40', filas: ataques },
+    { titulo: 'Árbol de habilidades', color: '#9ccc65', filas: arbol }
+  ];
+}
+
+// Nombre del poder con su tecla (cooperativo: J2 usa Enter en vez de Espacio)
+function textoPoderStats(escena) {
+  const texto = escena.textosRaza.poder || 'ninguno';
+  return escena.enJ2 ? texto.replace('[Espacio]', '[Enter]') : texto;
+}
+
+// Filas de la tarjeta "Partida" (es de los dos en cooperativo)
+function filasPartidaStats(escena) {
+  const e = escena;
   // Partida: tiempo, enemigos, huesitos y mapa
   const fase = datosFase(Math.max(0, e.faseActual)).NOMBRE;
   const partida = [
@@ -429,15 +468,8 @@ function seccionesStats(escena) {
     { nombre: 'Mapa', valor: buscarMapa(e.mapaId).nombre }
   ];
   if (e.jefeAparecido) partida.push({ nombre: NOMBRE_JEFE, valor: e.jefeDerrotado ? 'derrotado' : 'sigue vivo' });
-
-  return {
-    izquierda: [{ titulo: 'Perro', color: '#ffe082', filas: perro }],
-    derecha: [
-      { titulo: 'Ataques', color: '#ffab40', filas: ataques },
-      { titulo: 'Árbol de habilidades', color: '#9ccc65', filas: arbol },
-      { titulo: 'Partida', color: '#90caf9', filas: partida }
-    ]
-  };
+  if (e.coop) partida.push({ nombre: 'Objetos', valor: e.inventario.length + ' / ' + CONFIG.INVENTARIO_MAX, detalle: 'Los objetos son de los dos' });
+  return partida;
 }
 
 // Pestaña Stats: dos columnas de tarjetas. Cada texto se mide antes de poner

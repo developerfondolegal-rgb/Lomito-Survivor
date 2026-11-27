@@ -29,6 +29,21 @@ class GameScene extends Phaser.Scene {
     const id = datos && datos.raza;
     this.razaId = CONFIG.RAZAS[id] ? id : Object.keys(CONFIG.RAZAS)[0];
     this.mapaId = buscarMapa(datos && datos.mapa).id; // mapa actual (src/mapas.js)
+    // v0.28: raza de J2 en cooperativo (src/coop.js). Si no viene, la misma de J1
+    const id2 = datos && datos.razaJ2;
+    this.razaJ2 = CONFIG.RAZAS[id2] ? id2 : this.razaId;
+    // Al reiniciar, olvidar el cooperativo de la partida anterior: crearHUD corre antes
+    // que iniciarCoop y no debe tocar los textos de J2 que ya se borraron
+    this.coop = false;
+    this.jugador2 = null;
+  }
+
+  // Datos para reiniciar con las mismas razas y el mismo mapa
+  // (en 1 jugador queda igual que antes: { raza, mapa })
+  datosReinicio() {
+    const datos = { raza: this.razaId, mapa: this.mapaId };
+    if (this.coop) datos.razaJ2 = this.razaJ2;
+    return datos;
   }
 
   create() {
@@ -209,7 +224,7 @@ class GameScene extends Phaser.Scene {
 
     if (this.gameOver) {
       if (Phaser.Input.Keyboard.JustDown(this.teclaR)) {
-        this.scene.restart({ raza: this.razaId, mapa: this.mapaId }); // misma raza
+        this.scene.restart(this.datosReinicio()); // misma raza (o las dos en cooperativo)
       } else if (Phaser.Input.Keyboard.JustDown(this.teclaM)) {
         // Rincón de apuestas (src/scenes/ApuestasScene.js) y de ahí al inicio
         if (CONFIG.APUESTAS.EN_FIN_DE_PARTIDA) this.scene.start('ApuestasScene', { modo: 'fin' });
@@ -383,7 +398,10 @@ class GameScene extends Phaser.Scene {
     }
 
     // Poder "Rastreo" (Beagle): flechas a enemigos fuera de pantalla
-    if (this.poder === 'rastreo') {
+    // (cooperativo: las del perro que sea Beagle, src/coop.js)
+    if (this.coop) {
+      dibujarFlechasCoop(this);
+    } else if (this.poder === 'rastreo') {
       this.dibujarFlechas();
     }
 
@@ -989,9 +1007,10 @@ class GameScene extends Phaser.Scene {
 
   // ---------------- Rastreo (Beagle) ----------------
 
-  dibujarFlechas() {
+  // sinBorrar = true: no borra las flechas que ya están (cooperativo, src/coop.js)
+  dibujarFlechas(sinBorrar) {
     const g = this.flechas;
-    g.clear();
+    if (!sinBorrar) g.clear();
 
     const cam = this.cameras.main;
     const w = this.scale.width;
@@ -2253,7 +2272,7 @@ class GameScene extends Phaser.Scene {
       victoria
         ? { texto: '¡Sobreviviste la noche!', y: 62, tam: '50px', color: '#ffd54f', negrita: true }
         : { texto: 'Game Over', y: 62, tam: '60px', color: '#ff5555', negrita: true },
-      { texto: 'Raza: ' + this.textosRaza.nombre, y: 122, tam: '24px', color: '#ffe082' },
+      { texto: this.textoRazasFin(), y: 122, tam: '24px', color: '#ffe082' },
       { texto: 'Sobreviviste: ' + this.formatearTiempo(this.tiempoSobrevivido) + '     Nivel alcanzado: ' + this.nivel,
         y: 156, tam: '22px', color: '#ffffff' },
       { texto: 'Enemigos derrotados: ' + this.derrotados, y: 196, tam: '22px', color: '#ffffff', negrita: true }
@@ -2278,12 +2297,20 @@ class GameScene extends Phaser.Scene {
     });
     const fusiones = FUSIONES.filter((f) => this.fusiones[f.id]).map((f) => f.nombre)
       .concat(nombresEvoluciones(this).map((n) => '★ ' + n)); // evoluciones de ataque (src/ataques.js)
+    let textoFusiones = 'Fusiones: ' + (fusiones.length ? fusiones.join(' · ') : 'ninguna');
+    let hayFusiones = fusiones.length > 0;
+    if (this.coop) {
+      // v0.28: las fusiones y evoluciones de cada perro (los objetos son de los dos)
+      const deJ2 = nombresFusionesJ2(this);
+      const lista = (l) => (l.length ? l.join(' · ') : 'ninguna');
+      textoFusiones = 'Fusiones  P1: ' + lista(fusiones) + '   |   P2: ' + lista(deJ2);
+      hayFusiones = hayFusiones || deJ2.length > 0;
+    }
     y += 8;
-    lineas.push({ texto: 'Objetos: ' + (objetos.length ? objetos.join(' · ') : 'ninguno'),
+    lineas.push({ texto: (this.coop ? 'Objetos (de los dos): ' : 'Objetos: ') + (objetos.length ? objetos.join(' · ') : 'ninguno'),
       y, tam: '17px', color: '#90caf9', ancho: 900 });
     y += objetos.length > 3 ? 44 : 28;
-    lineas.push({ texto: 'Fusiones: ' + (fusiones.length ? fusiones.join(' · ') : 'ninguna'),
-      y, tam: '18px', color: '#ffd54f', negrita: fusiones.length > 0 });
+    lineas.push({ texto: textoFusiones, y, tam: '18px', color: '#ffd54f', negrita: hayFusiones, ancho: 900 });
     y += 26;
     const completados = this.desafiosCompletados.length;
     const ultras = this.ultrasPartida.length;
@@ -2322,7 +2349,7 @@ class GameScene extends Phaser.Scene {
     // Botones (se pueden tocar o clickear; también funcionan R y M)
     const tecla = (t) => (modoTactil() ? '' : ' (' + t + ')'); // en celular no se muestran las teclas
     const botones = [
-      { texto: 'Reiniciar' + tecla('R'), color: 0x9ccc65, accion: () => this.scene.restart({ raza: this.razaId, mapa: this.mapaId }) }
+      { texto: 'Reiniciar' + tecla('R'), color: 0x9ccc65, accion: () => this.scene.restart(this.datosReinicio()) }
     ];
     if (CONFIG.APUESTAS.EN_FIN_DE_PARTIDA) {
       botones.push({ texto: 'Rincón de apuestas' + tecla('M'), color: 0xf2d64b, accion: () => this.scene.start('ApuestasScene', { modo: 'fin' }) });
@@ -2365,7 +2392,7 @@ class GameScene extends Phaser.Scene {
     if (this.partidaDePrueba) {
       poner('Partida de prueba (usaste teclas de prueba): no se envía al ranking', '#ffb74d');
     } else if (this.coop) {
-      // v0.26: el ranking cooperativo llega en la parte 3 (así no se mezcla con el de 1 jugador)
+      // Cooperativo: no va al ranking (así no se mezcla con el de 1 jugador)
       poner('Partida cooperativa: todavía no va al ranking', '#b0bec5');
     } else if (!onlineDisponible()) {
       poner(TEXTO_SOLO_ONLINE, '#b0bec5');
@@ -2387,6 +2414,12 @@ class GameScene extends Phaser.Scene {
         })
         .catch((e) => poner('No se pudo enviar: ' + e.message, '#ef9a9a'));
     }
+  }
+
+  // Raza (o razas) para la pantalla final. Cooperativo (v0.28): "J1: Pitbull · J2: Galgo"
+  textoRazasFin() {
+    if (!this.coop || !this.jugador2) return 'Raza: ' + this.textosRaza.nombre;
+    return 'J1: ' + this.textosRaza.nombre + '  ·  J2: ' + this.jugador2.textosRaza.nombre;
   }
 
   // Tipos de enemigo con nombre (src/enemigos.js) y números (config.js)

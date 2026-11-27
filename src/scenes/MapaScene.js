@@ -16,6 +16,7 @@ class MapaScene extends Phaser.Scene {
   // Recibe la raza elegida en la pantalla de inicio
   init(datos) {
     this.razaId = (datos && datos.raza) || Object.keys(CONFIG.RAZAS)[0];
+    this.razaJ2 = (datos && datos.razaJ2) || null; // v0.28: raza de J2 (solo en cooperativo)
     this.avisoInicial = (datos && datos.aviso) || '';
   }
 
@@ -34,7 +35,11 @@ class MapaScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '36px', color: '#ffe082', fontStyle: 'bold'
     }).setOrigin(0.5);
     const como = modoTactil() ? 'toca un mapa para jugar' : '← → y Enter, clic o teclas 1 a ' + this.mapas.length;
-    this.add.text(w / 2, 70, (raza ? raza.nombre + '  ·  ' : '') + como, {
+    // v0.28: en cooperativo se muestran las dos razas ("J1: Pitbull · J2: Galgo")
+    const raza2 = this.razaJ2 && RAZAS.find((r) => r.id === this.razaJ2);
+    const razas = raza2 ? 'J1: ' + (raza ? raza.nombre : this.razaId) + '  ·  J2: ' + raza2.nombre + '  ·  '
+      : (raza ? raza.nombre + '  ·  ' : '');
+    this.add.text(w / 2, 70, razas + como, {
       fontFamily: FUENTE, fontSize: '16px', color: '#dddddd'
     }).setOrigin(0.5);
 
@@ -84,7 +89,7 @@ class MapaScene extends Phaser.Scene {
     if (J(this.teclaEsc)) this.scene.start('MenuScene');
     if (J(this.teclaU) && this.mapas.some((m) => !mapaDesbloqueado(m.id))) {
       desbloquearTodosPrueba();
-      this.scene.restart({ raza: this.razaId, aviso: 'Prueba: todos los mapas desbloqueados (no van al ranking)' });
+      this.scene.restart({ ...this.datosRazas(), aviso: 'Prueba: todos los mapas desbloqueados (no van al ranking)' });
       return;
     }
     this.teclas.forEach((t, i) => { if (J(t)) this.jugar(i); });
@@ -120,7 +125,12 @@ class MapaScene extends Phaser.Scene {
     }
     this.empezando = true;
     guardarMapaElegido(mapa.id);
-    this.scene.start('GameScene', { raza: this.razaId, mapa: mapa.id });
+    this.scene.start('GameScene', { ...this.datosRazas(), mapa: mapa.id });
+  }
+
+  // { raza } en 1 jugador; { raza, razaJ2 } en cooperativo (v0.28)
+  datosRazas() {
+    return this.razaJ2 ? { raza: this.razaId, razaJ2: this.razaJ2 } : { raza: this.razaId };
   }
 
   crearCartas() {
