@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.34';
+const VERSION_JUEGO = '0.35';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -224,7 +224,7 @@ const CONFIG = {
   //                      (1 = siempre, 0.75 = 3 de cada 4 veces)
   //  IMAN_EXTRA: alcance extra del imán de huesos
   //  PODER: qué poder especial usa ('calle', 'mandibula', 'sprint',
-  //         'rastreo' o '' para ninguno)
+  //         'rastreo', 'melena' o '' para ninguno)
   //  PODER_ESPERA_MS: tiempo de espera del poder (0 = poder pasivo)
   // ---------------------------------------------------------------
   RAZAS: {
@@ -289,6 +289,25 @@ const CONFIG = {
       PODER: 'rastreo',
       PODER_ESPERA_MS: 0,
       RASTREO_FLECHAS_MAX: 15   // máximo de flechas a enemigos fuera de pantalla
+    },
+
+    // Chow chow (v0.35): lento pero duro. Poder "Melena" (src/chowchow.js)
+    chowchow: {
+      COLOR: 0x1d1e27,          // negro azulado
+      VIDA: 115,
+      VELOCIDAD: 165,
+      MORDIDA_DANO: 14,
+      MORDIDA_CADA_MS: 1100,
+      RADIO: 24,
+      HUESO_PROBABILIDAD: 0.75,
+      IMAN_EXTRA: 0,
+      PODER: 'melena',
+      PODER_ESPERA_MS: 7000,    // el "Rugido" (misma tecla que el Sprint del Galgo) se recarga en 7 segundos
+      MELENA_MENOS_DANO: 0.06,  // pasivo: recibe 6% menos daño, siempre
+      RUGIDO_RADIO: 140,        // los enemigos a esta distancia (px) huyen...
+      RUGIDO_HUIR_MS: 1200,     // ...durante este tiempo
+      RUGIDO_DANO_JEFE: 10,     // el Jefe y El Tripa Seca no huyen: reciben este daño
+      RUGIDO_VOLUMEN: 0.09      // volumen del rugido (0 = sin sonido)
     }
   },
 
@@ -1411,8 +1430,39 @@ const CONFIG = {
                                                 // ESPECIAL "Aullido de la manada": cada 10 s aúlla: daña,
                                                 // empuja y hace huir a los enemigos cercanos
         ]
+      },
+      // v0.35 (src/chowchow.js)
+      chowchow: {
+        // Melena: menos daño y mejor Rugido
+        melena: [
+          { MELENA_MENOS_DANO: 0.04 },          // la Melena pasa de 6% a 10% menos daño
+          { RUGIDO_RECARGA: 0.2 },              // el rugido se recarga 20% más rápido
+          { NUBE_MS: 2000, NUBE_LENTITUD: 0.2 },// después de rugir, un aura de 2 s frena 20% a los enemigos
+          { RUGIDO_DANO: 18, MELENA_MENOS_DANO: 0.04 } // ESPECIAL "León de la plaza": el rugido hace 18 de daño
+                                                // y la Melena llega a 14% menos daño
+        ],
+        // Lengua: curarse y frenar a los humanos
+        lengua: [
+          { VIDA: 8, LENGUA_COMIDA: 0.25 },     // +8 de vida y la comida cura 25% más
+          { CURA_CADA_MS: 4000 },               // cura 1 de vida cada 4 s
+          { LENGUA_RADIO: 80, LENGUA_LENTITUD: 0.15 }, // humanos a menos de 80 px: 15% más lentos
+          { BOSTEZO_CADA_MS: 15000, BOSTEZO_RADIO: 100, BOSTEZO_ATURDIR_MS: 500 }
+                                                // ESPECIAL "Bostezo real": cada 15 s aturde 0,5 s a los
+                                                // enemigos a menos de 100 px
+        ],
+        // Majestad: vida, daño y quedarse quieto
+        majestad: [
+          { VIDA: 18 },
+          { DANO: 0.1 },
+          { QUIETO_DANO: 0.15, QUIETO_VELOCIDAD: 40 }, // +15% de daño si te mueves a menos de 40 px/s
+          { TRONO_QUIETO_MS: 2000, TRONO_ESCUDO: 25, TRONO_RECARGA_MS: 12000 }
+                                                // ESPECIAL "Trono": quieto 2 s = escudo de 25 (hasta moverte
+                                                // o que lo rompan). Recarga 12 s
+        ]
       }
-    }
+    },
+    // Lengua de intimidación (Chow chow): qué enemigos cuentan como "humanos"
+    LENGUA_HUMANOS: ['borracho', 'drogadicto', 'perrera', 'auxiliar', 'limpiavidrios', 'malandra', 'personalPerrera', 'tripaseca']
   },
 
   // ---------------------------------------------------------------

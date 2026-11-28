@@ -622,7 +622,13 @@ function golpearPerroEvento(escena, op) {
   if (escena.efectoZona.peligro) dano *= CONFIG.ZONAS.peligro.DANO_MULTIPLICADOR || 1;
   dano *= Math.max(0, 1 - escena.reduccionArbol());
   dano *= 1 - reduccionArmadura(escena); // Pelaje grueso (src/ataques_nuevos.js)
+  dano *= 1 - reduccionMelena(escena);   // v0.35: Melena del Chow chow (src/chowchow.js)
   dano = Math.max(1, Math.round(dano));
+  dano = absorberTrono(escena, dano);    // v0.35: escudo del Trono (Chow chow)
+  if (dano <= 0) {
+    escena.invulnerableHasta = ahora + op.invulnerableMs;
+    return 0;
+  }
 
   escena.vida = Math.max(0, escena.vida - dano);
   escena.invulnerableHasta = ahora + op.invulnerableMs;

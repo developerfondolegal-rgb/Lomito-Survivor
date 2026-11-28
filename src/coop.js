@@ -39,7 +39,9 @@ const COOP_CLAVES = [
   'esperaCuraArbol', 'esperaTesoro', 'esperaAullido', 'sieteVidasUsada', 'muertesDueno',
   'rastro', 'esperaHuella', 'esperaGolpeRastro', 'escudo', 'jaula', 'esperaCaracu', 'sinergiasActivas',
   // v0.28: la raza de cada perro (stats, poder y árbol)
-  'razaId', 'base', 'textosRaza', 'poder', 'poderEsperaTotal', 'arbol'
+  'razaId', 'base', 'textosRaza', 'poder', 'poderEsperaTotal', 'arbol',
+  // v0.35: Trono y Bostezo real del Chow chow (src/chowchow.js; las nubes de pelo son de los dos)
+  'tronoEscudo', 'tronoQuietoMs', 'tronoEspera', 'esperaBostezo', 'graficoChow'
 ];
 
 // ¿El cooperativo está activado? (lo cambia la tecla del menú o ?coop=1)
@@ -225,6 +227,7 @@ function iniciarCoop(escena) {
     rastro: [], esperaHuella: 0, esperaGolpeRastro: 0,
     escudo: escena.add.graphics().setDepth(11), jaula: escena.add.graphics().setDepth(12),
     esperaCaracu: 0, sinergiasActivas: {},
+    tronoEscudo: 0, tronoQuietoMs: 0, tronoEspera: 0, esperaBostezo: 0, graficoChow: null, // v0.35 (Chow chow)
     // v0.28: su raza, su poder y el árbol de su raza
     razaId: razaJ2, base: base2, textosRaza: RAZAS.find((r) => r.id === razaJ2) || { nombre: razaJ2, poder: '' },
     poder: base2.PODER || '', poderEsperaTotal: espera2, arbol: arbol2
@@ -338,6 +341,8 @@ function moverJugador2(escena, delta) {
     if (escena.poder === 'sprint' && pidio && escena.poderListo() && !escena.estaAtrapado() && !escena.perro.caido) {
       escena.iniciarSprint();
     }
+    // v0.35: Rugido del Chow chow (misma tecla que el Sprint: Enter o botón A)
+    if (escena.poder === 'melena' && pidio && escena.poderListo() && !escena.perro.caido) rugirChow(escena);
     escena.moverPerro();
   });
   aplicarCorrea(escena);
@@ -557,7 +562,7 @@ function actualizarHUDCoop(escena) {
     g.fillRect(x, yp, ancho * carga, 8);
     g.lineStyle(1, COLOR_BLANCO, 0.6);
     g.strokeRect(x, yp, ancho, 8);
-    const tecla = j2.poder === 'sprint' ? ' [Enter]' : '';
+    const tecla = j2.poder === 'sprint' || j2.poder === 'melena' ? ' [Enter]' : '';
     const estado = listo ? '¡Listo!' + tecla : ((j2.poderEsperaTotal - j2.poderCarga) / 1000).toFixed(1) + ' s';
     escena.textoPoderJ2.setPosition(x - 6, yp + 4).setText(nombrePoder + ': ' + estado)
       .setColor(listo ? '#ffe082' : '#bbbbbb');

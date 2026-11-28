@@ -23,7 +23,7 @@ class RankingScene extends Phaser.Scene {
     this.capaTabla = [];
     this.pedido = 0; // para ignorar respuestas viejas si cambias de filtro rápido
 
-    const teclas = ['ESC', 'L', 'LEFT', 'RIGHT', 'Q', 'E', 'R', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'];
+    const teclas = ['ESC', 'L', 'LEFT', 'RIGHT', 'Q', 'E', 'R', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'];
     this.teclas = {};
     teclas.forEach((t) => { this.teclas[t] = this.input.keyboard.addKey(t); });
 
@@ -63,7 +63,7 @@ class RankingScene extends Phaser.Scene {
     if (!onlineDisponible()) return;
     if (t('LEFT') || t('Q')) this.cambiarFiltro(this.filtro - 1);
     if (t('RIGHT') || t('E')) this.cambiarFiltro(this.filtro + 1);
-    ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'].forEach((nombre, i) => {
+    ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'].forEach((nombre, i) => {
       if (t(nombre) && i < this.filtros.length) this.cambiarFiltro(i);
     });
     if (t('R')) this.cargar();

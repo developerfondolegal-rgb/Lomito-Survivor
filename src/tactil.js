@@ -203,8 +203,9 @@ function crearControlesTactiles(escena) {
   };
   escena.tactil = t;
 
-  if (escena.poder === 'sprint') {
-    t.sprint = botonTactil(escena, 'SPRINT', 0xffe082, () => { escena.pidioSprint = true; });
+  // v0.35: el Chow chow usa el mismo botón para rugir ("RUGIR")
+  if (escena.poder === 'sprint' || escena.poder === 'melena') {
+    t.sprint = botonTactil(escena, escena.poder === 'melena' ? 'RUGIR' : 'SPRINT', 0xffe082, () => { escena.pidioSprint = true; });
     t.botones.push(t.sprint);
   }
   t.pausa = botonTactil(escena, 'II', 0xffffff, () => {

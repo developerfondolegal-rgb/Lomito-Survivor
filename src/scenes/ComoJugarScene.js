@@ -58,14 +58,16 @@ function cartasComoJugar(t) {
     },
     {
       titulo: 'Elige tu raza',
-      iconos: ['raza:quiltro', 'raza:pitbull', 'raza:galgo', 'raza:beagle'],
+      iconos: ['raza:quiltro', 'raza:pitbull', 'raza:galgo', 'raza:beagle', 'raza:chowchow'],
       lineas: [
         [(t ? 'Toca' : 'Haz clic en') + ' una carta para elegir. Después eliges el mapa.', blanco],
         ['Quiltro: equilibrado. "Calle" es pasivo: te curas de a poco.', amarillo],
         ['Pitbull: más vida y mordida fuerte, pero lento. La Mandíbula de hierro se carga sola ' +
           '(cada ' + (CONFIG.RAZAS.pitbull.PODER_ESPERA_MS / 1000) + ' s) y la siguiente mordida aturde.', amarillo],
         ['Galgo: rapidísimo pero frágil. Sprint con ' + (t ? 'el botón SPRINT' : 'Espacio') + '.', amarillo],
-        ['Beagle: atrae huesos desde lejos y marca con flechas a los enemigos que no se ven.', amarillo]
+        ['Beagle: atrae huesos desde lejos y marca con flechas a los enemigos que no se ven.', amarillo],
+        ['Chow chow: lento pero duro, recibe menos daño. Ruge con ' + (t ? 'el botón RUGIR' : 'Espacio') +
+          ' y los enemigos cercanos huyen.', amarillo]
       ]
     },
     {

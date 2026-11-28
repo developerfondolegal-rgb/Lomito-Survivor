@@ -131,6 +131,36 @@ const ARBOL_RAMAS = {
         { nombre: 'Aullido de la manada', texto: 'ESPECIAL: cada {AULLIDO_CADA_MSs} aúllas: {AULLIDO_DANO} de daño, empuja y hace huir a los enemigos cercanos.' }
       ]
     }
+  ],
+  // v0.35 (lo que hacen está en src/chowchow.js)
+  chowchow: [
+    {
+      id: 'melena', nombre: 'Melena', color: 0xffb74d, icono: 'melena',
+      nodos: [
+        { nombre: 'Subpelo de invierno', texto: 'La Melena quita +{MELENA_MENOS_DANO%} más de daño (10% en total).' },
+        { nombre: 'Sacudida de pelo', texto: 'El Rugido se recarga {RUGIDO_RECARGA%} más rápido.' },
+        { nombre: 'Nube de pelo', texto: 'Después de rugir queda un aura de {NUBE_MSs} que hace {NUBE_LENTITUD%} más lentos a los enemigos.' },
+        { nombre: 'León de la plaza', texto: 'ESPECIAL: el Rugido también hace {RUGIDO_DANO} de daño y la Melena llega a 14% menos daño.' }
+      ]
+    },
+    {
+      id: 'lengua', nombre: 'Lengua', color: 0x7986cb, icono: 'lengua',
+      nodos: [
+        { nombre: 'Lengua azul', texto: '+{VIDA} de vida máxima y la comida cura {LENGUA_COMIDA%} más.' },
+        { nombre: 'Lamida de cura', texto: 'Recupera 1 de vida cada {CURA_CADA_MSs}.' },
+        { nombre: 'Lengua de intimidación', texto: 'Los humanos a menos de {LENGUA_RADIO} px se mueven {LENGUA_LENTITUD%} más lento.' },
+        { nombre: 'Bostezo real', texto: 'ESPECIAL: cada {BOSTEZO_CADA_MSs} un bostezo aturde {BOSTEZO_ATURDIR_MSs} a los enemigos a menos de {BOSTEZO_RADIO} px.' }
+      ]
+    },
+    {
+      id: 'majestad', nombre: 'Majestad', color: 0xffd54f, icono: 'majestad',
+      nodos: [
+        { nombre: 'Cuerpo de león', texto: '+{VIDA} de vida máxima.' },
+        { nombre: 'Quijada pesada', texto: '+{DANO%} de daño de mordida.' },
+        { nombre: 'No corro, llego', texto: 'Si casi no te mueves (menos de {QUIETO_VELOCIDAD} px/s), haces +{QUIETO_DANO%} de daño.' },
+        { nombre: 'Trono', texto: 'ESPECIAL: quieto {TRONO_QUIETO_MSs} ganas un escudo de {TRONO_ESCUDO} de vida hasta que te mueves o lo rompen. Recarga {TRONO_RECARGA_MSs}.' }
+      ]
+    }
   ]
 };
 
@@ -397,6 +427,9 @@ function actualizarArbol(escena, delta, puedeAtacar) {
     });
   }
 
+  // v0.35: Trono y Bostezo real (Chow chow, src/chowchow.js)
+  actualizarChow(escena, delta, puedeAtacar);
+
   if (escena.amaneciendo) return;
 
   // Tesoro enterrado (Beagle): cada cierto tiempo, un objeto raro o mejor cerca
@@ -471,6 +504,12 @@ function partesArbolStats(escena) {
   if (A('FURIA_DANO')) p.push('+' + pct(A('FURIA_DANO')) + ' daño bajo ' + pct(A('FURIA_VIDA')) + ' vida');
   if (A('GRUPO_DANO')) p.push('+' + pct(A('GRUPO_DANO')) + ' daño por enemigo cerca');
   if (A('GRUPO_DEFENSA')) p.push('−' + pct(A('GRUPO_DEFENSA')) + ' daño por enemigo cerca');
+  // v0.35: Chow chow
+  if (A('RUGIDO_RECARGA')) p.push('rugido recarga +' + pct(A('RUGIDO_RECARGA')));
+  if (A('NUBE_MS')) p.push('nube de pelo ' + numeroArbol(A('NUBE_MS') / 1000) + ' s');
+  if (A('LENGUA_COMIDA')) p.push('comida +' + pct(A('LENGUA_COMIDA')));
+  if (A('LENGUA_RADIO')) p.push('humanos −' + pct(A('LENGUA_LENTITUD')) + ' velocidad cerca');
+  if (A('QUIETO_DANO')) p.push('+' + pct(A('QUIETO_DANO')) + ' daño casi quieto');
   // Especiales (4º nodo de cada rama)
   ramasDeRaza(escena.razaId).forEach((rama) => {
     if (nivelRama(escena.razaId, rama.id) >= ARBOL_NODOS) {
@@ -497,6 +536,9 @@ const ICONOS_ARBOL = {
   olfato: ['........', '.######.', '########', '##.##.##', '########', '.######.', '..####..', '........'],
   botin: ['........', '##....##', '########', '.######.', '.######.', '########', '##....##', '........'],
   manada: ['.#....#.', '###..###', '.#.##.#.', '..####..', '.######.', '.######.', '..####..', '........'],
+  melena: ['.#.##.#.', '#.####.#', '.######.', '##.##.##', '########', '.######.', '#.####.#', '.#.##.#.'],
+  lengua: ['........', '.######.', '##....##', '########', '..####..', '..####..', '..#..#..', '...##...'],
+  majestad: ['#..#..#.', '##.#.##.', '#######.', '#######.', '.#####..', '.#####..', '#######.', '........'],
   candado: ['..####..', '.#....#.', '.#....#.', '########', '###..###', '###..###', '########', '........'],
   estrella: ['...#....', '..###...', '#######.', '.#####..', '.##.##..', '#.....#.', '........', '........']
 };

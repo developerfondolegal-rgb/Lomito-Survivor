@@ -57,6 +57,7 @@ class GameScene extends Phaser.Scene {
     // Estado de la partida
     // (Sweater tejido a mano: los coleccionables guardados se aplican desde el inicio)
     iniciarArbol(this);           // árbol de habilidades de la raza (src/arbol.js)
+    iniciarChow(this);            // v0.35: Rugido, Trono y nubes de pelo del Chow chow (src/chowchow.js)
     this.vidaMax = this.base.VIDA + bonusColeccion('sweater', 'VIDA') + bonusArbol(this, 'VIDA');
     this.vida = this.vidaMax;
     this.tiempoSobrevivido = 0;   // reloj del juego en ms (se detiene en pausa)
@@ -276,6 +277,10 @@ class GameScene extends Phaser.Scene {
         this.poderListo() && !this.estaAtrapado()) {
       this.iniciarSprint();
     }
+    // v0.35: Rugido del Chow chow (la misma tecla / botón que el Sprint)
+    if (this.poder === 'melena' && pidioSprint && this.poderListo() && !this.perro.caido) {
+      rugirChow(this);
+    }
 
     // Modo de prueba: un enemigo de cada tipo cerca del perro
     if (Phaser.Input.Keyboard.JustDown(this.teclaT)) {
@@ -342,6 +347,7 @@ class GameScene extends Phaser.Scene {
     this.moverRedes(delta);       // v0.32: red del Personal de la Perrera
     if (this.jefeVivo() && !this.amaneciendo) actualizarJefe(this, this.jefe);
     frenarEnemigosEnBarro(this);
+    frenarEnemigosChow(this);     // v0.35: Nube de pelo y Lengua de intimidación (src/chowchow.js)
     this.moverHuesos(delta);
     this.aparecerComida(delta);
     this.comer();
@@ -610,6 +616,9 @@ class GameScene extends Phaser.Scene {
     let b = bonusArbol(this, 'DANO');
     if (bonusArbol(this, 'FURIA_DANO') && this.vida < this.vidaMax * bonusArbol(this, 'FURIA_VIDA')) b += bonusArbol(this, 'FURIA_DANO');
     if (bonusArbol(this, 'GRUPO_DANO')) b += bonusArbol(this, 'GRUPO_DANO') * enemigosCercaArbol(this);
+    // v0.35: No corro, llego (Chow chow): casi quieto, más daño
+    if (bonusArbol(this, 'QUIETO_DANO') && this.perro && this.perro.body &&
+        this.perro.body.velocity.length() < bonusArbol(this, 'QUIETO_VELOCIDAD')) b += bonusArbol(this, 'QUIETO_DANO');
     return b;
   }
 
@@ -679,7 +688,8 @@ class GameScene extends Phaser.Scene {
   cargarPoder(delta) {
     if (this.poderEsperaTotal > 0 && !this.enSprint()) {
       // Árbol: Mandíbula ansiosa (Pitbull) y Pulmones de atleta (Galgo)
-      const rapidez = 1 + bonusColeccion('capa', 'RECARGA') + bonusArbol(this, 'MANDIBULA_RECARGA') + bonusArbol(this, 'SPRINT_RECARGA');
+      const rapidez = 1 + bonusColeccion('capa', 'RECARGA') + bonusArbol(this, 'MANDIBULA_RECARGA') + bonusArbol(this, 'SPRINT_RECARGA') +
+        bonusArbol(this, 'RUGIDO_RECARGA'); // v0.35: Sacudida de pelo (Chow chow)
       this.poderCarga = Math.min(this.poderEsperaTotal, this.poderCarga + delta * rapidez);
     }
   }
@@ -2131,7 +2141,7 @@ class GameScene extends Phaser.Scene {
       if (Phaser.Math.Distance.Between(this.perro.x, this.perro.y, comida.x, comida.y) <= alcance) {
         comida.destroy();
         // Zapatilla perdida: cura más. Árbol (Estómago de fierro): cura un % más
-        const cura = (CONFIG.COMIDA_CURA + bonusColeccion('zapatilla', 'COMIDA_CURA')) * (1 + bonusArbol(this, 'COMIDA'));
+        const cura = (CONFIG.COMIDA_CURA + bonusColeccion('zapatilla', 'COMIDA_CURA')) * (1 + bonusArbol(this, 'COMIDA') + bonusArbol(this, 'LENGUA_COMIDA')); // v0.35: Lengua azul
         this.curar(Math.round(cura), '#9ccc65');
       }
     });
@@ -2716,7 +2726,14 @@ class GameScene extends Phaser.Scene {
     dano *= Math.max(0, 1 - this.reduccionArbol());
     if (enemigo.estado === 'embestir') dano *= Math.max(0, 1 - bonusArbol(this, 'INAMOVIBLE'));
     dano *= 1 - reduccionArmadura(this); // Pelaje grueso (src/ataques_nuevos.js)
+    dano *= 1 - reduccionMelena(this);   // v0.35: Melena del Chow chow (src/chowchow.js)
     dano = Math.max(1, Math.round(dano));
+    // v0.35: el escudo del Trono (Chow chow) se lleva el golpe primero
+    dano = absorberTrono(this, dano);
+    if (dano <= 0) {
+      this.invulnerableHasta = this.tiempoSobrevivido + CONFIG.PERRO_INVULNERABLE_MS;
+      return;
+    }
 
     this.vida = Math.max(0, this.vida - dano);
     this.invulnerableHasta = this.tiempoSobrevivido + CONFIG.PERRO_INVULNERABLE_MS;
@@ -3114,7 +3131,7 @@ class GameScene extends Phaser.Scene {
       this.barraPoder.strokeRect(m, yp, 140, 10);
 
       if (listo) {
-        this.textoPoder.setText(this.poder === 'sprint' ? sinTeclas('¡Listo! [Espacio]') : '¡Listo!');
+        this.textoPoder.setText(this.poder === 'sprint' || this.poder === 'melena' ? sinTeclas('¡Listo! [Espacio]') : '¡Listo!');
         this.textoPoder.setColor('#ffe082');
       } else {
         const faltan = (this.poderEsperaTotal - this.poderCarga) / 1000;

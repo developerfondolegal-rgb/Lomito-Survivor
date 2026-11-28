@@ -5,8 +5,8 @@
 //  RAZAS_SPRITES[raza] = { paleta, anims: { idle (4), correr (6), dano (1), ataque (2) } }
 //  Cada cuadro: 32 filas de 32 letras. "." = transparente; cada letra es un
 //  color de la paleta de ESA raza ("Z" = sombra del piso, semitransparente).
-//  Jugables hoy: quiltro, pitbull, galgo, beagle. chowchow y sharpei quedan
-//  listos para el futuro (todavía no se usan).
+//  Jugables hoy: quiltro, pitbull, galgo, beagle y (v0.35) chowchow. sharpei
+//  queda listo para el futuro (todavía no se usa).
 //  Las texturas y animaciones se crean con crearSpritesRazas (más abajo).
 // ===============================================================
 
@@ -2748,7 +2748,7 @@ const RAZAS_SPRITES = {
 // ---------------------------------------------------------------
 
 // Razas jugables que usan estos sprites (id de src/razas.js -> sprite de arriba)
-const RAZAS_SPRITE_DE = { quiltro: 'quiltro', pitbull: 'pitbull', galgo: 'galgo', beagle: 'beagle' };
+const RAZAS_SPRITE_DE = { quiltro: 'quiltro', pitbull: 'pitbull', galgo: 'galgo', beagle: 'beagle', chowchow: 'chowchow' };
 const RAZAS_SPRITE_ESCALA = 2;    // 32 x 32 agrandado 2 veces = 64 x 64 px en pantalla (nítido)
 const RAZAS_SPRITE_ANIMS = [      // nombre, cuadros por segundo, se repite
   ['idle', 6, -1],

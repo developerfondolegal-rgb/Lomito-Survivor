@@ -318,7 +318,8 @@ function calcularStats(escena) {
   if (arb('ESQUIVAR')) red.push('Árbol ' + pct(arb('ESQUIVAR')) + ' de esquivar');
   if (arb('INAMOVIBLE')) red.push('Inamovible −' + pct(arb('INAMOVIBLE')) + ' de embestidas, sin Perrera');
   if (inst('armadura')) red.push(nombreInstinto('armadura') + nvI('armadura') + ' −' + pct(reduccionArmadura(e)));
-  const reduccion = 1 - (1 - collar) * (1 - e.reduccionArbol()) * (1 - reduccionArmadura(e));
+  if (e.poder === 'melena') red.push('Melena −' + pct(reduccionMelena(e)) + (arb('MELENA_MENOS_DANO') ? ' (con árbol)' : '')); // v0.35
+  const reduccion = 1 - (1 - collar) * (1 - e.reduccionArbol()) * (1 - reduccionArmadura(e)) * (1 - reduccionMelena(e));
   stats.push({ nombre: 'Reducción de daño', valor: Math.round(reduccion * 100) + '%', partes: red });
 
   // Regeneración (curación con el tiempo)

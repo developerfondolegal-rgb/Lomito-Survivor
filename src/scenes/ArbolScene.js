@@ -8,7 +8,7 @@
 // Abajo de las ramas está "Colmillos afilados" (v0.22): mejora general para todas
 // las razas, por niveles (▼ desde la última mejora de una rama para elegirla).
 //
-// Teclado: ◄ ► rama · ▲ ▼ mejora · Q / E (o 1 a 4) raza · Enter o Espacio comprar
+// Teclado: ◄ ► rama · ▲ ▼ mejora · Q / E (o 1 a 5) raza · Enter o Espacio comprar
 //          R reiniciar el árbol de la raza · Esc o G volver
 
 const ARBOL_COMPRADO = 0xffd54f;   // borde de las mejoras compradas
@@ -33,7 +33,7 @@ class ArbolScene extends Phaser.Scene {
     this.razaIndice = Math.max(0, this.razas.findIndex((r) => r.id === this.razaPedida));
     this.elegirPrimerNodo();
 
-    const teclas = ['ESC', 'G', 'LEFT', 'RIGHT', 'UP', 'DOWN', 'Q', 'E', 'ENTER', 'SPACE', 'R', 'ONE', 'TWO', 'THREE', 'FOUR'];
+    const teclas = ['ESC', 'G', 'LEFT', 'RIGHT', 'UP', 'DOWN', 'Q', 'E', 'ENTER', 'SPACE', 'R', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'];
     this.teclas = {};
     teclas.forEach((t) => { this.teclas[t] = this.input.keyboard.addKey(t); });
 
@@ -53,7 +53,7 @@ class ArbolScene extends Phaser.Scene {
     if (t('ESC') || t('G')) { this.scene.start('MenuScene'); return; }
     if (t('Q')) this.cambiarRaza(-1);
     if (t('E')) this.cambiarRaza(1);
-    ['ONE', 'TWO', 'THREE', 'FOUR'].forEach((nombre, i) => {
+    ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'].forEach((nombre, i) => {
       if (t(nombre) && i < this.razas.length && i !== this.razaIndice) this.cambiarRaza(i - this.razaIndice);
     });
     if (t('LEFT')) this.moverSeleccion(-1, 0);
@@ -181,8 +181,9 @@ class ArbolScene extends Phaser.Scene {
     }
 
     // Pestañas de raza
-    const anchoP = 168;
-    const sepP = 176;
+    // v0.35: con 5 razas las pestañas se achican si no caben
+    const sepP = Math.min(176, (w - 2 * (14 + e)) / Math.max(1, this.razas.length));
+    const anchoP = sepP - 8;
     const yP = 70 + e / 2;
     const inicioP = w / 2 - ((this.razas.length - 1) * sepP) / 2;
     this.razas.forEach((r, i) => {
