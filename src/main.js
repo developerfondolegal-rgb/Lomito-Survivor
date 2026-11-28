@@ -1,4 +1,9 @@
 // Configuración principal del juego.
+
+// v0.28.1: con ?galeria=1 en la dirección se abre solo la galería de prueba de los
+// sprites nuevos (src/scenes/GaleriaScene.js). Sin eso, el juego arranca como siempre.
+const MODO_GALERIA = /[?&]galeria=1(&|$)/.test(window.location.search);
+
 const config = {
   type: Phaser.AUTO,
   parent: 'game',
@@ -21,7 +26,9 @@ const config = {
     activePointers: 3
   },
   disableContextMenu: true,
-  scene: [BienvenidaScene, MenuScene, MapaScene, GameScene, AlbumScene, ApuestasScene, ArbolScene, RankingScene] // la primera de la lista es la que se muestra al abrir
+  scene: MODO_GALERIA
+    ? [GaleriaScene] // galería de prueba (no es una partida)
+    : [BienvenidaScene, MenuScene, MapaScene, GameScene, AlbumScene, ApuestasScene, ArbolScene, RankingScene] // la primera de la lista es la que se muestra al abrir
 };
 
 const game = new Phaser.Game(config);
