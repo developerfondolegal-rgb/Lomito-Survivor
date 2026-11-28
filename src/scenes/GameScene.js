@@ -882,7 +882,8 @@ class GameScene extends Phaser.Scene {
         } else {
           animarSpriteNuevo(enemigo, empujado ? 0 : v.x, empujado ? 0 : v.y, {
             dano,
-            ataque: !avisoSinAnim && (enemigo.estado === 'avisar' || enemigo.estado === 'embestir' || enemigo.estado === 'atacar')
+            ataque: (!avisoSinAnim && (enemigo.estado === 'avisar' || enemigo.estado === 'embestir' || enemigo.estado === 'atacar')) ||
+              ahora < (enemigo.ataqueAnimHasta || 0) // v0.39: golpe de contacto del Drogadicto
           });
         }
       } else if (ahora >= enemigo.empujadoHasta) {
@@ -2709,6 +2710,8 @@ class GameScene extends Phaser.Scene {
     if (!danoBase || danoBase <= 0) return;
     if (ahora < this.invulnerableHasta) return;
     if (this.efectoZona.segura) return; // Zona segura: no recibe daño
+    // v0.39: el Drogadicto juega 'ataque' un rato al pegarte (solo la animación)
+    if (cfg.ANIM_ATAQUE_MS) enemigo.ataqueAnimHasta = ahora + cfg.ANIM_ATAQUE_MS;
 
     // Antifaz: a veces esquiva el golpe
     // Árbol (Quiebre de cintura...): más probabilidad. Reflejos: el sprint queda listo

@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.38';
+const VERSION_JUEGO = '0.39';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -420,8 +420,12 @@ const CONFIG = {
     },
 
     // Drogadicto: se queda quieto, avisa y embiste rápido
+    // v0.39: dibujo nuevo (src/sprites_drogadicto.js), mismo comportamiento
+    // (el dibujo viejo sigue en src/sprites.js, 'drogadicto': para volver, borra la línea SPRITE)
     drogadicto: {
-      COLOR: 0x66bb6a,          // verde
+      COLOR: 0x66bb6a,          // verde (no se usa con el dibujo nuevo)
+      SPRITE: 'nuevo_drogadicto', // 32x32 a escala 2 (64 px), igual que el Borracho
+      ANIM_ATAQUE_MS: 300,      // al pegarte por contacto juega 'ataque' este rato (solo se ve)
       RADIO: 18,                // zona de choque del tamaño del dibujo (era 16)
       VIDA: 35,
       VELOCIDAD: 80,            // velocidad cuando se acerca caminando
