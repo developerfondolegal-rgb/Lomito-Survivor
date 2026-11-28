@@ -33,7 +33,6 @@ const SPRITES_NUEVOS = {
   nuevo_cuchilla: { nombre: 'El de la cuchilla (nombre provisional)', datos: () => (typeof CUCHILLA_SPRITE !== 'undefined' ? CUCHILLA_SPRITE : null) },
   nuevo_cuchilla_perro: { nombre: 'Perro de la cuchilla', datos: () => (typeof CUCHILLA_PERRO_SPRITE !== 'undefined' ? CUCHILLA_PERRO_SPRITE : null) },
   nuevo_tripa_seca: { nombre: 'Tripa seca', datos: () => (typeof TRIPA_SECA_SPRITE !== 'undefined' ? TRIPA_SECA_SPRITE : null) },
-  nuevo_cuico: { nombre: 'Cuico', datos: () => (typeof PERROS_NUEVOS_SPRITES !== 'undefined' ? PERROS_NUEVOS_SPRITES.cuico || null : null) },
   nuevo_pastor: { nombre: 'Pastor alemán', datos: () => (typeof PERROS_NUEVOS_SPRITES !== 'undefined' ? PERROS_NUEVOS_SPRITES.pastor || null : null) },
   nuevo_salchicha: { nombre: 'Salchicha', datos: () => (typeof PERROS_NUEVOS_SPRITES !== 'undefined' ? PERROS_NUEVOS_SPRITES.salchicha || null : null) },
   nuevo_gran_danes: { nombre: 'Gran danés', datos: () => (typeof PERROS_ARTISTA_SPRITES !== 'undefined' ? PERROS_ARTISTA_SPRITES.gran_danes || null : null) },
