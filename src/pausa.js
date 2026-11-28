@@ -23,6 +23,7 @@ function abrirPausa(escena) {
   escena.physics.pause();
   escena.anims.pauseAll();
   escena.tweens.pauseAll();       // también se detienen los avisos, destellos, etc.
+  musicaEnPausa(true);            // v0.42: la música baja a la mitad (src/musica.js)
   crearTexturasInstintos(escena);
 
   // Olvidar teclas presionadas antes de abrir (si no, actuarían al instante)
@@ -40,6 +41,7 @@ function cerrarPausa(escena) {
   escena.physics.resume();
   escena.anims.resumeAll();
   escena.tweens.resumeAll();
+  musicaEnPausa(false);           // v0.42: la música vuelve a su volumen
 }
 
 // Antes de reiniciar o volver al menú: dejar todo andando otra vez

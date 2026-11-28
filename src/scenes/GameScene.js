@@ -133,6 +133,11 @@ class GameScene extends Phaser.Scene {
     this.anims.resumeAll();
     this.tweens.resumeAll();      // por si venimos del menú de pausa
 
+    // v0.42: música del mapa (src/musica.js). Al salir de la partida (menú, reiniciar,
+    // apuestas) la escena se apaga y la música se va con un fade corto
+    musicaDeMapa(this, this.mapaId);
+    this.events.once('shutdown', () => pararMusica());
+
     // Mapa y cámara (el tamaño depende del mapa elegido: CONFIG.MAPAS en config.js)
     aplicarTamanoMapa(this.mapaId);
     this.physics.world.setBounds(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
@@ -2779,6 +2784,7 @@ class GameScene extends Phaser.Scene {
     // Cooperativo (src/coop.js): si cae un perro y el otro sigue de pie, la partida sigue
     if (!victoria && caerJugadorCoop(this)) return;
     this.gameOver = true;
+    pararMusica();                // v0.42: fade out de la música (src/musica.js)
     this.avisosJefe.clear();
     dibujarBarraJefe(this, null);
     dibujarBarraTripaSeca(this, null); // v0.33
@@ -3002,8 +3008,11 @@ class GameScene extends Phaser.Scene {
     this.textoNivel = this.add.text(this.scale.width / 2, 20 + e, '', { ...estilo, fontStyle: 'bold' })
       .setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
 
-    this.add.text(m, 20 + e, 'Lomito Survivor - v' + VERSION_JUEGO, estilo)
+    const textoVersion = this.add.text(m, 20 + e, 'Lomito Survivor - v' + VERSION_JUEGO, estilo)
       .setScrollFactor(0).setDepth(1000);
+    // v0.42: botón de la música (src/musica.js), a la derecha de la versión
+    botonMusica(this, m + textoVersion.width + 24, 31 + e, 26)
+      .forEach((o) => o.setScrollFactor(0).setDepth(1000));
     if (!modoTactil()) { // en celular está el botón de pausa
       this.add.text(12, this.scale.height - 10, 'P / Esc: pausa', { ...estilo, fontSize: '13px', color: '#9e9e9e' })
         .setOrigin(0, 1).setScrollFactor(0).setDepth(1000);

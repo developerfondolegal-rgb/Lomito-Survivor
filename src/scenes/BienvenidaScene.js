@@ -13,6 +13,11 @@ class BienvenidaScene extends Phaser.Scene {
     super('BienvenidaScene');
   }
 
+  // v0.42: música de La Plaza (src/musica.js). Si no carga, el juego sigue sin música
+  preload() {
+    cargarMusica(this);
+  }
+
   create() {
     const w = this.scale.width;
     const h = this.scale.height;

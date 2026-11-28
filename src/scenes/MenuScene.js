@@ -86,6 +86,9 @@ class MenuScene extends Phaser.Scene {
       }, 15);
     }
 
+    // v0.42: botón de la música (src/musica.js), abajo a la derecha, sobre la versión
+    botonMusica(this, w - 24 - e, this.scale.height - 50 - e);
+
     // Ranking online (src/scenes/RankingScene.js), abajo a la izquierda
     botonPantalla(this, 14 + e + 62, yBotones, 124, 34, 'Ranking' + (modoTactil() ? '' : ' (L)'),
       0x4fc3f7, () => this.scene.start('RankingScene'), 15);
