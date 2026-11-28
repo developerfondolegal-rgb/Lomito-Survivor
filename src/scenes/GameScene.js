@@ -107,6 +107,7 @@ class GameScene extends Phaser.Scene {
     this.esperaHuella = 0;
     this.esperaGolpeRastro = 0;
     this.rondaPrueba = 0;         // para que la tecla Y saque objetos distintos cada vez
+    this.aguasJabon = [];         // v0.30: chorros de agua jabonosa del limpiavidrios en el aire
 
     // La noche (src/noche.js) y el jefe final (src/jefe.js)
     this.faseActual = -1;         // -1 = todavía no se anuncia la primera fase
@@ -334,6 +335,7 @@ class GameScene extends Phaser.Scene {
     this.moverPerro();
     if (this.coop) moverJugador2(this, delta); // J2 y la correa (src/coop.js)
     this.moverEnemigos();
+    this.moverAguasJabon(delta);  // v0.30: agua jabonosa del limpiavidrios
     if (this.jefeVivo() && !this.amaneciendo) actualizarJefe(this, this.jefe);
     frenarEnemigosEnBarro(this);
     this.moverHuesos(delta);
@@ -763,7 +765,8 @@ class GameScene extends Phaser.Scene {
     }
 
     // En el barro se mueve más lento (src/zonas.js). Gorro de lana: menos lento
-    const barro = this.efectoZona.barro ? this.factorBarroPerro() : 1;
+    // v0.30: mojado por el agua jabonosa del limpiavidrios, también más lento
+    const barro = (this.efectoZona.barro ? this.factorBarroPerro() : 1) * this.factorMojado();
 
     // Durante el sprint va muy rápido en línea recta
     if (this.enSprint()) {
@@ -786,9 +789,16 @@ class GameScene extends Phaser.Scene {
     return Math.max(0, 1 - lentitud);
   }
 
+  // v0.30: el perro mojado (agua jabonosa del limpiavidrios) va más lento hasta perro.mojadoHasta
+  factorMojado() {
+    if (!(this.tiempoSobrevivido < (this.perro.mojadoHasta || 0))) return 1;
+    return Math.max(0, 1 - (CONFIG.ENEMIGOS.limpiavidrios.AGUA_LENTITUD || 0));
+  }
+
   moverEnemigos() {
     const ahora = this.tiempoSobrevivido;
     this.avisos.clear();
+    this.dibujarMojados(ahora);
 
     this.enemigos.getChildren().forEach((enemigo) => {
       const cfg = enemigo.cfg;
@@ -813,6 +823,10 @@ class GameScene extends Phaser.Scene {
         this.moverZigzag(enemigo, ahora);
       } else if (cfg.COMPORTAMIENTO === 'embestida') {
         avisando = this.moverEmbestida(enemigo, ahora);
+      } else if (cfg.COMPORTAMIENTO === 'limpiavidrios') {
+        avisando = this.moverLimpiavidrios(enemigo, ahora); // v0.30
+      } else if (cfg.COMPORTAMIENTO === 'perroJabon') {
+        this.moverPerroJabon(enemigo, ahora); // v0.30
       } else {
         // 'perseguir' y 'atrapar': van hacia el perro (rodeando obstáculos)
         this.moverHaciaPerro(enemigo, enemigo.velocidad, ahora);
@@ -823,9 +837,11 @@ class GameScene extends Phaser.Scene {
         // v0.29: dibujos nuevos: idle, caminar, ataque (aviso y embestida) y daño
         const v = enemigo.body.velocity;
         const empujado = ahora < enemigo.empujadoHasta;
+        // (v0.30: el limpiavidrios avisa parpadeando y recién al atacar juega 'ataque')
+        const avisoSinAnim = cfg.COMPORTAMIENTO === 'limpiavidrios' && enemigo.estado === 'avisar';
         animarSpriteNuevo(enemigo, empujado ? 0 : v.x, empujado ? 0 : v.y, {
           dano: ahora < enemigo.danoAnimHasta,
-          ataque: enemigo.estado === 'avisar' || enemigo.estado === 'embestir'
+          ataque: !avisoSinAnim && (enemigo.estado === 'avisar' || enemigo.estado === 'embestir' || enemigo.estado === 'atacar')
         });
       } else if (ahora >= enemigo.empujadoHasta) {
         const v = enemigo.body.velocity;
@@ -914,6 +930,198 @@ class GameScene extends Phaser.Scene {
     }
     enemigo.rodeoObstaculo = zona;
     enemigo.rodeandoHasta = ahora + CONFIG.RODEO_MS;
+  }
+
+  // ---------------- v0.30: Limpiavidrios y su perro ----------------
+
+  // Limpiavidrios: camina hacia el perro. De lejos se detiene y tira agua jabonosa;
+  // de cerca, avisa (arco que parpadea) y da un escobillazo en arco.
+  // Después de atacar queda quieto un momento y espera para volver a atacar.
+  // Devuelve true mientras está avisando.
+  moverLimpiavidrios(enemigo, ahora) {
+    const cfg = enemigo.cfg;
+
+    if (enemigo.estado === 'avisar') {
+      enemigo.body.setVelocity(0, 0);
+      const a = enemigo.anguloEmbestida;
+      if (enemigo.ataqueLimpia === 'escoba') {
+        const largo = enemigo.radio + cfg.ESCOBA_ALCANCE;
+        const medio = Phaser.Math.DegToRad(cfg.ESCOBA_ANGULO / 2);
+        this.avisos.fillStyle(COLOR_AVISO, 0.22);
+        this.avisos.slice(enemigo.x, enemigo.y, largo, a - medio, a + medio, false);
+        this.avisos.fillPath();
+        this.avisos.lineStyle(2, COLOR_AVISO, 0.7);
+        this.avisos.slice(enemigo.x, enemigo.y, largo, a - medio, a + medio, false);
+        this.avisos.strokePath();
+      } else {
+        this.avisos.lineStyle(3, 0xb3e5fc, 0.7);
+        this.avisos.lineBetween(enemigo.x, enemigo.y, enemigo.x + Math.cos(a) * 60, enemigo.y + Math.sin(a) * 60);
+      }
+      if (ahora >= enemigo.estadoHasta) {
+        if (enemigo.ataqueLimpia === 'escoba') {
+          this.escobillazo(enemigo);
+          enemigo.recargaHasta = ahora + cfg.ESCOBA_ESPERA_MS;
+        } else {
+          this.lanzarAguaJabon(enemigo, a);
+          enemigo.recargaHasta = ahora + cfg.AGUA_ESPERA_MS;
+        }
+        enemigo.estado = 'atacar';
+        enemigo.estadoHasta = ahora + cfg.ATAQUE_MS;
+      }
+      return true;
+    }
+
+    if (enemigo.estado === 'atacar') {
+      enemigo.body.setVelocity(0, 0);
+      if (ahora >= enemigo.estadoHasta) enemigo.estado = 'acercarse';
+      return false;
+    }
+
+    enemigo.estado = 'acercarse';
+    const perro = perroMasCercano(this, enemigo.x, enemigo.y);
+    const d = Phaser.Math.Distance.Between(enemigo.x, enemigo.y, perro.x, perro.y);
+    if (ahora >= enemigo.recargaHasta && !perro.caido && d <= cfg.AGUA_DISTANCIA_MAX) {
+      // Cerca: escobillazo. Lejos: agua. La dirección se fija ahora (el perro puede esquivar)
+      enemigo.ataqueLimpia = d <= cfg.ESCOBA_DISTANCIA ? 'escoba' : 'agua';
+      enemigo.estado = 'avisar';
+      enemigo.anguloEmbestida = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, perro.x, perro.y);
+      enemigo.estadoHasta = ahora + (enemigo.ataqueLimpia === 'escoba' ? cfg.ESCOBA_AVISO_MS : cfg.AGUA_AVISO_MS);
+      enemigo.body.setVelocity(0, 0);
+      return true;
+    }
+    this.moverHaciaPerro(enemigo, enemigo.velocidad, ahora);
+    return false;
+  }
+
+  // Escobillazo: daña a los perros dentro del arco (ESCOBA_ANGULO grados, ESCOBA_ALCANCE px)
+  escobillazo(enemigo) {
+    const cfg = enemigo.cfg;
+    const a = enemigo.anguloEmbestida;
+    const medio = Phaser.Math.DegToRad(cfg.ESCOBA_ANGULO / 2);
+    const largo = enemigo.radio + cfg.ESCOBA_ALCANCE;
+    // el golpe se ve un momento (arco blanco que se desvanece)
+    const g = this.add.graphics().setDepth(7);
+    g.fillStyle(0xffffff, 0.35);
+    g.slice(enemigo.x, enemigo.y, largo, a - medio, a + medio, false);
+    g.fillPath();
+    this.tweens.add({ targets: g, alpha: 0, duration: 200, onComplete: () => g.destroy() });
+    this.perrosEnJuego().forEach((perro) => {
+      if (perro.caido) return;
+      const r = perro.body ? perro.body.halfWidth : 16;
+      const d = Phaser.Math.Distance.Between(enemigo.x, enemigo.y, perro.x, perro.y);
+      const dif = Math.abs(Phaser.Math.Angle.Wrap(Phaser.Math.Angle.Between(enemigo.x, enemigo.y, perro.x, perro.y) - a));
+      if (d <= largo + r && dif <= medio) this.golpearPerro(perro, enemigo, cfg.ESCOBA_DANO);
+    });
+  }
+
+  // Tira un chorro corto de agua jabonosa en esa dirección (lo mueve moverAguasJabon)
+  lanzarAguaJabon(enemigo, angulo) {
+    const cfg = enemigo.cfg;
+    const x = enemigo.x + Math.cos(angulo) * enemigo.radio;
+    const y = enemigo.y + Math.sin(angulo) * enemigo.radio;
+    const g = this.add.circle(x, y, cfg.AGUA_RADIO * 0.7, 0xb3e5fc, 0.85).setStrokeStyle(2, 0xffffff, 0.9).setDepth(7);
+    this.aguasJabon.push({
+      g, x, y, cfg, dueno: enemigo, recorrido: 0,
+      vx: Math.cos(angulo) * cfg.AGUA_VELOCIDAD, vy: Math.sin(angulo) * cfg.AGUA_VELOCIDAD
+    });
+  }
+
+  // Mueve los chorros: si tocan un perro lo mojan (lento) y su perro lo embiste (combo).
+  // Se acaban al llegar a AGUA_ALCANCE o al chocar con un obstáculo.
+  moverAguasJabon(delta) {
+    if (this.aguasJabon.length === 0) return;
+    const dt = delta / 1000;
+    this.aguasJabon = this.aguasJabon.filter((agua) => {
+      const c = agua.cfg;
+      agua.x += agua.vx * dt;
+      agua.y += agua.vy * dt;
+      agua.recorrido += c.AGUA_VELOCIDAD * dt;
+      agua.g.setPosition(agua.x, agua.y);
+      const tocado = this.perrosEnJuego().find((perro) => !perro.caido &&
+        Phaser.Math.Distance.Between(agua.x, agua.y, perro.x, perro.y) <= c.AGUA_RADIO + (perro.body ? perro.body.halfWidth : 16));
+      if (tocado) {
+        if (this.mojarPerro(tocado, c)) this.comboPerroJabon(agua.dueno, tocado);
+      } else if (agua.recorrido < c.AGUA_ALCANCE && this.plaza.libre(agua.x, agua.y, 2)) {
+        return true;
+      }
+      // salpica y desaparece
+      this.tweens.add({ targets: agua.g, scale: 1.8, alpha: 0, duration: 220, onComplete: () => agua.g.destroy() });
+      return false;
+    });
+  }
+
+  // Deja mojado (lento) a ese perro. Devuelve true si lo mojó.
+  mojarPerro(perro, c) {
+    return this.conPerro(perro, () => {
+      if (this.perro.caido || this.enSprint() || this.amaneciendo) return false; // en el sprint no lo alcanzan
+      // Gorro de lana: menos rato mojado (igual que con el barro y la Perrera)
+      const ms = c.AGUA_LENTO_MS * Math.max(0, 1 - bonusColeccion('gorro', 'MENOS_LENTITUD'));
+      this.perro.mojadoHasta = this.tiempoSobrevivido + ms;
+      this.textoFlotante('¡Mojado!', '#b3e5fc');
+      return true;
+    });
+  }
+
+  // Combo: el agua del dueño mojó a un perro, y su perro lo embiste
+  comboPerroJabon(dueno, perro) {
+    const p = dueno && dueno.acompanante;
+    const ahora = this.tiempoSobrevivido;
+    if (!p || !p.active || ahora < p.aturdidoHasta || ahora < p.huyendoHasta || ahora < p.empujadoHasta) return;
+    p.estado = 'embestir';
+    p.anguloEmbestida = Phaser.Math.Angle.Between(p.x, p.y, perro.x, perro.y);
+    p.estadoHasta = ahora + p.cfg.COMBO_MS;
+  }
+
+  // Perro del limpiavidrios: persigue al perro. Embiste si el agua de su dueño te mojó.
+  // Si su dueño murió, se queda y corre más rápido (y se ve rojizo).
+  moverPerroJabon(enemigo, ahora) {
+    const cfg = enemigo.cfg;
+    if (enemigo.estado === 'embestir') {
+      if (ahora < enemigo.estadoHasta) {
+        const v = cfg.COMBO_VELOCIDAD;
+        enemigo.body.setVelocity(Math.cos(enemigo.anguloEmbestida) * v, Math.sin(enemigo.anguloEmbestida) * v);
+        return;
+      }
+      enemigo.estado = 'acercarse';
+    }
+    const conDueno = !!(enemigo.dueno && enemigo.dueno.active);
+    if (!conDueno && !enemigo.enojado) {
+      enemigo.enojado = true;
+      enemigo.tinteBase = 0xffa090;
+      enemigo.tinte = ''; // para que moverEnemigos le ponga el tinte nuevo
+    }
+    this.moverHaciaPerro(enemigo, enemigo.velocidad * (conDueno ? 1 : cfg.SIN_DUENO_VELOCIDAD_MULT), ahora);
+  }
+
+  // Charco celeste bajo el perro mientras está mojado
+  dibujarMojados(ahora) {
+    this.perrosEnJuego().forEach((perro) => {
+      if (!(ahora < (perro.mojadoHasta || 0)) || perro.caido) return;
+      this.avisos.fillStyle(0x81d4fa, 0.45);
+      this.avisos.fillEllipse(perro.x, perro.y + 14, 52, 18);
+    });
+  }
+
+  // Los perros de la partida (1 o 2 en cooperativo)
+  perrosEnJuego() {
+    return this.jugador2 && this.perrosCoop ? this.perrosCoop : [this.perro];
+  }
+
+  // Ejecuta fn() con las variables de ese perro (J1, o J2 en cooperativo: src/coop.js)
+  conPerro(perro, fn) {
+    return this.jugador2 && perro !== this.perro ? conJugador2(this, fn) : fn();
+  }
+
+  // Golpe de un ataque de enemigo (no de contacto) con un daño propio, por recibirGolpe
+  golpearPerro(perro, enemigo, dano) {
+    this.conPerro(perro, () => {
+      this.danoAtaqueEnemigo = dano;
+      try {
+        this.recibirGolpe(this.perro, enemigo);
+      } finally {
+        this.danoAtaqueEnemigo = undefined;
+      }
+    });
   }
 
   // Drogadicto: se acerca, se detiene avisando, embiste en línea recta y descansa.
@@ -1131,6 +1339,17 @@ class GameScene extends Phaser.Scene {
       const enemigo = this.crearEnemigo(tipo, x + ox, y + oy, ignorarLimite);
       if (enemigo) creados.push(enemigo);
     }
+    // v0.30: el limpiavidrios trae a su perro (ACOMPANANTE), al lado
+    if (cfg.ACOMPANANTE && CONFIG.ENEMIGOS[cfg.ACOMPANANTE]) {
+      creados.slice().forEach((dueno) => {
+        const lado = Math.random() < 0.5 ? -1 : 1;
+        const perro = this.crearEnemigo(cfg.ACOMPANANTE, dueno.x + lado * 44, dueno.y + 10, ignorarLimite);
+        if (!perro) return;
+        perro.dueno = dueno;
+        dueno.acompanante = perro;
+        creados.push(perro);
+      });
+    }
     return creados;
   }
 
@@ -1205,7 +1424,8 @@ class GameScene extends Phaser.Scene {
   // Modo de prueba (tecla T): un enemigo de cada tipo alrededor del perro.
   // Estos enemigos no sueltan huesos ni cuentan en el Game Over.
   modoPrueba() {
-    const tipos = Object.keys(CONFIG.ENEMIGOS).filter((id) => this.enemigoDelMapa(id));
+    // (v0.30: el perro del limpiavidrios sale con su dueño, no suelto)
+    const tipos = Object.keys(CONFIG.ENEMIGOS).filter((id) => this.enemigoDelMapa(id) && !CONFIG.ENEMIGOS[id].SOLO_CON_DUENO);
     tipos.forEach((tipo, i) => {
       const angulo = (i / tipos.length) * Math.PI * 2;
       const x = Phaser.Math.Clamp(this.perro.x + Math.cos(angulo) * 220, 20, CONFIG.MAPA_ANCHO - 20);
@@ -1219,7 +1439,7 @@ class GameScene extends Phaser.Scene {
   aparecerElite() {
     const segundos = this.tiempoSobrevivido / 1000;
     const tipos = Object.keys(CONFIG.ENEMIGOS).filter((id) =>
-      this.enemigoDelMapa(id) && segundos >= (CONFIG.ENEMIGOS[id].DESDE_SEGUNDOS || 0));
+      this.enemigoDelMapa(id) && !CONFIG.ENEMIGOS[id].SOLO_CON_DUENO && segundos >= (CONFIG.ENEMIGOS[id].DESDE_SEGUNDOS || 0));
     if (tipos.length === 0) return;
     const tipo = Phaser.Math.RND.pick(tipos);
     const pos = this.posicionFueraDePantalla();
@@ -2230,7 +2450,9 @@ class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (!cfg.DANO || cfg.DANO <= 0) return;
+    // v0.30: los ataques con daño propio (escobillazo) lo pasan en danoAtaqueEnemigo (ver golpearPerro)
+    const danoBase = this.danoAtaqueEnemigo !== undefined ? this.danoAtaqueEnemigo : cfg.DANO;
+    if (!danoBase || danoBase <= 0) return;
     if (ahora < this.invulnerableHasta) return;
     if (this.efectoZona.segura) return; // Zona segura: no recibe daño
 
@@ -2245,7 +2467,7 @@ class GameScene extends Phaser.Scene {
 
     // Fase de la noche, mapa y dificultad global (multDano se calcula al aparecer)
     // Collar viejo: menos daño por nivel. Cuero de calle: la mitad si está activo.
-    let dano = cfg.DANO * (enemigo.multDano || 1) * Math.max(0, 1 - this.nivelObjeto('collar') * CONFIG.OBJETOS.collar.MENOS_DANO);
+    let dano = danoBase * (enemigo.multDano || 1) * Math.max(0, 1 - this.nivelObjeto('collar') * CONFIG.OBJETOS.collar.MENOS_DANO);
     if (this.fusiones.cuero && ahora < this.cueroHasta) dano *= CONFIG.FUSIONES.cuero.MULTIPLICADOR;
     // Zona peligrosa: el doble de daño
     if (this.efectoZona.peligro) dano *= CONFIG.ZONAS.peligro.DANO_MULTIPLICADOR || 1;
@@ -2296,6 +2518,8 @@ class GameScene extends Phaser.Scene {
     limpiarZonas(this);
     ocultarDesafio(this);
     limpiarAtaques(this);         // auto del curao, terrones, miras (src/ataques.js)
+    (this.aguasJabon || []).forEach((a) => a.g.destroy()); // v0.30: agua del limpiavidrios
+    this.aguasJabon = [];
     if (this.coop) {
       // Cooperativo: lo mismo con lo de J2 y el círculo de revivir (src/coop.js)
       conJugador2(this, () => {

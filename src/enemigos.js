@@ -24,5 +24,8 @@ const ENEMIGOS = [
   { id: 'auxiliar',   nombre: 'Auxiliar de micro', descripcion: 'Chaleco amarillo y jockey. Grita "¡suba, suba!" y embiste lejos y fuerte.' },
   { id: 'bravo',      nombre: 'Quiltro bravo', descripcion: 'Perro café oscuro con collar de púas. Más grande, rápido y fuerte que el rival.' },
   // Con dibujo nuevo (v0.29)
-  { id: 'monaEnemiga', nombre: 'Perrita del moño', descripcion: 'Perrita chica y rápida. Se frena, abre la boca y se lanza un tramo corto.' }
+  { id: 'monaEnemiga', nombre: 'Perrita del moño', descripcion: 'Perrita chica y rápida. Se frena, abre la boca y se lanza un tramo corto.' },
+  // v0.30
+  { id: 'limpiavidrios', nombre: 'Limpiavidrios', descripcion: 'Con balde y escobilla. De lejos tira agua jabonosa que te deja lento; de cerca, escobillazo.' },
+  { id: 'perroJabon', nombre: 'Perro del limpiavidrios', descripcion: 'Perro crema que acompaña al limpiavidrios. Si el agua te moja, te embiste. Sin su dueño se enoja.' }
 ];

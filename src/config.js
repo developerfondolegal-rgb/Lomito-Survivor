@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.29';
+const VERSION_JUEGO = '0.30';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -466,6 +466,61 @@ const CONFIG = {
       EMBESTIDA_VELOCIDAD: 380, // velocidad de la embestida
       EMBESTIDA_MS: 260,        // cuánto dura la embestida (380 x 0,26 s = unos 100 px de tramo)
       DESCANSO_MS: 700          // tiempo quieto después de embestir
+    },
+
+    // --- v0.30: Limpiavidrios y su perro (diseño: _nuevos/docs/diseno_razas.md, 5.2) ---
+
+    // Limpiavidrios: humano lento con balde. De lejos tira agua jabonosa (te deja lento);
+    // de cerca, escobillazo en arco. Siempre sale con su perro (perroJabon) al lado.
+    limpiavidrios: {
+      COLOR: 0x7a8e5a,          // verde (no se usa: tiene dibujo propio)
+      SPRITE: 'nuevo_limpiavidrios', // dibujo 48x48 (src/sprites_limpiavidrios.js), escala 1.5
+      RADIO: 18,                // igual que borracho / auxiliar
+      VIDA: 62,
+      VELOCIDAD: 70,
+      DANO: 0,                  // al tocarlo no pega: solo hace daño con el escobillazo
+      HUESOS: 3,
+      DESDE_SEGUNDOS: 110,      // desde el 1:50
+      PESO: 2.2,
+      MAXIMO: 2,                // como mucho 2 limpiavidrios a la vez
+      COMPORTAMIENTO: 'limpiavidrios',
+      ACOMPANANTE: 'perroJabon', // cada vez que sale uno, sale este perro a su lado
+      MAPAS: ['plaza', 'terminal'], // donde hay vidrios. Para abrirlo a otros mapas, agrega su id aquí
+      // Agua jabonosa (de lejos): un chorro corto hacia el perro
+      AGUA_DISTANCIA_MAX: 260,  // tira agua si el perro está a menos de esto (y más lejos que el escobillazo)
+      AGUA_AVISO_MS: 300,       // se detiene y avisa esto antes de tirarla
+      AGUA_VELOCIDAD: 320,      // qué tan rápido vuela el chorro
+      AGUA_ALCANCE: 300,        // hasta dónde llega el chorro
+      AGUA_RADIO: 12,           // tamaño del chorro (para pegarle al perro)
+      AGUA_LENTITUD: 0.5,       // el perro mojado va a la mitad de velocidad (la misma LENTITUD que Escarbar)
+      AGUA_LENTO_MS: 2000,      // cuánto dura lo mojado (el Gorro de lana lo acorta, igual que el barro)
+      AGUA_ESPERA_MS: 3200,     // después de tirar agua, espera esto para volver a atacar
+      // Escobillazo (de cerca): golpe en arco frente a él
+      ESCOBA_DISTANCIA: 75,     // si el perro está a menos de esto, prepara el escobillazo
+      ESCOBA_ALCANCE: 70,       // largo del golpe (desde el borde del limpiavidrios)
+      ESCOBA_ANGULO: 90,        // ancho del arco en grados
+      ESCOBA_DANO: 12,
+      ESCOBA_AVISO_MS: 400,     // aviso corto antes del golpe (el arco parpadea)
+      ESCOBA_ESPERA_MS: 1600,   // después del escobillazo, espera esto para volver a atacar
+      ATAQUE_MS: 300            // queda quieto mostrando la animación de ataque después de atacar
+    },
+
+    // Perro jabón (crema): el perro del limpiavidrios. Persigue al perro del jugador;
+    // si el agua de su dueño te moja, te embiste. Si su dueño muere, se queda y se enoja.
+    perroJabon: {
+      COLOR: 0xe0cc98,          // crema (no se usa: tiene dibujo propio)
+      SPRITE: 'nuevo_limpiavidrios_perro', // dibujo 32x32 (src/sprites_limpiavidrios.js), escala 2
+      RADIO: 14,
+      VIDA: 18,
+      VELOCIDAD: 140,
+      DANO: 5,
+      HUESOS: 1,
+      PESO: 0,                  // no sale solo: lo trae el limpiavidrios (ACOMPANANTE)
+      SOLO_CON_DUENO: true,     // tampoco sale suelto con la tecla T ni como élite
+      COMPORTAMIENTO: 'perroJabon',
+      COMBO_VELOCIDAD: 400,     // embestida cuando el agua de su dueño te moja...
+      COMBO_MS: 300,            // ...y cuánto dura
+      SIN_DUENO_VELOCIDAD_MULT: 1.2 // si su dueño murió, corre un 20% más rápido
     }
   },
 
