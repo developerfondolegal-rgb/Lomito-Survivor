@@ -41,7 +41,9 @@ const COOP_CLAVES = [
   // v0.28: la raza de cada perro (stats, poder y árbol)
   'razaId', 'base', 'textosRaza', 'poder', 'poderEsperaTotal', 'arbol',
   // v0.35: Trono y Bostezo real del Chow chow (src/chowchow.js; las nubes de pelo son de los dos)
-  'tronoEscudo', 'tronoQuietoMs', 'tronoEspera', 'esperaBostezo', 'graficoChow'
+  'tronoEscudo', 'tronoQuietoMs', 'tronoEspera', 'esperaBostezo', 'graficoChow',
+  // v0.36: Gran danés (src/grandanes.js)
+  'estatuaHasta', 'estatuaListaEn', 'esperaEsquina', 'tocandoPaso', 'ladridoGrave', 'graficoSombra'
 ];
 
 // ¿El cooperativo está activado? (lo cambia la tecla del menú o ?coop=1)
@@ -228,6 +230,7 @@ function iniciarCoop(escena) {
     escudo: escena.add.graphics().setDepth(11), jaula: escena.add.graphics().setDepth(12),
     esperaCaracu: 0, sinergiasActivas: {},
     tronoEscudo: 0, tronoQuietoMs: 0, tronoEspera: 0, esperaBostezo: 0, graficoChow: null, // v0.35 (Chow chow)
+    estatuaHasta: 0, estatuaListaEn: 0, esperaEsquina: 0, tocandoPaso: [], ladridoGrave: null, graficoSombra: null, // v0.36 (Gran danés)
     // v0.28: su raza, su poder y el árbol de su raza
     razaId: razaJ2, base: base2, textosRaza: RAZAS.find((r) => r.id === razaJ2) || { nombre: razaJ2, poder: '' },
     poder: base2.PODER || '', poderEsperaTotal: espera2, arbol: arbol2

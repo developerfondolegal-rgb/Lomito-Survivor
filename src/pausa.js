@@ -293,6 +293,7 @@ function calcularStats(escena) {
   // Alcance de la mordida
   const alcance = ['Base ' + CONFIG.MORDIDA_ALCANCE + ' (igual para todas las razas)'];
   if (col('lentes')) alcance.push(nombreCol('lentes') + ' +' + Math.round(bonusColeccion('lentes', 'ALCANCE')));
+  if (arb('ALCANCE')) alcance.push('Árbol +' + arb('ALCANCE')); // v0.36: Hocico en las nubes (Gran danés)
   stats.push({ nombre: 'Alcance de mordida', valor: String(e.alcanceMordida()), partes: alcance });
 
   // Imán de huesos
@@ -319,6 +320,8 @@ function calcularStats(escena) {
   if (arb('INAMOVIBLE')) red.push('Inamovible −' + pct(arb('INAMOVIBLE')) + ' de embestidas, sin Perrera');
   if (inst('armadura')) red.push(nombreInstinto('armadura') + nvI('armadura') + ' −' + pct(reduccionArmadura(e)));
   if (e.poder === 'melena') red.push('Melena −' + pct(reduccionMelena(e)) + (arb('MELENA_MENOS_DANO') ? ' (con árbol)' : '')); // v0.35
+  if (arb('FAROL_MENOS_DANO')) red.push('Farol andante −' + pct(arb('FAROL_MENOS_DANO')) + ' de los que están en tu sombra'); // v0.36
+  if (arb('ESTATUA_MS')) red.push('Estatua: ' + numeroPausa(arb('ESTATUA_MS') / 1000) + ' s sin daño bajo ' + pct(arb('ESTATUA_VIDA')) + ' de vida'); // v0.36
   const reduccion = 1 - (1 - collar) * (1 - e.reduccionArbol()) * (1 - reduccionArmadura(e)) * (1 - reduccionMelena(e));
   stats.push({ nombre: 'Reducción de daño', valor: Math.round(reduccion * 100) + '%', partes: red });
 

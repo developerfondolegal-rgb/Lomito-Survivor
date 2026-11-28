@@ -632,6 +632,7 @@ function golpearPerroEvento(escena, op) {
 
   escena.vida = Math.max(0, escena.vida - dano);
   escena.invulnerableHasta = ahora + op.invulnerableMs;
+  revisarEstatua(escena); // v0.36: Estatua de la plaza (Gran danés)
   if (escena.fusiones.cuero) escena.cueroHasta = ahora + CONFIG.FUSIONES.cuero.DURACION_MS;
   escena.cameras.main.shake(300, 0.015);
   escena.cameras.main.flash(150, 255, 60, 60);

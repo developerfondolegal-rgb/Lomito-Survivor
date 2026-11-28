@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.35';
+const VERSION_JUEGO = '0.36';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -224,7 +224,7 @@ const CONFIG = {
   //                      (1 = siempre, 0.75 = 3 de cada 4 veces)
   //  IMAN_EXTRA: alcance extra del imán de huesos
   //  PODER: qué poder especial usa ('calle', 'mandibula', 'sprint',
-  //         'rastreo', 'melena' o '' para ninguno)
+  //         'rastreo', 'melena', 'intimida' o '' para ninguno)
   //  PODER_ESPERA_MS: tiempo de espera del poder (0 = poder pasivo)
   // ---------------------------------------------------------------
   RAZAS: {
@@ -308,6 +308,25 @@ const CONFIG = {
       RUGIDO_HUIR_MS: 1200,     // ...durante este tiempo
       RUGIDO_DANO_JEFE: 10,     // el Jefe y El Tripa Seca no huyen: reciben este daño
       RUGIDO_VOLUMEN: 0.09      // volumen del rugido (0 = sin sonido)
+    },
+
+    // Gran danés (v0.36): gigante. Poder pasivo "Sombra larga" (src/grandanes.js)
+    // Su RADIO grande es a propósito: es más fácil que le peguen.
+    grandanes: {
+      COLOR: 0xc49868,          // café claro (leonado)
+      VIDA: 108,
+      VELOCIDAD: 190,
+      MORDIDA_DANO: 13,
+      MORDIDA_CADA_MS: 1100,
+      RADIO: 28,
+      HUESO_PROBABILIDAD: 0.75,
+      IMAN_EXTRA: 0,
+      PODER: 'intimida',
+      PODER_ESPERA_MS: 0,       // pasivo (sin tecla)
+      SOMBRA_LARGO: 140,        // largo del cono (px) hacia donde mira o camina
+      SOMBRA_ANGULO: 80,        // ancho total del cono, en grados
+      SOMBRA_LENTITUD: 0.25,    // los enemigos dentro del cono van 25% más lento
+      SOMBRA_LENTITUD_JEFE: 0.12 // el Jefe y El Tripa Seca se frenan solo 12%
     }
   },
 
@@ -1459,10 +1478,40 @@ const CONFIG = {
                                                 // ESPECIAL "Trono": quieto 2 s = escudo de 25 (hasta moverte
                                                 // o que lo rompan). Recarga 12 s
         ]
+      },
+      // v0.36 (src/grandanes.js)
+      grandanes: {
+        // Altura: moverse, alcanzar y pisar
+        altura: [
+          { VELOCIDAD: 0.08 },                  // +8% de velocidad
+          { ALCANCE: 20 },                      // +20 px de alcance de mordida
+          { PASO_PROBABILIDAD: 0.1, PASO_ATURDIR_MS: 300 }, // al caminar, 10% de aturdir 0,3 s al que toca
+          { FAROL_MENOS_DANO: 0.1 }             // ESPECIAL "Farol andante": los del cono te hacen 10% menos daño
+        ],
+        // Guardia: aguantar
+        guardia: [
+          { VIDA: 18 },
+          { MENOS_DANO: 0.08 },                 // 8% menos daño recibido
+          { EMPUJE_MENOS: 0.4 },                // 40% menos empuje recibido
+          { ESTATUA_VIDA: 0.3, ESTATUA_MS: 1500, ESTATUA_RECARGA_MS: 20000 }
+                                                // ESPECIAL "Estatua de la plaza": al bajar del 30% de vida,
+                                                // 1,5 s sin recibir daño. Recarga 20 s
+        ],
+        // Presencia: la sombra y el ladrido
+        presencia: [
+          { SOMBRA_ANCHO: 0.2 },                // el cono es 20% más ancho
+          { LADRIDO_GRAVE: 1 },                 // el primer Ladrido o Ladrido fuerte que elijas: +1 nivel de radio
+          { SOMBRA_PERROS: 0.1 },               // perros de manada y rivales en el cono: 10% más lentos
+          { ESQUINA_CADA_MS: 12000, ESQUINA_DANO: 10, ESQUINA_RADIO: 160 }
+                                                // ESPECIAL "Dueño de la esquina": cada 12 s un ladrido grave
+                                                // automático (no ocupa espacio de ataque)
+        ]
       }
     },
     // Lengua de intimidación (Chow chow): qué enemigos cuentan como "humanos"
-    LENGUA_HUMANOS: ['borracho', 'drogadicto', 'perrera', 'auxiliar', 'limpiavidrios', 'malandra', 'personalPerrera', 'tripaseca']
+    LENGUA_HUMANOS: ['borracho', 'drogadicto', 'perrera', 'auxiliar', 'limpiavidrios', 'malandra', 'personalPerrera', 'tripaseca'],
+    // Quieto, cabros (Gran danés): qué enemigos cuentan como "perros de manada y rivales"
+    SOMBRA_PERROS_TIPOS: ['manada', 'rival', 'bravo']
   },
 
   // ---------------------------------------------------------------

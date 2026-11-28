@@ -8,7 +8,7 @@
 //   2. En src/config.js, dentro de RAZAS, copia el bloque de otra
 //      raza con ese mismo id y cambia sus números.
 //   3. En PODER puedes reutilizar uno de los poderes existentes
-//      ('calle', 'mandibula', 'sprint', 'rastreo', 'melena') o dejar ''.
+//      ('calle', 'mandibula', 'sprint', 'rastreo', 'melena', 'intimida') o dejar ''.
 //  El orden de esta lista es el orden de las cartas (teclas 1, 2, 3...).
 // ===============================================================
 const RAZAS = [
@@ -56,5 +56,14 @@ const RAZAS = [
     debilidades: 'El más lento de todos.',
     poder: 'Melena · Rugido [Espacio]',
     poderTexto: 'Recibe 6% menos daño. Su rugido espanta a los enemigos cercanos.'
+  },
+  {
+    id: 'grandanes',
+    nombre: 'Gran danés',
+    frase: 'Gigante y lento. Su sombra frena a los enemigos que tiene delante.',
+    fortalezas: 'Mucha vida y frena a los que tiene delante.',
+    debilidades: 'Tan grande que es fácil pegarle.',
+    poder: 'Sombra larga',
+    poderTexto: 'Los enemigos delante de él van 25% más lento (el jefe, 12%).'
   }
 ];

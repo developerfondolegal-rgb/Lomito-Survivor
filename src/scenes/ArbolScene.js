@@ -8,7 +8,7 @@
 // Abajo de las ramas está "Colmillos afilados" (v0.22): mejora general para todas
 // las razas, por niveles (▼ desde la última mejora de una rama para elegirla).
 //
-// Teclado: ◄ ► rama · ▲ ▼ mejora · Q / E (o 1 a 5) raza · Enter o Espacio comprar
+// Teclado: ◄ ► rama · ▲ ▼ mejora · Q / E (o 1 a 6) raza · Enter o Espacio comprar
 //          R reiniciar el árbol de la raza · Esc o G volver
 
 const ARBOL_COMPRADO = 0xffd54f;   // borde de las mejoras compradas
@@ -33,7 +33,7 @@ class ArbolScene extends Phaser.Scene {
     this.razaIndice = Math.max(0, this.razas.findIndex((r) => r.id === this.razaPedida));
     this.elegirPrimerNodo();
 
-    const teclas = ['ESC', 'G', 'LEFT', 'RIGHT', 'UP', 'DOWN', 'Q', 'E', 'ENTER', 'SPACE', 'R', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'];
+    const teclas = ['ESC', 'G', 'LEFT', 'RIGHT', 'UP', 'DOWN', 'Q', 'E', 'ENTER', 'SPACE', 'R', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'];
     this.teclas = {};
     teclas.forEach((t) => { this.teclas[t] = this.input.keyboard.addKey(t); });
 
@@ -53,7 +53,7 @@ class ArbolScene extends Phaser.Scene {
     if (t('ESC') || t('G')) { this.scene.start('MenuScene'); return; }
     if (t('Q')) this.cambiarRaza(-1);
     if (t('E')) this.cambiarRaza(1);
-    ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'].forEach((nombre, i) => {
+    ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX'].forEach((nombre, i) => {
       if (t(nombre) && i < this.razas.length && i !== this.razaIndice) this.cambiarRaza(i - this.razaIndice);
     });
     if (t('LEFT')) this.moverSeleccion(-1, 0);
@@ -181,7 +181,7 @@ class ArbolScene extends Phaser.Scene {
     }
 
     // Pestañas de raza
-    // v0.35: con 5 razas las pestañas se achican si no caben
+    // v0.35: con 5 razas las pestañas se achican si no caben (v0.36: con 6, la letra también)
     const sepP = Math.min(176, (w - 2 * (14 + e)) / Math.max(1, this.razas.length));
     const anchoP = sepP - 8;
     const yP = 70 + e / 2;
@@ -193,7 +193,7 @@ class ArbolScene extends Phaser.Scene {
       marcoPixel(g, cx - anchoP / 2, yP - 17, anchoP, 34, elegida ? PAUSA_DORADO : 0x6d6a8a, elegida ? 0x4a3a12 : 0x2b2940);
       capa.push(g);
       const etiqueta = (tactil ? '' : (i + 1) + '. ') + r.nombre + '  ' + mejorasCompradas(r.id) + '/' + ramasDeRaza(r.id).length * ARBOL_NODOS;
-      texto(cx, yP, etiqueta, 15, elegida ? '#ffe082' : '#cfd8dc', { fontStyle: elegida ? 'bold' : 'normal' }).setOrigin(0.5);
+      texto(cx, yP, etiqueta, sepP < 160 ? 14 : 15, elegida ? '#ffe082' : '#cfd8dc', { fontStyle: elegida ? 'bold' : 'normal' }).setOrigin(0.5);
       const zona = this.add.zone(cx, yP, anchoP, 34).setInteractive({ useHandCursor: true });
       zona.on('pointerdown', () => { if (i !== this.razaIndice) this.cambiarRaza(i - this.razaIndice); });
       capa.push(zona);

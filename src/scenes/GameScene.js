@@ -58,6 +58,7 @@ class GameScene extends Phaser.Scene {
     // (Sweater tejido a mano: los coleccionables guardados se aplican desde el inicio)
     iniciarArbol(this);           // árbol de habilidades de la raza (src/arbol.js)
     iniciarChow(this);            // v0.35: Rugido, Trono y nubes de pelo del Chow chow (src/chowchow.js)
+    iniciarGranDanes(this);       // v0.36: Sombra larga y árbol del Gran danés (src/grandanes.js)
     this.vidaMax = this.base.VIDA + bonusColeccion('sweater', 'VIDA') + bonusArbol(this, 'VIDA');
     this.vida = this.vidaMax;
     this.tiempoSobrevivido = 0;   // reloj del juego en ms (se detiene en pausa)
@@ -348,6 +349,7 @@ class GameScene extends Phaser.Scene {
     if (this.jefeVivo() && !this.amaneciendo) actualizarJefe(this, this.jefe);
     frenarEnemigosEnBarro(this);
     frenarEnemigosChow(this);     // v0.35: Nube de pelo y Lengua de intimidación (src/chowchow.js)
+    frenarEnemigosGranDanes(this); // v0.36: Sombra larga del Gran danés (src/grandanes.js)
     this.moverHuesos(delta);
     this.aparecerComida(delta);
     this.comer();
@@ -635,7 +637,7 @@ class GameScene extends Phaser.Scene {
 
   // Alcance de la mordida (Lentes: más alcance)
   alcanceMordida() {
-    return CONFIG.MORDIDA_ALCANCE + bonusColeccion('lentes', 'ALCANCE');
+    return CONFIG.MORDIDA_ALCANCE + bonusColeccion('lentes', 'ALCANCE') + bonusArbol(this, 'ALCANCE'); // v0.36: Hocico en las nubes
   }
 
   // Experiencia que da cada hueso (Placa de identificación y Cascabel).
@@ -653,7 +655,8 @@ class GameScene extends Phaser.Scene {
 
   radioLadrido() {
     const extra = this.fusiones.aullido ? CONFIG.FUSIONES.aullido.RADIO_EXTRA : 0;
-    return CONFIG.LADRIDO_RADIO + (this.instintos.ladrido - 1) * CONFIG.LADRIDO_RADIO_EXTRA + extra +
+    const grave = nivelesLadridoGrave(this, 'ladrido'); // v0.36: Ladrido grave (Gran danés)
+    return CONFIG.LADRIDO_RADIO + (this.instintos.ladrido - 1 + grave) * CONFIG.LADRIDO_RADIO_EXTRA + extra +
       radioExtraLadrido(this); // Aullido rastreador (src/ataques.js)
   }
 
@@ -768,7 +771,8 @@ class GameScene extends Phaser.Scene {
     const empuje = this.empujePerro;
     if (empuje) {
       if (this.tiempoSobrevivido < empuje.hasta) {
-        this.perro.body.setVelocity(empuje.x, empuje.y);
+        const f = factorEmpujeGranDanes(this); // v0.36: No me mueven (Gran danés)
+        this.perro.body.setVelocity(empuje.x * f, empuje.y * f);
         return;
       }
       this.empujePerro = null;
@@ -2648,6 +2652,7 @@ class GameScene extends Phaser.Scene {
 
   aplicarInstinto(id) {
     this.instintos[id]++;
+    marcarLadridoGrave(this, id); // v0.36: Ladrido grave (Gran danés)
 
     if (id === 'pellejoDuro') {
       this.vidaMax += CONFIG.PELLEJO_VIDA;
@@ -2727,6 +2732,7 @@ class GameScene extends Phaser.Scene {
     if (enemigo.estado === 'embestir') dano *= Math.max(0, 1 - bonusArbol(this, 'INAMOVIBLE'));
     dano *= 1 - reduccionArmadura(this); // Pelaje grueso (src/ataques_nuevos.js)
     dano *= 1 - reduccionMelena(this);   // v0.35: Melena del Chow chow (src/chowchow.js)
+    dano *= 1 - reduccionFarol(this, enemigo); // v0.36: Farol andante (Gran danés, src/grandanes.js)
     dano = Math.max(1, Math.round(dano));
     // v0.35: el escudo del Trono (Chow chow) se lleva el golpe primero
     dano = absorberTrono(this, dano);
@@ -2737,6 +2743,7 @@ class GameScene extends Phaser.Scene {
 
     this.vida = Math.max(0, this.vida - dano);
     this.invulnerableHasta = this.tiempoSobrevivido + CONFIG.PERRO_INVULNERABLE_MS;
+    revisarEstatua(this); // v0.36: Estatua de la plaza (Gran danés)
     if (this.fusiones.cuero) this.cueroHasta = ahora + CONFIG.FUSIONES.cuero.DURACION_MS;
     this.cameras.main.shake(100, 0.005);
 

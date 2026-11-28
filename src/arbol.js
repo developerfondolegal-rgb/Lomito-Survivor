@@ -161,6 +161,36 @@ const ARBOL_RAMAS = {
         { nombre: 'Trono', texto: 'ESPECIAL: quieto {TRONO_QUIETO_MSs} ganas un escudo de {TRONO_ESCUDO} de vida hasta que te mueves o lo rompen. Recarga {TRONO_RECARGA_MSs}.' }
       ]
     }
+  ],
+  // v0.36 (lo que hacen está en src/grandanes.js)
+  grandanes: [
+    {
+      id: 'altura', nombre: 'Altura', color: 0x4fc3f7, icono: 'altura',
+      nodos: [
+        { nombre: 'Zancada de gigante', texto: '+{VELOCIDAD%} de velocidad.' },
+        { nombre: 'Hocico en las nubes', texto: '+{ALCANCE} px de alcance de mordida.' },
+        { nombre: 'Paso pesado', texto: 'Al caminar, {PASO_PROBABILIDAD%} de probabilidad de aturdir {PASO_ATURDIR_MSs} al enemigo que tocas.' },
+        { nombre: 'Farol andante', texto: 'ESPECIAL: los enemigos dentro de tu sombra te hacen {FAROL_MENOS_DANO%} menos daño.' }
+      ]
+    },
+    {
+      id: 'guardia', nombre: 'Guardia', color: 0x90a4ae, icono: 'guardia',
+      nodos: [
+        { nombre: 'Costillar largo', texto: '+{VIDA} de vida máxima.' },
+        { nombre: 'Piel de toldo', texto: '{MENOS_DANO%} menos daño recibido.' },
+        { nombre: 'No me mueven', texto: '{EMPUJE_MENOS%} menos empuje recibido.' },
+        { nombre: 'Estatua de la plaza', texto: 'ESPECIAL: al bajar del {ESTATUA_VIDA%} de vida, quedas {ESTATUA_MSs} sin recibir daño. Recarga {ESTATUA_RECARGA_MSs}.' }
+      ]
+    },
+    {
+      id: 'presencia', nombre: 'Presencia', color: 0xba68c8, icono: 'presencia',
+      nodos: [
+        { nombre: 'Mirada seria', texto: 'Tu sombra es {SOMBRA_ANCHO%} más ancha.' },
+        { nombre: 'Ladrido grave', texto: 'El primer Ladrido o Ladrido fuerte que elijas tiene más radio (como 1 nivel más).' },
+        { nombre: 'Quieto, cabros', texto: 'Los perros de manada y los rivales en tu sombra se frenan {SOMBRA_PERROS%} más.' },
+        { nombre: 'Dueño de la esquina', texto: 'ESPECIAL: cada {ESQUINA_CADA_MSs} un ladrido grave automático ({ESQUINA_DANO} de daño, {ESQUINA_RADIO} px). No ocupa espacio de ataque.' }
+      ]
+    }
   ]
 };
 
@@ -429,6 +459,8 @@ function actualizarArbol(escena, delta, puedeAtacar) {
 
   // v0.35: Trono y Bostezo real (Chow chow, src/chowchow.js)
   actualizarChow(escena, delta, puedeAtacar);
+  // v0.36: Paso pesado, Estatua y Dueño de la esquina (Gran danés, src/grandanes.js)
+  actualizarGranDanes(escena, delta, puedeAtacar);
 
   if (escena.amaneciendo) return;
 
@@ -510,6 +542,12 @@ function partesArbolStats(escena) {
   if (A('LENGUA_COMIDA')) p.push('comida +' + pct(A('LENGUA_COMIDA')));
   if (A('LENGUA_RADIO')) p.push('humanos −' + pct(A('LENGUA_LENTITUD')) + ' velocidad cerca');
   if (A('QUIETO_DANO')) p.push('+' + pct(A('QUIETO_DANO')) + ' daño casi quieto');
+  // v0.36: Gran danés
+  if (A('PASO_PROBABILIDAD')) p.push(pct(A('PASO_PROBABILIDAD')) + ' de aturdir al pisar');
+  if (A('EMPUJE_MENOS')) p.push('−' + pct(A('EMPUJE_MENOS')) + ' empuje recibido');
+  if (A('SOMBRA_ANCHO')) p.push('sombra +' + pct(A('SOMBRA_ANCHO')) + ' más ancha');
+  if (A('LADRIDO_GRAVE')) p.push('ladrido grave: +1 nivel de radio' + (escena.ladridoGrave ? '' : ' (aún sin elegir)'));
+  if (A('SOMBRA_PERROS')) p.push('perros en la sombra −' + pct(A('SOMBRA_PERROS')) + ' más');
   // Especiales (4º nodo de cada rama)
   ramasDeRaza(escena.razaId).forEach((rama) => {
     if (nivelRama(escena.razaId, rama.id) >= ARBOL_NODOS) {
@@ -539,6 +577,9 @@ const ICONOS_ARBOL = {
   melena: ['.#.##.#.', '#.####.#', '.######.', '##.##.##', '########', '.######.', '#.####.#', '.#.##.#.'],
   lengua: ['........', '.######.', '##....##', '########', '..####..', '..####..', '..#..#..', '...##...'],
   majestad: ['#..#..#.', '##.#.##.', '#######.', '#######.', '.#####..', '.#####..', '#######.', '........'],
+  altura: ['...##...', '..####..', '.######.', '...##...', '...##...', '...##...', '...##...', '..####..'],
+  guardia: ['########', '#.####.#', '########', '########', '.######.', '.######.', '..####..', '...##...'],
+  presencia: ['........', '.######.', '#......#', '#.##.##.', '#.##.##.', '#......#', '.######.', '........'],
   candado: ['..####..', '.#....#.', '.#....#.', '########', '###..###', '###..###', '########', '........'],
   estrella: ['...#....', '..###...', '#######.', '.#####..', '.##.##..', '#.....#.', '........', '........']
 };

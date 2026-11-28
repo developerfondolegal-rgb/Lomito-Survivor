@@ -7,6 +7,8 @@
 //  color de la paleta de ESA raza ("Z" = sombra del piso, semitransparente).
 //  Jugables hoy: quiltro, pitbull, galgo, beagle y (v0.35) chowchow. sharpei
 //  queda listo para el futuro (todavía no se usa).
+//  v0.36: el Gran danés usa el dibujo del artista (src/sprites_perros_artista.js,
+//  PERROS_ARTISTA_SPRITES.gran_danes), con el mismo formato y tamaño (32 x 32).
 //  Las texturas y animaciones se crean con crearSpritesRazas (más abajo).
 // ===============================================================
 
@@ -2748,7 +2750,14 @@ const RAZAS_SPRITES = {
 // ---------------------------------------------------------------
 
 // Razas jugables que usan estos sprites (id de src/razas.js -> sprite de arriba)
-const RAZAS_SPRITE_DE = { quiltro: 'quiltro', pitbull: 'pitbull', galgo: 'galgo', beagle: 'beagle', chowchow: 'chowchow' };
+const RAZAS_SPRITE_DE = { quiltro: 'quiltro', pitbull: 'pitbull', galgo: 'galgo', beagle: 'beagle', chowchow: 'chowchow', grandanes: 'gran_danes' };
+
+// v0.36: dibujos de raza que vienen de otro archivo (se cargan después de este)
+function datosSpriteRaza(id) {
+  if (RAZAS_SPRITES[id]) return RAZAS_SPRITES[id];
+  if (typeof PERROS_ARTISTA_SPRITES !== 'undefined' && PERROS_ARTISTA_SPRITES[id]) return PERROS_ARTISTA_SPRITES[id];
+  return null;
+}
 const RAZAS_SPRITE_ESCALA = 2;    // 32 x 32 agrandado 2 veces = 64 x 64 px en pantalla (nítido)
 const RAZAS_SPRITE_ANIMS = [      // nombre, cuadros por segundo, se repite
   ['idle', 6, -1],
@@ -2760,7 +2769,7 @@ const RAZAS_SPRITE_ANIMS = [      // nombre, cuadros por segundo, se repite
 // Clave de la textura de una raza ('raza_quiltro'), o null si no tiene sprite nuevo
 function claveSpriteRaza(razaId) {
   const id = RAZAS_SPRITE_DE[razaId];
-  return id && RAZAS_SPRITES[id] ? 'raza_' + id : null;
+  return id && datosSpriteRaza(id) ? 'raza_' + id : null;
 }
 
 // "#rrggbb" o "#rrggbbaa" -> [r, g, b, a]
@@ -2773,8 +2782,10 @@ function colorSpriteRaza(hex) {
 // Crea (solo la primera vez) la textura de cada raza con SU paleta, con todos
 // los cuadros uno al lado del otro, y sus animaciones: raza_quiltro_idle, _correr, _dano, _ataque
 function crearSpritesRazas(escena) {
-  Object.keys(RAZAS_SPRITES).forEach((id) => {
-    const datos = RAZAS_SPRITES[id];
+  const ids = Object.keys(RAZAS_SPRITES);
+  Object.values(RAZAS_SPRITE_DE).forEach((id) => { if (!ids.includes(id) && datosSpriteRaza(id)) ids.push(id); }); // v0.36
+  ids.forEach((id) => {
+    const datos = datosSpriteRaza(id);
     const clave = 'raza_' + id;
     const cuadros = [];
     const indices = {};

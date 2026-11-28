@@ -179,9 +179,11 @@ class MenuScene extends Phaser.Scene {
     const extra = n === 2 ? 16 : 8;
     const marco = this.add.rectangle(c.x, c.y, c.ancho + extra, c.alto + extra).setStrokeStyle(4, color);
     const lado = n === 2 ? 1 : -1;
-    const t = this.add.text(c.x + lado * (c.ancho / 2 - 8), c.arriba + 8, 'P' + n, {
+    // v0.36: en las cartas de 2 filas las dos marcas van arriba a la izquierda (sobre el perro, sin tapar textos)
+    const x = c.marcasIzq ? c.x - c.ancho / 2 + 8 + (n === 2 ? 36 : 0) : c.x + lado * (c.ancho / 2 - 8);
+    const t = this.add.text(x, c.arriba + 8, 'P' + n, {
       fontFamily: FUENTE, fontSize: '18px', color: colorTextoJugador(n), fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
-    }).setOrigin(n === 2 ? 1 : 0, 0);
+    }).setOrigin(n === 2 && !c.marcasIzq ? 1 : 0, 0);
     this.marcasRaza.push(marco, t);
   }
 
@@ -319,8 +321,48 @@ class MenuScene extends Phaser.Scene {
   }
 
   crearCartas() {
-    const w = this.scale.width;
     this.razas = this.listaRazas();
+    this.posCartas = []; // v0.28: para marcar la raza elegida en cooperativo
+    // v0.36: con más de 5 razas, 2 filas de cartas horizontales (perro a la izquierda, textos a la derecha)
+    if (this.razas.length > 5) this.crearCartasEnFilas();
+    else this.crearCartasEnUnaFila();
+  }
+
+  // Fondo de la carta (se ilumina al pasar el mouse y se elige con clic / toque)
+  fondoCarta(cx, cy, ancho, alto, i) {
+    const fondo = this.add.rectangle(cx, cy, ancho, alto, 0x2b2b3a)
+      .setStrokeStyle(3, 0x888899)
+      .setInteractive({ useHandCursor: true });
+    fondo.on('pointerover', () => fondo.setStrokeStyle(3, 0xf2d64b));
+    fondo.on('pointerout', () => fondo.setStrokeStyle(3, 0x888899));
+    fondo.on('pointerdown', () => this.elegir(i));
+  }
+
+  // El perro corre en su lugar sobre la carta (sprites nuevos v0.23; si no, el dibujo viejo caminando)
+  perroCarta(x, y, raza) {
+    const perro = dibujarPerro(this, x, y, raza.id);
+    const anim = claveSpriteRaza(raza.id) ? claveSpriteRaza(raza.id) + '_correr' : claveSprite(raza.id, SPRITE_PERRO_POR_DEFECTO) + '_caminar';
+    if (this.anims.exists(anim)) perro.play(anim);
+    return perro;
+  }
+
+  // Textos de una carta: [texto, estilo, espacio debajo]
+  textosCarta(raza, chico) {
+    const cfg = CONFIG.RAZAS[raza.id];
+    const espera = cfg.PODER_ESPERA_MS > 0 ? ' (cada ' + (cfg.PODER_ESPERA_MS / 1000) + ' s)' : ' (pasivo)';
+    const f = (n) => (n - chico) + 'px';
+    return [
+      [raza.frase, { fontSize: f(14), color: '#ffffff', fontStyle: 'italic' }, chico ? 6 : 12],
+      ['+ ' + raza.fortalezas, { fontSize: f(14), color: '#9ccc65' }, chico ? 3 : 6],
+      ['− ' + raza.debilidades, { fontSize: f(14), color: '#ef9a9a' }, chico ? 6 : 12],
+      ['Poder: ' + sinTeclas(raza.poder) + espera, { fontSize: f(14), color: '#ffe082', fontStyle: 'bold' }, chico ? 2 : 4],
+      [raza.poderTexto, { fontSize: f(13), color: '#dddddd' }, 0]
+    ];
+  }
+
+  // Hasta 5 razas: una fila de cartas altas (como antes de la v0.36)
+  crearCartasEnUnaFila() {
+    const w = this.scale.width;
     const n = this.razas.length;
     const separacion = Math.min(230, (w - 20) / n);
     const anchoCarta = separacion - 14;
@@ -328,25 +370,12 @@ class MenuScene extends Phaser.Scene {
     const arriba = 135;
     const inicioX = w / 2 - ((n - 1) * separacion) / 2;
     const anchoTexto = anchoCarta - 20;
-    this.posCartas = []; // v0.28: para marcar la raza elegida en cooperativo
 
     this.razas.forEach((raza, i) => {
-      const cfg = CONFIG.RAZAS[raza.id];
       const cx = inicioX + i * separacion;
       this.posCartas.push({ x: cx, y: arriba + altoCarta / 2, ancho: anchoCarta, alto: altoCarta, arriba });
-
-      const fondo = this.add.rectangle(cx, arriba + altoCarta / 2, anchoCarta, altoCarta, 0x2b2b3a)
-        .setStrokeStyle(3, 0x888899)
-        .setInteractive({ useHandCursor: true });
-      fondo.on('pointerover', () => fondo.setStrokeStyle(3, 0xf2d64b));
-      fondo.on('pointerout', () => fondo.setStrokeStyle(3, 0x888899));
-      fondo.on('pointerdown', () => this.elegir(i));
-
-
-      // El perro corre en su lugar sobre la carta (sprites nuevos v0.23; si no, el dibujo viejo caminando)
-      const perroCarta = dibujarPerro(this, cx, arriba + 38, raza.id);
-      const animCarta = claveSpriteRaza(raza.id) ? claveSpriteRaza(raza.id) + '_correr' : claveSprite(raza.id, SPRITE_PERRO_POR_DEFECTO) + '_caminar';
-      if (this.anims.exists(animCarta)) perroCarta.play(animCarta);
+      this.fondoCarta(cx, arriba + altoCarta / 2, anchoCarta, altoCarta, i);
+      this.perroCarta(cx, arriba + 38, raza);
 
       // Textos apilados uno debajo del otro
       let y = arriba + 68;
@@ -356,17 +385,60 @@ class MenuScene extends Phaser.Scene {
         }).setOrigin(0.5, 0);
         y += t.height + espacio;
       };
-
-      const espera = cfg.PODER_ESPERA_MS > 0
-        ? ' (cada ' + (cfg.PODER_ESPERA_MS / 1000) + ' s)'
-        : ' (pasivo)';
-
       poner(raza.nombre, { fontSize: '22px', color: '#ffe082', fontStyle: 'bold' }, 6);
-      poner(raza.frase, { fontSize: '14px', color: '#ffffff', fontStyle: 'italic' }, 12);
-      poner('+ ' + raza.fortalezas, { fontSize: '14px', color: '#9ccc65' }, 6);
-      poner('− ' + raza.debilidades, { fontSize: '14px', color: '#ef9a9a' }, 12);
-      poner('Poder: ' + sinTeclas(raza.poder) + espera, { fontSize: '14px', color: '#ffe082', fontStyle: 'bold' }, 4);
-      poner(raza.poderTexto, { fontSize: '13px', color: '#dddddd' }, 0);
+      this.textosCarta(raza, 0).forEach(([t, estilo, espacio]) => poner(t, estilo, espacio));
+    });
+  }
+
+  // v0.36: 6 razas o más: 2 filas. Las cartas quedan entre el botón "Cómo jugar" (arriba)
+  // y los botones de abajo. Si los textos no caben, la letra se achica un poco.
+  crearCartasEnFilas() {
+    const w = this.scale.width;
+    const e = this.margenExtra;
+    const n = this.razas.length;
+    const columnas = Math.ceil(n / 2);
+    const separacion = Math.min(316, (w - 20 - 2 * e) / columnas);
+    const anchoCarta = separacion - 12;
+    const arriba = 135 + e / 2;
+    const abajo = this.scale.height - 26 - e / 2 - 17 - 8; // borde de arriba de los botones de abajo, con aire
+    const espacioFilas = 8;
+    const altoCarta = Math.floor((abajo - arriba - espacioFilas) / 2);
+    const inicioX = w / 2 - ((columnas - 1) * separacion) / 2;
+    const anchoIzq = 92;                         // columna del perro y el nombre
+    const anchoTexto = anchoCarta - anchoIzq - 12;
+
+    this.razas.forEach((raza, i) => {
+      const fila = Math.floor(i / columnas);
+      const col = i % columnas;
+      const cx = inicioX + col * separacion;
+      const top = arriba + fila * (altoCarta + espacioFilas);
+      const izq = cx - anchoCarta / 2;
+      this.posCartas.push({ x: cx, y: top + altoCarta / 2, ancho: anchoCarta, alto: altoCarta, arriba: top, marcasIzq: true });
+      this.fondoCarta(cx, top + altoCarta / 2, anchoCarta, altoCarta, i);
+
+      // Izquierda: el perro y su nombre
+      this.perroCarta(izq + anchoIzq / 2 + 2, top + altoCarta / 2 - 14, raza);
+      this.add.text(izq + anchoIzq / 2 + 2, top + altoCarta / 2 + 30, raza.nombre, {
+        fontFamily: FUENTE, fontSize: '17px', color: '#ffe082', fontStyle: 'bold', align: 'center', wordWrap: { width: anchoIzq - 4 }
+      }).setOrigin(0.5, 0);
+
+      // Derecha: los textos, centrados en alto (si no caben, letra más chica)
+      const xTexto = izq + anchoIzq + 4;
+      let objetos = [];
+      for (let chico = 1; chico <= 3; chico++) {
+        objetos.forEach((o) => o.destroy());
+        objetos = [];
+        let y = 0;
+        this.textosCarta(raza, chico).forEach(([t, estilo, espacio]) => {
+          const obj = this.add.text(xTexto, y, t, { fontFamily: FUENTE, wordWrap: { width: anchoTexto }, ...estilo });
+          objetos.push(obj);
+          y += obj.height + espacio;
+        });
+        if (y <= altoCarta - 14) break;
+      }
+      const alto = objetos.reduce((t, o) => Math.max(t, o.y + o.height), 0);
+      const y0 = top + Math.max(6, (altoCarta - alto) / 2);
+      objetos.forEach((o) => { o.y += y0; });
     });
   }
 

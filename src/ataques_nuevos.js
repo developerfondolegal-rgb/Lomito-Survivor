@@ -186,7 +186,7 @@ function datosLadridoFuerte(nv, escena) {
   const n = Math.max(0, nv - 1);
   return {
     cadaMs: Math.max(800, c.CADA_MS - n * c.CADA_MENOS_MS) * factorEnfriamiento(escena),
-    radio: c.RADIO + n * c.RADIO_EXTRA,
+    radio: c.RADIO + (n + nivelesLadridoGrave(escena, 'ladridoFuerte')) * c.RADIO_EXTRA, // v0.36: Ladrido grave
     dano: c.DANO + n * c.DANO_EXTRA,
     aturdeMs: c.ATURDE_MS
   };

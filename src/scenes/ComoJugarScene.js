@@ -58,7 +58,7 @@ function cartasComoJugar(t) {
     },
     {
       titulo: 'Elige tu raza',
-      iconos: ['raza:quiltro', 'raza:pitbull', 'raza:galgo', 'raza:beagle', 'raza:chowchow'],
+      iconos: ['raza:quiltro', 'raza:pitbull', 'raza:galgo', 'raza:beagle', 'raza:chowchow', 'raza:grandanes'],
       lineas: [
         [(t ? 'Toca' : 'Haz clic en') + ' una carta para elegir. Después eliges el mapa.', blanco],
         ['Quiltro: equilibrado. "Calle" es pasivo: te curas de a poco.', amarillo],
@@ -67,7 +67,8 @@ function cartasComoJugar(t) {
         ['Galgo: rapidísimo pero frágil. Sprint con ' + (t ? 'el botón SPRINT' : 'Espacio') + '.', amarillo],
         ['Beagle: atrae huesos desde lejos y marca con flechas a los enemigos que no se ven.', amarillo],
         ['Chow chow: lento pero duro, recibe menos daño. Ruge con ' + (t ? 'el botón RUGIR' : 'Espacio') +
-          ' y los enemigos cercanos huyen.', amarillo]
+          ' y los enemigos cercanos huyen.', amarillo],
+        ['Gran danés: gigante y fácil de golpear. Su sombra (pasiva) frena a los enemigos que tiene delante.', amarillo]
       ]
     },
     {
