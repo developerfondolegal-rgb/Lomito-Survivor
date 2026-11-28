@@ -783,7 +783,10 @@ function pestanaDesafios(escena, capa, area) {
   y = area.y;
   capa.push(textoPausa(e, x, y, 'Zonas especiales', 16, '#ffe082', true));
   y += 40;
-  ZONAS.filter((z) => CONFIG.ZONAS[z.id]).forEach((z) => {
+  const zonasLista = ZONAS.filter((z) => CONFIG.ZONAS[z.id])
+    .filter((z) => z.id !== 'curacion' || (typeof zonasNuevas === 'function' && zonasNuevas(e))); // v0.50: la curación solo sale en La Plaza
+  const paso = zonasLista.length > 4 ? 60 : 66; // v0.50: con 5 zonas, un poco más juntas para que quepa la nota de abajo
+  zonasLista.forEach((z) => {
     const aqui = !!(e.efectoZona && e.efectoZona[z.id]);
     const fondo = e.add.graphics();
     fondo.fillStyle(aqui ? 0x1f3a1f : 0x000000, aqui ? 0.8 : 0.3);
@@ -795,7 +798,7 @@ function pestanaDesafios(escena, capa, area) {
     capa.push(textoPausa(e, x + 56, y - 16, z.nombre, 15, z.colorTexto, true));
     capa.push(textoPausa(e, x + 56, y + 4, z.frase, 13, '#cfd8dc', false, anchoCol - 150));
     if (aqui) capa.push(textoPausa(e, x + anchoCol - 10, y - 16, 'ESTÁS AQUÍ', 13, '#9ccc65', true).setOrigin(1, 0));
-    y += 66;
+    y += paso;
   });
   capa.push(textoPausa(e, x, y - 6, 'Tecla Z: una zona de cada tipo cerca del perro (prueba)', 12, '#8a8a99'));
 }

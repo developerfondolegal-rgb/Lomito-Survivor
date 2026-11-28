@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.49';
+const VERSION_JUEGO = '0.50';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -1196,10 +1196,12 @@ const CONFIG = {
     miedo:   { RADIO: 140, PESO: 3 },
     // Zona peligrosa (roja): el daño que recibe el perro se multiplica por esto
     peligro: { RADIO: 150, PESO: 3, DANO_MULTIPLICADOR: 2 },
-    // Barro (café): el perro y los enemigos se mueven más lento (0.4 = 40% más lento)
+    // Barro (naranja): el perro y los enemigos se mueven más lento (0.4 = 40% más lento)
     barro:   { RADIO: 160, PESO: 3, LENTITUD: 0.4 },
-    // Zona segura (verde, rara): no recibe daño, pero tampoco recoge huesos (no gana experiencia)
-    segura:  { RADIO: 110, PESO: 1 }
+    // Zona segura (celeste, rara): no recibe daño, pero tampoco recoge huesos (no gana experiencia)
+    segura:  { RADIO: 110, PESO: 1 },
+    // Zona de curación (verde, nueva en v0.50): cura CURA de vida cada CURA_CADA_MS. Solo sale en La Plaza (src/plaza_zonas.js)
+    curacion: { RADIO: 120, PESO: 1, CURA: 2, CURA_CADA_MS: 1000 }
   },
 
   // ---------------------------------------------------------------
