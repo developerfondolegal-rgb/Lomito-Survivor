@@ -484,6 +484,239 @@ function pintarSueloMapa(escena, def, mapa) {
 //   obstaculos: grupo de física (para los choques)
 //   libre(x, y, margen): true si no hay obstáculos cerca
 //   buscarLibre(x, y, margen): el punto libre más cercano
+// ---------------------------------------------------------------
+// v0.48 (Plaza renovada FASE 2): cómo rodean los enemigos los objetos grandes.
+// Solo se activa en la plaza nueva (plaza.rodeoAgrupado); Terminal y Feria siguen igual.
+//  - Un objeto hecho de varios círculos pegados (el kiosko) se rodea como una
+//    sola "cápsula": así los enemigos no se meten en las muescas entre círculos.
+//  - Si al rodear tocan otro obstáculo, giran alrededor del grupo (glorieta + bancas).
+//  - Recuerdan por qué lado iban un rato, para no ir y volver frente a una pared larga.
+// ---------------------------------------------------------------
+// Va ANTES de crear los choques. Un objeto de círculos pegados (el kiosko) queda como
+// "cápsula", y entre cada par de círculos se agregan 3 círculos de relleno: sin eso
+// quedaban muescas en V de casi 40 px donde el perro se quedaba pegado al ir en diagonal.
+function rellenarMuescas(plaza) {
+  if (typeof PZ_OBJETOS === 'undefined') return;
+  plaza.adornos.forEach((a) => {
+    const def = PZ_OBJETOS[a.clave];
+    if (!def || !def.choque) return;
+    const ch = typeof pzChoqueGirado === 'function' ? pzChoqueGirado(def.choque, a.angulo || 0) : def.choque; // igual que plaza_generar.js
+    if (!ch || ch.forma !== 'circulos' || ch.lista.length < 2) return;
+    const L = ch.lista;
+    for (let i = 1; i < L.length; i++) {   // solo si los círculos se tocan (el columpio no: sus postes están separados)
+      if (Math.hypot(L[i].dx - L[i - 1].dx, L[i].dy - L[i - 1].dy) > L[i].r + L[i - 1].r) return;
+    }
+    const capsula = {
+      x: a.x, y: a.y,
+      ax: a.x + L[0].dx, ay: a.y + L[0].dy,
+      bx: a.x + L[L.length - 1].dx, by: a.y + L[L.length - 1].dy
+    };
+    plaza.solidos.forEach((s) => {
+      if (L.some((c) => Math.abs(s.x - (a.x + c.dx)) < 1 && Math.abs(s.y - (a.y + c.dy)) < 1)) s.capsula = capsula;
+    });
+    for (let i = 1; i < L.length; i++) {
+      for (const t of [0.25, 0.5, 0.75]) {
+        plaza.solidos.push({
+          forma: 'circulo', tipo: a.tipo, capsula,
+          x: a.x + L[i - 1].dx + (L[i].dx - L[i - 1].dx) * t,
+          y: a.y + L[i - 1].dy + (L[i].dy - L[i - 1].dy) * t,
+          r: Math.min(L[i].r, L[i - 1].r)
+        });
+      }
+    }
+  });
+}
+
+// Va DESPUÉS de crear los choques
+function marcarRodeoAgrupado(plaza) {
+  plaza.rodeoAgrupado = true;
+  plaza.obstaculos.getChildren().forEach((z) => {
+    if (z.solido.capsula) z.capsula = z.solido.capsula;
+  });
+}
+
+// Punto alrededor del cual se gira: el centro, o el punto más cercano del eje de una cápsula
+function puntoDeRodeo(o, x, y) {
+  if (o.ax === undefined) return o;
+  const vx = o.bx - o.ax;
+  const vy = o.by - o.ay;
+  const t = Phaser.Math.Clamp(((x - o.ax) * vx + (y - o.ay) * vy) / (vx * vx + vy * vy), 0, 1);
+  return { x: o.ax + vx * t, y: o.ay + vy * t };
+}
+
+// Igual que chocarObstaculo (GameScene.js), pero con cápsulas, grupos y memoria del lado
+function chocarObstaculoAgrupado(escena, enemigo, zona, ahora) {
+  const pieza = zona.capsula || zona;
+  if (ahora >= enemigo.rodeandoHasta || !enemigo.rodeoGrupo) {
+    const m = enemigo.rodeoMemoria;
+    if (m && m.pieza === pieza && ahora < m.hasta) {
+      enemigo.rodeoLado = m.lado; // vuelve a chocar con lo mismo: sigue por el mismo lado
+    } else {
+      const p = puntoDeRodeo(pieza, enemigo.x, enemigo.y);
+      const desde = Phaser.Math.Angle.Between(p.x, p.y, enemigo.x, enemigo.y);
+      const perro = perroMasCercano(escena, enemigo.x, enemigo.y);
+      const directo = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, perro.x, perro.y);
+      enemigo.rodeoLado = Math.cos(desde + Math.PI / 2 - directo) >= Math.cos(desde - Math.PI / 2 - directo) ? 1 : -1;
+    }
+    enemigo.rodeoGrupo = [pieza];
+    enemigo.rodeoCentro = pieza;
+    enemigo.rodeoInicio = ahora;
+    enemigo.rodeoX = enemigo.x;
+    enemigo.rodeoY = enemigo.y;
+  } else {
+    if (enemigo.rodeoGrupo.indexOf(pieza) < 0) {   // tocó otro obstáculo mientras rodeaba: gira alrededor del grupo
+      enemigo.rodeoGrupo.push(pieza);
+      if (enemigo.rodeoGrupo.length > 4) enemigo.rodeoGrupo.shift();
+      const n = enemigo.rodeoGrupo.length;
+      enemigo.rodeoCentro = {
+        x: enemigo.rodeoGrupo.reduce((s, z) => s + z.x, 0) / n,
+        y: enemigo.rodeoGrupo.reduce((s, z) => s + z.y, 0) / n
+      };
+    }
+    if (ahora - enemigo.rodeoInicio > 1000) {      // cada segundo: si casi no avanzó, prueba el otro lado
+      if (Phaser.Math.Distance.Between(enemigo.x, enemigo.y, enemigo.rodeoX, enemigo.rodeoY) < 25) enemigo.rodeoLado *= -1;
+      enemigo.rodeoInicio = ahora;
+      enemigo.rodeoX = enemigo.x;
+      enemigo.rodeoY = enemigo.y;
+    }
+  }
+  enemigo.rodeoMemoria = { pieza: enemigo.rodeoGrupo[0], lado: enemigo.rodeoLado, hasta: ahora + 2500 };
+  enemigo.rodeoObstaculo = enemigo.rodeoCentro;
+  enemigo.rodeandoHasta = ahora + CONFIG.RODEO_MS;
+}
+
+// ---------------------------------------------------------------
+// v0.48: "mapa de caminos" de la plaza renovada (solo ahí; Terminal y Feria no lo usan).
+// Una cuadrícula de 16 px marca por dónde se puede pasar. Cada 300 ms se calcula, desde
+// el perro, cuántos pasos faltan para llegar a cada casilla cercana. Un enemigo que no ve
+// al perro en línea recta sigue las casillas que acercan; así sale de rincones como el
+// pasillo entre la glorieta y sus bancas. Hay un mapa por tamaño de enemigo (el jefe no
+// cabe por donde pasa un perro rival); el de los chicos se hace al cargar y los otros
+// recién cuando aparece un enemigo de ese tamaño.
+// ---------------------------------------------------------------
+const CAMPO = { CASILLA: 16, MARGENES: [13, 20, 28, 40, 56], CADA_MS: 300, ALCANCE: 130, MIRAR: 6 };
+
+function crearCampoCaminos(plaza, m) {
+  const C = CAMPO.CASILLA;
+  const cols = Math.ceil(CONFIG.MAPA_ANCHO / C);
+  const filas = Math.ceil(CONFIG.MAPA_ALTO / C);
+  const bloq = new Uint8Array(cols * filas);
+  plaza.solidos.forEach((s) => {   // solo revisa las casillas cerca de cada obstáculo
+    const ex = (s.forma === 'circulo' ? s.r : s.w / 2) + m;
+    const ey = (s.forma === 'circulo' ? s.r : s.h / 2) + m;
+    const c0 = Math.max(0, Math.floor((s.x - ex) / C)), c1 = Math.min(cols - 1, Math.floor((s.x + ex) / C));
+    const f0 = Math.max(0, Math.floor((s.y - ey) / C)), f1 = Math.min(filas - 1, Math.floor((s.y + ey) / C));
+    for (let f = f0; f <= f1; f++) {
+      for (let c = c0; c <= c1; c++) {
+        if (!bloq[f * cols + c] && !puntoLibre([s], c * C + C / 2, f * C + C / 2, m, true)) bloq[f * cols + c] = 1;
+      }
+    }
+  });
+  plaza.campos[m] = { cols, filas, bloq, dist: new Int16Array(cols * filas).fill(-1), visitadas: [], hasta: -1 };
+  return plaza.campos[m];
+}
+
+// Recalcula los pasos desde el perro (o los dos perros en cooperativo)
+function actualizarCampo(escena, k, ahora) {
+  if (ahora < k.hasta) return;
+  k.hasta = ahora + CAMPO.CADA_MS;
+  const C = CAMPO.CASILLA;
+  k.visitadas.forEach((i) => { k.dist[i] = -1; });
+  const cola = [];
+  const perros = escena.jugador2 ? escena.perrosCoop.filter((p) => !p.caido) : [escena.perro];
+  perros.forEach((p) => {
+    const c = Phaser.Math.Clamp(Math.floor(p.x / C), 0, k.cols - 1);
+    const f = Phaser.Math.Clamp(Math.floor(p.y / C), 0, k.filas - 1);
+    const i = f * k.cols + c;
+    if (k.dist[i] < 0) { k.dist[i] = 0; cola.push(i); }
+  });
+  for (let q = 0; q < cola.length; q++) {
+    const i = cola[q];
+    const d = k.dist[i] + 1;
+    if (d > CAMPO.ALCANCE) continue;
+    const c = i % k.cols;
+    const vecinos = [c > 0 ? i - 1 : -1, c < k.cols - 1 ? i + 1 : -1, i - k.cols, i + k.cols];
+    for (const v of vecinos) {
+      if (v < 0 || v >= k.dist.length || k.bloq[v] || k.dist[v] >= 0) continue;
+      k.dist[v] = d;
+      cola.push(v);
+    }
+  }
+  k.visitadas = cola;
+}
+
+// ¿Hay camino libre en línea recta entre dos puntos?
+function campoLineaLibre(k, x1, y1, x2, y2) {
+  const C = CAMPO.CASILLA;
+  const n = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 10);
+  for (let s = 1; s < n; s++) {
+    const c = Math.floor((x1 + (x2 - x1) * s / n) / C);
+    const f = Math.floor((y1 + (y2 - y1) * s / n) / C);
+    if (c < 0 || f < 0 || c >= k.cols || f >= k.filas || k.bloq[f * k.cols + c]) return false;
+  }
+  return true;
+}
+
+// Ángulo para un enemigo chico, o null si debe usar la forma de siempre
+function anguloPorCampo(escena, enemigo, ahora) {
+  const m = CAMPO.MARGENES.find((v) => v >= enemigo.radio - 3);
+  if (m === undefined) return null; // más grande que todo: rodea como antes
+  if (enemigo.campoHasta > ahora) return enemigo.campoAngulo;
+  enemigo.campoHasta = ahora + 120;
+  const plaza = escena.plaza;
+  const k = plaza.campos[m] || crearCampoCaminos(plaza, m);
+  actualizarCampo(escena, k, ahora);
+  const C = CAMPO.CASILLA;
+  const perro = perroMasCercano(escena, enemigo.x, enemigo.y);
+  let angulo = null;
+  if (campoLineaLibre(k, enemigo.x, enemigo.y, perro.x, perro.y)) {
+    angulo = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, perro.x, perro.y);
+  } else {
+    const c0 = Math.floor(enemigo.x / C);
+    const f0 = Math.floor(enemigo.y / C);
+    const libre = (c, f) => c >= 0 && f >= 0 && c < k.cols && f < k.filas && !k.bloq[f * k.cols + c];
+    const pasos = (c, f) => (libre(c, f) ? k.dist[f * k.cols + c] : -1);
+    // Casilla de partida: la propia, o la mejor de alrededor si está pegado a un obstáculo
+    let mc = -1, mf = -1, md = 1e9;
+    for (let anillo = 0; anillo <= 3 && mc < 0; anillo++) {
+      for (let f = f0 - anillo; f <= f0 + anillo; f++) {
+        for (let c = c0 - anillo; c <= c0 + anillo; c++) {
+          if (Math.max(Math.abs(c - c0), Math.abs(f - f0)) !== anillo) continue;
+          const d = pasos(c, f);
+          if (d >= 0 && d < md) { md = d; mc = c; mf = f; }
+        }
+      }
+    }
+    if (mc >= 0) {
+      // Baja unos pasos por el camino y apunta al más lejano que se ve en línea recta
+      // (se ve más suave que ir casilla por casilla, sin cortar esquinas de autos o bancas)
+      const camino = [[mc, mf]];
+      for (let s = 0; s < CAMPO.MIRAR; s++) {
+        let bc = mc, bf = mf, bd = pasos(mc, mf);
+        for (let df = -1; df <= 1; df++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (!dc && !df) continue;
+            if (dc && df && (!libre(mc + dc, mf) || !libre(mc, mf + df))) continue; // no corta esquinas
+            const d = pasos(mc + dc, mf + df);
+            if (d >= 0 && d < bd) { bd = d; bc = mc + dc; bf = mf + df; }
+          }
+        }
+        if (bc === mc && bf === mf) break;
+        mc = bc; mf = bf;
+        camino.push([mc, mf]);
+      }
+      let meta = camino[Math.min(1, camino.length - 1)];
+      for (let s = camino.length - 1; s > 1; s--) {
+        const [c, f] = camino[s];
+        if (campoLineaLibre(k, enemigo.x, enemigo.y, c * C + C / 2, f * C + C / 2)) { meta = camino[s]; break; }
+      }
+      angulo = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, meta[0] * C + C / 2, meta[1] * C + C / 2);
+    }
+  }
+  enemigo.campoAngulo = angulo;
+  return angulo;
+}
+
 function crearPlaza(escena, mapaId) {
   const def = buscarMapa(mapaId);
   aplicarTamanoMapa(def.id);
@@ -494,8 +727,11 @@ function crearPlaza(escena, mapaId) {
   pintarSueloMapa(escena, def, plaza);
 
   plaza.adornos.forEach((a) => {
-    escena.add.image(a.x, a.y, a.clave).setScale(ESCALA_PIXEL).setAngle(a.angulo || 0).setDepth(a.profundidad);
+    a.imagen = escena.add.image(a.x, a.y, a.clave).setScale(ESCALA_PIXEL).setAngle(a.angulo || 0).setDepth(a.profundidad);
   });
+  if (plaza.cables && typeof pzCrearCables === 'function') pzCrearCables(escena, plaza); // Plaza renovada FASE 2: cables entre postes
+
+  if (plaza.cables) rellenarMuescas(plaza); // Plaza renovada FASE 2: el kiosko sin muescas
 
   // Choques: figuras invisibles con la forma de cada obstáculo
   plaza.obstaculos = escena.physics.add.staticGroup();
@@ -506,6 +742,11 @@ function crearPlaza(escena, mapaId) {
     if (circulo) zona.body.setCircle(s.r);
     zona.solido = s;
   });
+  if (plaza.cables) { // Plaza renovada FASE 2: los enemigos rodean bien el kiosko y la glorieta
+    marcarRodeoAgrupado(plaza);
+    plaza.campos = {};
+    crearCampoCaminos(plaza, CAMPO.MARGENES[0]); // el de los enemigos chicos (los otros, cuando hagan falta)
+  }
 
   plaza.libre = (x, y, margen) => puntoLibre(plaza.solidos, x, y, margen);
 

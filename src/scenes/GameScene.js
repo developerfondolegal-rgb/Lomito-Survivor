@@ -949,8 +949,12 @@ class GameScene extends Phaser.Scene {
   anguloHaciaPerro(enemigo, ahora) {
     const perro = perroMasCercano(this, enemigo.x, enemigo.y);
     const directo = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, perro.x, perro.y);
+    if (this.plaza.campos) { // v0.48: plaza renovada, mapa de caminos (src/mapa.js)
+      const porCampo = anguloPorCampo(this, enemigo, ahora);
+      if (porCampo !== null) return porCampo;
+    }
     if (ahora >= enemigo.rodeandoHasta || !enemigo.rodeoObstaculo) return directo;
-    const o = enemigo.rodeoObstaculo;
+    const o = puntoDeRodeo(enemigo.rodeoObstaculo, enemigo.x, enemigo.y); // v0.48: objetos largos (kiosko) se rodean como cápsula
     return Phaser.Math.Angle.Between(o.x, o.y, enemigo.x, enemigo.y) + enemigo.rodeoLado * Math.PI / 2;
   }
 
@@ -965,6 +969,8 @@ class GameScene extends Phaser.Scene {
     const enemigo = a.cfg ? a : b;
     const zona = a.cfg ? b : a;
     const ahora = this.tiempoSobrevivido;
+    // v0.48: la plaza renovada tiene objetos grandes y rincones (kiosko, glorieta con bancas)
+    if (this.plaza.rodeoAgrupado) { chocarObstaculoAgrupado(this, enemigo, zona, ahora); return; }
 
     if (ahora >= enemigo.rodeandoHasta || enemigo.rodeoObstaculo !== zona) {
       const desde = Phaser.Math.Angle.Between(zona.x, zona.y, enemigo.x, enemigo.y);
@@ -1685,6 +1691,9 @@ class GameScene extends Phaser.Scene {
     enemigo.rodeoObstaculo = null;
     enemigo.rodeoLado = 1;
     enemigo.rodeoInicio = 0;
+    enemigo.rodeoGrupo = null;    // v0.48: rodeo agrupado de la plaza renovada (src/mapa.js)
+    enemigo.rodeoMemoria = null;
+    enemigo.campoHasta = 0;       // v0.48: mapa de caminos de la plaza renovada (src/mapa.js)
     return enemigo;
   }
 

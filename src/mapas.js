@@ -57,7 +57,7 @@ const MAPAS = [
     },
     crearTexturas: (escena, p) => {
       crearTexturasPlaza(escena, p);                                                    // las de siempre (la fase 1 las usa de respaldo)
-      if (typeof crearTexturasPlazaNueva === 'function') crearTexturasPlazaNueva(escena); // FASE 2 (src/plaza_objetos.js, aún no se carga)
+      if (typeof crearTexturasPlazaNueva === 'function') crearTexturasPlazaNueva(escena); // FASE 2 (src/plaza_objetos.js)
     },
     generar: () => generarPlazaNueva(),                            // Plaza renovada FASE 1 (src/plaza_generar.js)
     pintarSuelo: (h, mapa, p) => pintarSueloPlazaNueva(h, mapa, p) // Plaza renovada FASE 1 (src/plaza_suelo.js)
