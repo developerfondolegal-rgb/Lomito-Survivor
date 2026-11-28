@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.44';
+const VERSION_JUEGO = '0.45';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -358,8 +358,12 @@ const CONFIG = {
   // ---------------------------------------------------------------
   ENEMIGOS: {
     // Perro rival: el enemigo básico
+    // v0.45: dibujo nuevo 32x32 (src/sprites_rival.js). El viejo 'rival' de src/sprites.js
+    // NO se borra: es SPRITE_ENEMIGO_POR_DEFECTO de los enemigos sin dibujo propio.
     rival: {
       COLOR: 0xd63c3c,          // rojo
+      SPRITE: 'nuevo_rival',    // 32x32 a escala 2 (64 px), igual que el pitbull de pandilla
+      ANIM_ATAQUE_MS: 300,      // al morderte juega 'ataque' este rato (solo se ve)
       RADIO: 16,
       VIDA: 20,
       VELOCIDAD: 110,
@@ -371,9 +375,12 @@ const CONFIG = {
     },
 
     // Manada: grupos de perros chicos, rápidos y débiles
+    // v0.45: dibujo nuevo 32x32 (src/sprites_manada.js; el viejo 'manada' sigue en src/sprites.js)
     manada: {
       COLOR: 0xff6e6e,          // rojo claro
-      RADIO: 10,
+      SPRITE: 'nuevo_manada',   // 32x32 a escala 2 (64 px)
+      ANIM_ATAQUE_MS: 300,      // al morderte juega 'ataque' este rato (solo se ve)
+      RADIO: 11,                // v0.45: antes 10; el dibujo nuevo es más grande (calza mejor con el golpe)
       VIDA: 8,
       VELOCIDAD: 165,
       DANO: 3,
