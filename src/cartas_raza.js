@@ -13,6 +13,17 @@
 const FUENTE_CARTA = 'Cinzel, Georgia, "Times New Roman", serif';
 const FUENTE_FRASE = 'Georgia, "Times New Roman", serif';
 
+// v0.40: resolución de los textos (según la pantalla, mínimo 2) y filtro suave para que la
+// letra se vea nítida aunque la carta se achique (pixelArt pone todo en "pixelado").
+function resolucionTexto() {
+  return Math.max(2, Math.ceil(window.devicePixelRatio || 1));
+}
+function textoNitido(obj) {
+  obj.setResolution(resolucionTexto());
+  if (obj.texture && obj.texture.setFilter) obj.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+  return obj;
+}
+
 const CARTA_COLORES = {
   borde: 0x120c06,        // borde oscuro de afuera
   oro: 0xd4a537,          // marco dorado
@@ -275,7 +286,9 @@ function candadoCarta(g, x, y, s) {
 }
 
 // Crea una carta en (cx, cy) de ancho x alto. Devuelve { contenedor, cabe, ventana, fijar(bool) }.
-// opciones: { bloqueada, alElegir }
+// opciones: { bloqueada, alElegir, carrusel, sMax }
+// v0.40 (carrusel): sin el salto al pasar el mouse, el clic se cuenta al soltar (para poder
+// deslizar con el dedo) y el brillo del marco lo pone el menú con encender(bool).
 // Si el contenido no cabe, primero se achica todo lo de adentro (letras y partes). Si aun así
 // no cabe (en celular la letra tiene un mínimo, MOVIL.TEXTO_MINIMO), se achica la carta entera.
 function crearCartaRaza(escena, cx, cy, ancho, alto, raza, opciones) {
@@ -286,9 +299,11 @@ function crearCartaRaza(escena, cx, cy, ancho, alto, raza, opciones) {
     carta.contenedor.setScale(k);
     return carta.cabe;
   };
-  let s = Math.min(1.15, ancho / 160);
-  for (let i = 0; i < 4; i++, s *= 0.94) if (probar(1, s)) return carta;
-  for (let k = 0.92; k > 0.5; k *= 0.95) if (probar(k, Math.min(1.15, ancho / k / 160))) return carta;
+  const sMax = (opciones && opciones.sMax) || 1.15;
+  let s = Math.min(sMax, ancho / 160);
+  const intentos = opciones && opciones.carrusel ? 10 : 4; // carrusel: se prefiere achicar la letra a escalar la carta
+  for (let i = 0; i < intentos; i++, s *= 0.94) if (probar(1, s)) return carta;
+  for (let k = 0.92; k > 0.5; k *= 0.95) if (probar(k, Math.min(sMax, ancho / k / 160))) return carta;
   return carta;
 }
 
@@ -310,7 +325,7 @@ function armarCartaRaza(escena, cx, cy, ancho, alto, raza, op, s) {
   const g = escena.add.graphics();
   cont.add(g);
   const texto = (x, y, t, estilo) => {
-    const obj = escena.add.text(x, y, t, { resolution: 2, ...estilo });
+    const obj = textoNitido(escena.add.text(x, y, t, estilo));
     cont.add(obj);
     return obj;
   };
@@ -442,18 +457,28 @@ function armarCartaRaza(escena, cx, cy, ancho, alto, raza, op, s) {
     if (op.bloqueada || si === encendida) return;
     encendida = si;
     marcoCarta(marco, ancho, alto, s, si);
+    if (op.carrusel) return; // en el carrusel la carta no salta
     escena.tweens.killTweensOf(cont);
     escena.tweens.add({ targets: cont, y: cy - (si ? Math.round(6 * s) : 0), duration: 120, ease: 'Quad.easeOut' });
   };
-  zona.on('pointerover', () => ponerEncendida(true));
-  zona.on('pointerout', () => { if (!fija) ponerEncendida(false); });
-  zona.on('pointerdown', () => { if (!op.bloqueada && op.alElegir) op.alElegir(); });
+  if (op.carrusel) {
+    // se cuenta al soltar, y solo si el dedo / mouse casi no se movió (si no, fue un deslizamiento)
+    zona.on('pointerup', (p) => {
+      if (Math.abs(p.x - p.downX) < 25 && Math.abs(p.y - p.downY) < 25 && op.alElegir) op.alElegir();
+    });
+  } else {
+    zona.on('pointerover', () => ponerEncendida(true));
+    zona.on('pointerout', () => { if (!fija) ponerEncendida(false); });
+    zona.on('pointerdown', () => { if (!op.bloqueada && op.alElegir) op.alElegir(); });
+  }
 
   return {
     contenedor: cont,
     cabe,
+    zona,
     ventana: { izq, arriba: yVentana, ancho: anchoIn },
-    fijar(si) { fija = si; ponerEncendida(si); }
+    fijar(si) { fija = si; ponerEncendida(si); },
+    encender(si) { ponerEncendida(si); } // v0.40: brillo del marco (bloqueada: nunca)
   };
 }
 

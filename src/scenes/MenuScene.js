@@ -6,6 +6,15 @@
 
 const FUENTE = 'Arial, sans-serif';
 
+// v0.40: carrusel de razas del menú
+const CARRUSEL = {
+  GUARDADO: 'lomito_ultima_raza', // última raza elegida (localStorage)
+  ESCALAS: [1, 0.8, 0.65],        // tamaño de la carta del centro, la de al lado y la siguiente
+  OSCURO: [0, 0.35, 0.55],        // qué tan oscurecidas quedan (0 = nada)
+  DURACION_MS: 200,               // cuánto demora el movimiento al avanzar
+  DESLIZAR_PX: 40                 // cuánto hay que deslizar el dedo para avanzar una carta
+};
+
 // Dibuja un perro en pixel art. v0.23: las razas jugables usan los sprites
 // nuevos de 32 x 32 (src/razas_sprites.js, escala 2, empieza quieto: idle).
 // Si la raza no tiene sprite nuevo, usa el dibujo viejo (src/sprites.js) o
@@ -41,14 +50,17 @@ class MenuScene extends Phaser.Scene {
     // v0.28: en cooperativo eligen los dos, primero J1 y después J2 (ver elegir)
     this.razaJ1 = null;           // raza que ya eligió J1 (cooperativo)
     this.marcasRaza = [];         // marcas "P1" / "P2" sobre las cartas
-    this.textoTitulo = this.add.text(w / 2, 95, '', {
+    this.textoTitulo = textoNitido(this.add.text(w / 2, 95, '', {
       fontFamily: FUENTE, fontSize: '18px', color: '#dddddd'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5));
 
     this.add.text(w - 10 - e, this.scale.height - 8 - e, 'Lomito Survivor - v' + VERSION_JUEGO, {
       fontFamily: FUENTE, fontSize: '13px', color: '#888888'
     }).setOrigin(1, 1);
 
+    this.capaAvisoSesion = []; // ventana "¿Jugar sin guardar?" (v0.26)
+    this.seleccion = this.indiceGuardado(); // v0.40: carta del centro del carrusel
+    this.crearControlesCarrusel();
     this.crearCartas();
     // v0.38: cuando termina de bajar la letra Cinzel, se redibujan las cartas (si nadie eligió aún)
     esperarFuenteCarta(this, () => { if (!this.razaJ1 && this.capaAvisoSesion.length === 0) this.crearCartas(); });
@@ -104,7 +116,6 @@ class MenuScene extends Phaser.Scene {
     this.coopPermitidoAntes = coopPermitido();
     this.dibujarCoop();
     this.teclaCoop = this.input.keyboard.addKey(nombreTeclaPhaser(CONFIG.COOP.TECLA_MENU));
-    this.capaAvisoSesion = []; // ventana "¿Jugar sin guardar?" (v0.26)
 
     this.teclaAlbum = this.input.keyboard.addKey('A');
     this.teclaRincon = this.input.keyboard.addKey('B');
@@ -113,6 +124,12 @@ class MenuScene extends Phaser.Scene {
     this.teclaRanking = this.input.keyboard.addKey('L');
     this.teclaApodo = this.input.keyboard.addKey('N'); // cambiar apodo (con sesión)
     this.teclaComoJugar = this.input.keyboard.addKey('I'); // v0.34: cartas "Cómo jugar"
+    // v0.40: carrusel (← → para mirar, Enter / Espacio para jugar con la del centro)
+    // (con eventos: no se pierde un toque de tecla muy rápido)
+    this.input.keyboard.on('keydown-LEFT', () => this.avanzar(-1));
+    this.input.keyboard.on('keydown-RIGHT', () => this.avanzar(1));
+    this.input.keyboard.on('keydown-ENTER', () => this.elegir(this.seleccion));
+    this.input.keyboard.on('keydown-SPACE', () => this.elegir(this.seleccion));
   }
 
   // Línea del cooperativo, arriba a la izquierda debajo de los huesitos (v0.26)
@@ -152,11 +169,11 @@ class MenuScene extends Phaser.Scene {
   // Cooperativo: "Jugador 1 elige su raza" y después "Jugador 2 elige su raza"
   dibujarTitulo() {
     if (!coopActivo()) {
-      const como = modoTactil() ? 'toca una carta para empezar' : 'haz clic en una carta';
+      const como = modoTactil() ? 'desliza y toca la del centro para empezar' : '◀ ▶ para mirar · Enter o clic para jugar';
       this.textoTitulo.setText('Elige tu raza (' + como + ')').setColor('#dddddd');
       return;
     }
-    const comoCoop = modoTactil() ? 'toca una carta' : 'haz clic en una carta';
+    const comoCoop = modoTactil() ? 'toca la del centro' : '◀ ▶ y Enter o clic';
     if (!this.razaJ1) {
       this.textoTitulo.setText('Jugador 1 elige su raza (' + comoCoop + ')').setColor(colorTextoJugador(1));
     } else {
@@ -170,8 +187,8 @@ class MenuScene extends Phaser.Scene {
     this.razaJ1 = null;
     this.marcasRaza.forEach((o) => o.destroy());
     this.marcasRaza = [];
-    (this.cartas || []).forEach((c) => c.fijar(false));
     this.dibujarTitulo();
+    this.moverCarrusel(false);
   }
 
   // v0.28: "P1" / "P2" en la carta elegida. v0.38: arriba a la izquierda de la ventana del perro
@@ -183,8 +200,9 @@ class MenuScene extends Phaser.Scene {
       fontFamily: FUENTE, fontSize: '16px', color: colorTextoJugador(n), fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
     });
     c.carta.contenedor.add(t);
-    c.carta.fijar(true);
+    t.indice = indice;
     this.marcasRaza.push(t);
+    this.moverCarrusel(false); // la carta marcada queda con el marco encendido
   }
 
   // Aviso de cuenta: sin sesión el puntaje no se guarda (v0.26)
@@ -281,8 +299,7 @@ class MenuScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.teclaArbol)) this.scene.start('ArbolScene');
     if (Phaser.Input.Keyboard.JustDown(this.teclaRanking)) this.scene.start('RankingScene');
     if (Phaser.Input.Keyboard.JustDown(this.teclaApodo)) pedirApodo(true);
-    if (Phaser.Input.Keyboard.JustDown(this.teclaComoJugar)) this.scene.start('ComoJugarScene');
-    // Modo de prueba: H da huesitos guardados (cuánto, en CONFIG.HUESITOS.PRUEBA_TECLA_H)
+    if (Phaser.Input.Keyboard.JustDown(this.teclaComoJugar)) this.scene.start('ComoJugarScene');    // Modo de prueba: H da huesitos guardados (cuánto, en CONFIG.HUESITOS.PRUEBA_TECLA_H)
     if (Phaser.Input.Keyboard.JustDown(this.teclaH)) {
       sumarHuesitos(CONFIG.HUESITOS.PRUEBA_TECLA_H);
       this.actualizarHuesitos();
@@ -315,42 +332,234 @@ class MenuScene extends Phaser.Scene {
     zona.on('pointerdown', () => this.scene.start('AlbumScene'));
   }
 
-  // Solo las razas que tienen textos (razas.js) y números (config.js)
+  // Solo las razas que tienen textos (razas.js) y números (config.js).
+  // v0.40: sin límite (el carrusel aguanta muchas razas)
   listaRazas() {
-    return RAZAS.filter((r) => CONFIG.RAZAS[r.id]).slice(0, 9);
+    return RAZAS.filter((r) => CONFIG.RAZAS[r.id]);
   }
 
-  // v0.38: cartas estilo coleccionable (src/cartas_raza.js), en una fila (hasta 6 razas) o en 2.
-  // Ocupan el espacio entre el botón "Cómo jugar" (arriba) y los botones de abajo.
+  // v0.40: última raza elegida (si ya no existe, la primera)
+  indiceGuardado() {
+    let id = null;
+    try { id = window.localStorage.getItem(CARRUSEL.GUARDADO); } catch (err) { id = null; }
+    return Math.max(0, this.listaRazas().findIndex((r) => r.id === id));
+  }
+
+  guardarRaza(id) {
+    try { window.localStorage.setItem(CARRUSEL.GUARDADO, id); } catch (err) { /* sin guardado: no pasa nada */ }
+  }
+
+  // v0.40: cuántas cartas se ven a cada lado de la del centro (PC 2 → 5 cartas; celular 1 → 3)
+  ladoVisible() {
+    return modoTactil() ? 1 : 2;
+  }
+
+  // v0.40: medidas del carrusel. Ocupa el espacio entre "Cómo jugar" (arriba) y los botones
+  // de abajo, dejando una fila para los puntitos.
+  medidasCarrusel() {
+    const w = this.scale.width;
+    const e = this.margenExtra;
+    const arriba = 135 + e / 2;
+    const abajo = this.scale.height - 26 - e / 2 - 17 - 4; // borde de arriba de los botones de abajo
+    const yPuntos = abajo - 8;
+    const alto = Math.floor(yPuntos - 12 - arriba);
+    const ancho = Math.floor(alto * (modoTactil() ? 0.78 : 0.66));
+    const E = CARRUSEL.ESCALAS;
+    const paso1 = Math.round(ancho * (E[0] + E[1]) / 2 * 0.92);          // centro → la de al lado
+    const paso2 = paso1 + Math.round(ancho * (E[1] + E[2]) / 2 * 0.86);  // → la siguiente
+    const pasos = [0, paso1, paso2, paso2 + Math.round(ancho * 0.5)];
+    if (modoTactil()) pasos[2] = paso1 + Math.round(ancho * 0.6);         // en celular la 2.ª ya va escondida
+    return { w, cx: w / 2, cy: Math.round(arriba + alto / 2), ancho, alto, yPuntos, pasos };
+  }
+
+  // v0.40: dónde va (x, escala, oscuro, alfa) la carta que está a "d" lugares del centro
+  lugarCarrusel(d) {
+    const m = this.medidas;
+    const lado = this.ladoVisible();
+    const a = Math.min(Math.abs(d), lado + 1);
+    const visible = Math.abs(d) <= lado;
+    return {
+      x: m.cx + Math.sign(d) * m.pasos[a],
+      escala: visible ? CARRUSEL.ESCALAS[a] : CARRUSEL.ESCALAS[lado] * 0.8,
+      oscuro: visible ? CARRUSEL.OSCURO[a] : 0.7,
+      alfa: visible ? 1 : 0,
+      visible
+    };
+  }
+
+  // Distancia circular de la carta i a la seleccionada (entre -n/2 y n/2)
+  distancia(i) {
+    const n = this.razas.length;
+    let d = ((i - this.seleccion) % n + n) % n;
+    if (d > n / 2) d -= n;
+    return d;
+  }
+
+  // v0.38: cartas estilo coleccionable (src/cartas_raza.js). v0.40: todas se arman del tamaño
+  // de la del centro (escala 1, texto nítido) y el carrusel las achica, oscurece y mueve.
   crearCartas() {
     (this.cartas || []).forEach((c) => c.contenedor.destroy());
     this.cartas = [];
     this.razas = this.listaRazas();
+    this.seleccion = Phaser.Math.Clamp(this.seleccion || 0, 0, this.razas.length - 1);
     this.posCartas = []; // v0.28: para marcar la raza elegida en cooperativo
-    const w = this.scale.width;
-    const e = this.margenExtra;
-    const n = this.razas.length;
-    const filas = n > 6 ? 2 : 1;
-    const columnas = Math.ceil(n / filas);
-    const separacion = Math.min(230, (w - 16 - 2 * e) / columnas);
-    const anchoCarta = Math.floor(separacion - 8);
-    const arriba = 135 + e / 2 + 4;  // aire para que la carta suba al pasar el mouse
-    const abajo = this.scale.height - 26 - e / 2 - 17 - 8; // borde de arriba de los botones de abajo, con aire
-    const espacioFilas = 8;
-    const altoCarta = Math.floor((abajo - arriba - espacioFilas * (filas - 1)) / filas);
-    const inicioX = w / 2 - ((columnas - 1) * separacion) / 2;
+    this.medidas = this.medidasCarrusel();
+    const m = this.medidas;
 
     this.razas.forEach((raza, i) => {
-      const fila = Math.floor(i / columnas);
-      const cx = Math.round(inicioX + (i % columnas) * separacion);
-      const cy = Math.round(arriba + fila * (altoCarta + espacioFilas) + altoCarta / 2);
-      const carta = crearCartaRaza(this, cx, cy, anchoCarta, altoCarta, raza, {
+      const carta = crearCartaRaza(this, m.cx, m.cy, m.ancho, m.alto, raza, {
         bloqueada: this.razaBloqueada(raza),
-        alElegir: () => this.elegir(i)
+        carrusel: true,
+        sMax: 1.45,
+        alElegir: () => this.tocarCarta(i)
       });
+      // velo oscuro de las cartas de los lados (va encima de todo en la carta)
+      carta.k = carta.contenedor.scaleX; // por si la carta tuvo que achicarse para caber
+      carta.velo = this.add.rectangle(0, 0, m.ancho / carta.k + 6, m.alto / carta.k + 6, 0x000000, 1).setAlpha(0);
+      carta.contenedor.add(carta.velo);
       this.cartas.push(carta);
-      this.posCartas.push({ x: cx, y: cy, ancho: anchoCarta, alto: altoCarta, carta });
+      this.posCartas.push({ x: m.cx, y: m.cy, ancho: m.ancho, alto: m.alto, carta });
     });
+    this.crearPuntos();
+    this.moverCarrusel(false);
+  }
+
+  // v0.40: flechas ◀ ▶ a los costados, rueda del mouse y deslizar con el dedo
+  crearControlesCarrusel() {
+    const m = this.medidasCarrusel();
+    const r = modoTactil() ? 30 : 22;
+    const margen = 10 + this.margenExtra + r;
+    [-1, 1].forEach((dir) => {
+      const x = dir < 0 ? margen : m.w - margen;
+      const g = this.add.graphics().setDepth(500);
+      const pintar = (encima) => {
+        g.clear();
+        g.fillStyle(0x000000, 0.55);
+        g.fillCircle(x, m.cy, r + 3);
+        g.fillStyle(encima ? 0x4a3a18 : 0x1d1510, 1);
+        g.fillCircle(x, m.cy, r);
+        g.lineStyle(3, encima ? 0xfff6cf : 0xd4a537, 1);
+        g.strokeCircle(x, m.cy, r);
+        g.fillStyle(encima ? 0xfff6cf : 0xf2cf63, 1);
+        const t = r * 0.45;
+        g.fillTriangle(x + dir * t * 1.1, m.cy, x - dir * t * 0.7, m.cy - t, x - dir * t * 0.7, m.cy + t);
+      };
+      pintar(false);
+      const zona = this.add.zone(x, m.cy, r * 2 + 16, r * 2 + 40).setInteractive({ useHandCursor: true }).setDepth(500);
+      zona.on('pointerover', () => pintar(true));
+      zona.on('pointerout', () => pintar(false));
+      zona.on('pointerdown', () => this.avanzar(dir));
+    });
+
+    // rueda del mouse: una carta cada 150 ms aunque la rueda mande muchos pasos
+    this.input.on('wheel', (p, objetos, dx, dy) => {
+      if (this.time.now < (this.ruedaEn || 0)) return;
+      const v = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
+      if (Math.abs(v) < 1) return;
+      this.ruedaEn = this.time.now + 150;
+      this.avanzar(v > 0 ? 1 : -1);
+    });
+
+    // deslizar (dedo, o mouse arrastrado) empezando sobre las cartas
+    this.input.on('pointerup', (p) => {
+      const dx = p.x - p.downX;
+      if (Math.abs(dx) < CARRUSEL.DESLIZAR_PX || Math.abs(dx) < Math.abs(p.y - p.downY)) return;
+      if (Math.abs(p.downY - m.cy) > m.alto / 2 + 10) return; // empezó fuera de las cartas
+      this.avanzar(dx < 0 ? 1 : -1);
+    });
+  }
+
+  // v0.40: puntitos debajo del carrusel (uno por raza; el dorado grande es el seleccionado)
+  crearPuntos() {
+    (this.capaPuntos || []).forEach((o) => o.destroy());
+    this.capaPuntos = [];
+    const m = this.medidas;
+    const n = this.razas.length;
+    const sep = Math.min(modoTactil() ? 26 : 18, (m.w * 0.6) / Math.max(1, n));
+    const inicio = m.cx - ((n - 1) * sep) / 2;
+    this.puntos = this.razas.map((raza, i) => {
+      const x = inicio + i * sep;
+      const g = this.add.graphics().setDepth(500);
+      const zona = this.add.zone(x, m.yPuntos, sep, 24).setInteractive({ useHandCursor: true }).setDepth(500);
+      zona.on('pointerdown', () => this.irA(i));
+      this.capaPuntos.push(g, zona);
+      return { g, x };
+    });
+  }
+
+  dibujarPuntos() {
+    const y = this.medidas.yPuntos;
+    const extra = modoTactil() ? 1 : 0;
+    this.puntos.forEach(({ g, x }, i) => {
+      const sel = i === this.seleccion;
+      const marcada = this.marcasRaza.some((t) => t.indice === i);
+      let color = this.razaBloqueada(this.razas[i]) ? 0x616161 : 0x8d7a55;
+      if (marcada) color = 0xd4a537;
+      if (sel) color = 0xffe08a;
+      g.clear();
+      g.fillStyle(0x000000, 0.6);
+      g.fillCircle(x, y, (sel ? 7 : 5) + extra);
+      g.fillStyle(color, 1);
+      g.fillCircle(x, y, (sel ? 5 : 3) + extra);
+    });
+  }
+
+  // v0.40: mueve la selección (dir = -1 / 1). Es circular.
+  avanzar(dir) {
+    if (this.capaAvisoSesion.length > 0 || !this.razas.length) return;
+    const n = this.razas.length;
+    this.seleccion = ((this.seleccion + dir) % n + n) % n;
+    this.moverCarrusel(true);
+  }
+
+  irA(i) {
+    if (this.capaAvisoSesion.length > 0 || i === this.seleccion) return;
+    this.seleccion = i;
+    this.moverCarrusel(true);
+  }
+
+  // Clic / toque en una carta: la del centro inicia; una de los lados viene al centro
+  tocarCarta(i) {
+    if (this.capaAvisoSesion.length > 0) return;
+    if (i === this.seleccion) this.elegir(i);
+    else this.irA(i);
+  }
+
+  // Pone cada carta en su lugar (con movimiento suave si "animar")
+  moverCarrusel(animar) {
+    if (!this.cartas) return;
+    const m = this.medidas;
+    this.cartas.forEach((carta, i) => {
+      const d = this.distancia(i);
+      const anterior = carta.d;
+      carta.d = d;
+      const lugar = this.lugarCarrusel(d);
+      const cont = carta.contenedor;
+      carta.encender(d === 0 || this.marcasRaza.some((t) => t.indice === i));
+      cont.setDepth(100 - Math.abs(d) * 10);
+      carta.zona.input.enabled = lugar.visible;
+      const k = carta.k;
+      const fin = { x: lugar.x, y: m.cy, scaleX: lugar.escala * k, scaleY: lugar.escala * k, alpha: lugar.alfa };
+      this.tweens.killTweensOf(cont);
+      this.tweens.killTweensOf(carta.velo);
+      // si dio la vuelta (de un extremo al otro), entra desde afuera de su lado en vez de cruzar
+      if (animar && anterior !== undefined && Math.abs(d - anterior) > 1) {
+        const desde = this.lugarCarrusel(d + (d < 0 ? -1 : 1));
+        cont.setPosition(desde.x, m.cy).setScale(desde.escala * k).setAlpha(0);
+      }
+      if (animar) {
+        cont.setVisible(true);
+        this.tweens.add({
+          targets: cont, ...fin, duration: CARRUSEL.DURACION_MS, ease: 'Quad.easeOut',
+          onComplete: () => cont.setVisible(lugar.visible)
+        });
+        this.tweens.add({ targets: carta.velo, alpha: lugar.oscuro, duration: CARRUSEL.DURACION_MS });
+      } else {
+        cont.setPosition(fin.x, fin.y).setScale(fin.scaleX).setAlpha(fin.alpha).setVisible(lugar.visible);
+        carta.velo.setAlpha(lugar.oscuro);
+      }
+    });
+    this.dibujarPuntos();
   }
 
   // v0.38: raza bloqueada (gris y con candado, no se puede elegir). Hoy ninguna raza está
@@ -361,7 +570,13 @@ class MenuScene extends Phaser.Scene {
 
   elegir(indice) {
     const raza = this.razas[indice];
-    if (!raza || this.capaAvisoSesion.length > 0 || this.razaBloqueada(raza)) return;
+    if (!raza || this.capaAvisoSesion.length > 0) return;
+    if (this.razaBloqueada(raza)) {
+      avisoBreve(this, this.scale.width / 2, this.medidas.yPuntos - 22, '🔒 ' + raza.nombre + ' está bloqueada');
+      return;
+    }
+    if (this.marcasRaza.length >= 2) return; // cooperativo: ya eligieron los dos
+    if (!this.razaJ1) this.guardarRaza(raza.id); // v0.40: se recuerda la raza de J1
     let datos = { raza: raza.id };
     // v0.28: cooperativo: el primer clic es la raza de J1; el segundo, la de J2
     if (coopActivo()) {
