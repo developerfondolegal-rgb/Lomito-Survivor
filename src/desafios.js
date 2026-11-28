@@ -192,7 +192,9 @@ function actualizarDesafios(escena, delta) {
     escena.textoDesafio.setText('DESAFÍO ' + buscarDesafio(d.id).nombre + ':  ' + textoProgresoDesafio(escena, d) +
       '   ·   quedan ' + segundosRestantes(escena, d) + ' s');
     escena.textoDesafio.setColor(d.hasta - ahora < 10000 && Math.floor(ahora / 300) % 2 === 0 ? '#ff8a80' : '#ffe082');
-    escena.textoDesafio.setY(escena.jefeVivo() ? 90 : 72); // si está la barra del jefe, más abajo
+    // si está la barra del jefe (o, v0.33, la del Tripa Seca, src/tripaseca.js), más abajo
+    const conBarra = escena.jefeVivo() || (typeof tripaSecaViva === 'function' && !!tripaSecaViva(escena));
+    escena.textoDesafio.setY(conBarra ? 90 : 72);
     escena.textoDesafio.setVisible(true);
     dibujarFlechasDesafio(escena, d);
   }

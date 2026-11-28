@@ -214,6 +214,7 @@ class GameScene extends Phaser.Scene {
 
     // Ataques secundarios, evoluciones y el curao al volante (src/ataques.js)
     iniciarAtaques(this);
+    iniciarTripaSeca(this); // v0.33: El Tripa Seca, mini jefe de la noche (src/tripaseca.js)
 
     // Cooperativo local (src/coop.js): segundo perro y cámara compartida. En 1 jugador no hace nada.
     iniciarCoop(this);
@@ -366,6 +367,7 @@ class GameScene extends Phaser.Scene {
     if (this.gameOver) return;
     actualizarJauria(this, delta);
     if (this.gameOver) return;
+    actualizarTripaSeca(this, delta); // v0.33: llega una vez por noche (src/tripaseca.js)
 
     // Enemigo élite cada cierto tiempo (al amanecer ya no llegan más)
     if (this.tiempoSobrevivido >= this.proximoElite) {
@@ -812,6 +814,8 @@ class GameScene extends Phaser.Scene {
       // El jefe se mueve solo (src/jefe.js), salvo al amanecer, que huye como todos
       if (enemigo.esJefe && !this.amaneciendo) return;
 
+      if (cfg.COMPORTAMIENTO === 'tripaseca' && (ahora < enemigo.empujadoHasta || ahora < enemigo.aturdidoHasta ||
+        ahora < enemigo.huyendoHasta)) cortarAtaqueTripaSeca(this, enemigo); // v0.33: vuelve a su forma
       if (ahora < enemigo.empujadoHasta) {
         // Lo empujó un ladrido: lo dejamos volar un momento
         enemigo.estado = 'acercarse';
@@ -834,6 +838,8 @@ class GameScene extends Phaser.Scene {
         avisando = this.moverMalandra(enemigo, ahora); // v0.31
       } else if (cfg.COMPORTAMIENTO === 'personalPerrera') {
         avisando = this.moverPersonalPerrera(enemigo, ahora); // v0.32
+      } else if (cfg.COMPORTAMIENTO === 'tripaseca') {
+        avisando = moverTripaSeca(this, enemigo, ahora); // v0.33 (src/tripaseca.js)
       } else if (cfg.COMPORTAMIENTO === 'acompanante') {
         this.moverAcompanante(enemigo, ahora); // v0.30 (perro del limpiavidrios y, v0.31, del Malandra)
       } else {
@@ -1591,7 +1597,7 @@ class GameScene extends Phaser.Scene {
     // v0.29: si tiene SPRITE 'nuevo_...' (src/sprites_nuevos.js) usa ese dibujo, con su escala
     const nuevo = !!(cfg.SPRITE && this.textures.exists(cfg.SPRITE));
     const clave = nuevo ? cfg.SPRITE : claveSprite(tipo, SPRITE_ENEMIGO_POR_DEFECTO);
-    const escala = nuevo ? escalaSpriteNuevo(this, clave) : ESCALA_PIXEL;
+    const escala = nuevo ? (cfg.ESCALA || escalaSpriteNuevo(this, clave)) : ESCALA_PIXEL; // v0.33: ESCALA propia (Tripa Seca)
     const enemigo = agregarSprite(this, x, y, clave);
     enemigo.spriteNuevo = nuevo;
     enemigo.tinteBase = !nuevo && clave !== tipo ? cfg.COLOR : null;
@@ -1648,7 +1654,9 @@ class GameScene extends Phaser.Scene {
   // Estos enemigos no sueltan huesos ni cuentan en el Game Over.
   modoPrueba() {
     // (v0.30: el perro del limpiavidrios sale con su dueño, no suelto)
-    const tipos = Object.keys(CONFIG.ENEMIGOS).filter((id) => this.enemigoDelMapa(id) && !CONFIG.ENEMIGOS[id].SOLO_CON_DUENO);
+    const tipos = Object.keys(CONFIG.ENEMIGOS).filter((id) => this.enemigoDelMapa(id) &&
+      !CONFIG.ENEMIGOS[id].SOLO_CON_DUENO && !CONFIG.ENEMIGOS[id].SOLO_EVENTO);
+    pruebaTripaSeca(this); // v0.33: el Tripa Seca llega con su aviso (src/tripaseca.js)
     tipos.forEach((tipo, i) => {
       const angulo = (i / tipos.length) * Math.PI * 2;
       const x = Phaser.Math.Clamp(this.perro.x + Math.cos(angulo) * 220, 20, CONFIG.MAPA_ANCHO - 20);
@@ -1662,7 +1670,8 @@ class GameScene extends Phaser.Scene {
   aparecerElite() {
     const segundos = this.tiempoSobrevivido / 1000;
     const tipos = Object.keys(CONFIG.ENEMIGOS).filter((id) =>
-      this.enemigoDelMapa(id) && !CONFIG.ENEMIGOS[id].SOLO_CON_DUENO && segundos >= (CONFIG.ENEMIGOS[id].DESDE_SEGUNDOS || 0));
+      this.enemigoDelMapa(id) && !CONFIG.ENEMIGOS[id].SOLO_CON_DUENO && !CONFIG.ENEMIGOS[id].SOLO_EVENTO &&
+      segundos >= (CONFIG.ENEMIGOS[id].DESDE_SEGUNDOS || 0));
     if (tipos.length === 0) return;
     const tipo = Phaser.Math.RND.pick(tipos);
     const pos = this.posicionFueraDePantalla();
@@ -2674,7 +2683,9 @@ class GameScene extends Phaser.Scene {
     }
 
     // v0.30: los ataques con daño propio (escobillazo) lo pasan en danoAtaqueEnemigo (ver golpearPerro)
-    const danoBase = this.danoAtaqueEnemigo !== undefined ? this.danoAtaqueEnemigo : cfg.DANO;
+    // (v0.33: enemigo.danoContacto cambia el daño al tocarlo, como el estirón del Tripa Seca)
+    const danoBase = this.danoAtaqueEnemigo !== undefined ? this.danoAtaqueEnemigo
+      : enemigo.danoContacto !== undefined ? enemigo.danoContacto : cfg.DANO;
     if (!danoBase || danoBase <= 0) return;
     if (ahora < this.invulnerableHasta) return;
     if (this.efectoZona.segura) return; // Zona segura: no recibe daño
@@ -2729,6 +2740,7 @@ class GameScene extends Phaser.Scene {
     this.gameOver = true;
     this.avisosJefe.clear();
     dibujarBarraJefe(this, null);
+    dibujarBarraTripaSeca(this, null); // v0.33
     if (this.capaAvisoGrande) this.capaAvisoGrande.forEach((t) => { this.tweens.killTweensOf(t); t.destroy(); });
     this.capaAvisoGrande = null;
     this.physics.pause();

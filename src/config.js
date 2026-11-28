@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.32';
+const VERSION_JUEGO = '0.33';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -46,7 +46,7 @@ const CONFIG = {
     PROBABILIDAD_DROP: 1.0,     // probabilidad de que un enemigo común suelte sus huesos (1 = siempre, como antes de v0.21;
                                 // en v0.21 era 0.35). Después se aplica la de la raza (HUESO_PROBABILIDAD) a cada hueso.
                                 // Los jefes, los élites y los TIPOS_SIEMPRE sueltan siempre.
-    TIPOS_SIEMPRE: ['perrera'], // enemigos especiales que siempre sueltan sus huesos
+    TIPOS_SIEMPRE: ['perrera', 'tripaseca'], // v0.33: + El Tripa Seca // enemigos especiales que siempre sueltan sus huesos
     XP_MULT: 0.65               // v0.22: la experiencia de cada hueso se multiplica por esto (HUESO_XP × XP_MULT).
                                 // 0.65 = cada hueso da 35% menos experiencia que en v0.20. 1 = como antes
   },
@@ -602,6 +602,51 @@ const CONFIG = {
       SILBATO_MANADA: 3,        // cuántos perros de manada llama...
       SILBATO_DISTANCIA: 180,   // ...y a qué distancia de él aparecen
       SILBATO_TIPO: 'manada'    // qué enemigo llama (el perrito de manada de siempre)
+    },
+
+    // --- v0.33: El Tripa Seca (diseño: _nuevos/docs/diseno_razas.md, 5.5) ---
+    // Mini jefe de la noche. NO sale con los enemigos comunes: llega como evento
+    // (sección TRIPA_SECA, más abajo; código en src/tripaseca.js).
+    // La vida, la velocidad y el daño llevan los mismos multiplicadores que el resto
+    // (fase de la noche, mapa, dificultad global y cooperativo), una sola vez.
+    tripaseca: {
+      COLOR: 0x9a5634,          // no se usa: tiene dibujo propio
+      SPRITE: 'nuevo_tripa_seca', // dibujo 48x48 (src/sprites_tripa_seca.js)
+      ESCALA: 1.75,             // un poco más grande que los humanos nuevos (1.5); el Jefe de la Plaza es mucho más grande
+      RADIO: 20,
+      VIDA: 180,                // Perrera 90, Jefe 3000: es un mini jefe
+      VELOCIDAD: 100,           // caminando (Jefe 90)
+      DANO: 22,                 // daño al tocarlo
+      HUESOS: 10,               // siempre los suelta (está en HUESOS.TIPOS_SIEMPRE)
+      PESO: 0,                  // no sale con los enemigos comunes (solo como evento)
+      MAXIMO: 1,                // nunca más de uno a la vez
+      SOLO_EVENTO: true,        // tampoco sale como élite ni en el círculo de la tecla T (la T lo trae con su aviso)
+      COMPORTAMIENTO: 'tripaseca',
+      MASA: 20,                 // los perros chicos casi no lo empujan al chocar
+      // Brazo largo: se detiene, avisa con una línea en el suelo y lanza el brazo
+      BRAZO_ALCANCE: 200,       // hasta dónde llega el brazo (px, desde su borde)
+      BRAZO_ANCHO: 14,          // qué tan gruesa es la zona que pega (px)
+      BRAZO_AVISO_MS: 550,      // aviso (línea en el suelo) antes de lanzarlo
+      BRAZO_DANO: 16,
+      BRAZO_ESPERA_MS: 2600,    // espera entre brazos
+      BRAZO_TIRON_VELOCIDAD: 520, // si te pega, te tira hacia él a esta velocidad...
+      BRAZO_TIRON_MS: 220,      // ...durante este rato (nunca te deja encima de él)
+      // Estirón: se achica, avisa con una franja y cruza en línea recta
+      ESTIRON_DISTANCIA_MIN: 180, // lo usa si el perro está entre esta distancia...
+      ESTIRON_DISTANCIA_MAX: 460, // ...y esta (más cerca usa el brazo)
+      ESTIRON_AVISO_MS: 600,    // cuánto se achica avisando
+      ESTIRON_LARGO: 400,       // cuánto cruza (px)
+      ESTIRON_VELOCIDAD: 600,   // qué tan rápido (el Curao va a 1000)
+      ESTIRON_DANO: 22,
+      ESTIRON_ESPERA_MS: 5500,  // espera entre estirones
+      ESTIRON_DESCANSO_MS: 600, // queda quieto después de cruzar
+      ESPERA_ENTRE_ATAQUES_MS: 900, // después de cualquier ataque espera esto antes del siguiente
+      ATAQUE_MS: 300,           // queda quieto mostrando la animación después del brazo
+      // Furia: bajo la mitad de la vida
+      FURIA_EN: 0.5,            // 0.5 = al bajar del 50% de la vida
+      FURIA_BRAZO_ALCANCE: 240, // el brazo llega más lejos...
+      FURIA_BRAZO_ESPERA_MS: 1500, // ...y lo lanza más seguido
+      FURIA_TINTE: 0xff8a80     // se ve rojizo
     }
   },
 
@@ -891,6 +936,21 @@ const CONFIG = {
     EMPUJE_MS: 220,             // ...y cuánto dura el empujón
     INVULNERABLE_MS: 900,       // tiempo sin recibir daño después
     ESPERA_TRAS_CURAO_MS: 4000  // si hay un curao en camino, la jauría espera este rato (para no venir encima)
+  },
+
+  // ---------------------------------------------------------------
+  //  EL TRIPA SECA (nuevo en v0.33, src/tripaseca.js): mini jefe que llega
+  //  una vez por noche como evento (como el curao y la jauría), con aviso.
+  //  Sus números de pelea están en ENEMIGOS.tripaseca.
+  //  Tecla de prueba: T (junto con un enemigo de cada tipo)
+  // ---------------------------------------------------------------
+  TRIPA_SECA: {
+    ACTIVO: true,               // false = nunca aparece
+    DESDE_SEGUNDOS: 300,        // llega cerca de los 5:00 de partida (el reloj marca 02:00)...
+    VARIACION_SEGUNDOS: 20,     // ...entre 5:00 y 5:20, al azar
+    VECES_POR_NOCHE: 1,         // cuántas veces llega por noche
+    AVISO_MS: 2500,             // cuánto se ve el aviso antes de que aparezca
+    MAPAS: ['plaza', 'terminal', 'feria'] // todos los mapas (si se agrega uno nuevo, súmalo aquí)
   },
 
   // ---------------------------------------------------------------

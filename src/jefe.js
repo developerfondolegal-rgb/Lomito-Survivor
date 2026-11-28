@@ -245,24 +245,33 @@ function dibujarBarraJefe(escena, jefe) {
     escena.textoJefe.setVisible(false);
     return;
   }
-  const ancho = 460;
-  const alto = 16;
-  const x = escena.scale.width / 2 - ancho / 2;
-  const y = 64 + (escena.margenHudExtra || 0);
-  const porcentaje = Math.max(0, jefe.vida / jefe.vidaMax);
+  pintarBarraVida(g, escena.textoJefe, jefe, {
+    ancho: 460, alto: 16, y: 64 + (escena.margenHudExtra || 0), x: escena.scale.width / 2,
+    furiaEn: CONFIG.JEFE.FURIA_EN, texto: NOMBRE_JEFE + (jefe.furia ? '  ¡FURIOSO!' : '')
+  });
+}
+
+// v0.33: dibuja una barra de vida de jefe (la usan el Jefe de la Plaza y el
+// Tripa Seca, src/tripaseca.js). op: { ancho, alto, x (centro), y, furiaEn, texto }
+function pintarBarraVida(g, texto, ser, op) {
+  const ancho = op.ancho;
+  const alto = op.alto;
+  const x = op.x - ancho / 2;
+  const y = op.y;
+  const porcentaje = Math.max(0, ser.vida / ser.vidaMax);
 
   g.fillStyle(0x000000, 0.7);
   g.fillRect(x - 3, y - 3, ancho + 6, alto + 6);
   g.fillStyle(0x4a1010, 1);
   g.fillRect(x, y, ancho, alto);
-  g.fillStyle(jefe.furia ? 0xff1744 : 0xd32f2f, 1);
+  g.fillStyle(ser.furia ? 0xff1744 : 0xd32f2f, 1);
   g.fillRect(x, y, ancho * porcentaje, alto);
   // rayita donde empieza la furia
   g.fillStyle(0xffffff, 0.7);
-  g.fillRect(x + ancho * CONFIG.JEFE.FURIA_EN - 1, y, 2, alto);
+  g.fillRect(x + ancho * op.furiaEn - 1, y, 2, alto);
   g.lineStyle(2, 0xffd54f, 1);
   g.strokeRect(x, y, ancho, alto);
 
-  escena.textoJefe.setVisible(true);
-  escena.textoJefe.setText(NOMBRE_JEFE + (jefe.furia ? '  ¡FURIOSO!' : ''));
+  texto.setVisible(true);
+  texto.setText(op.texto);
 }
