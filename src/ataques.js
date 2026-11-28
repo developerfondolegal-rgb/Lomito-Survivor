@@ -969,7 +969,9 @@ function terminarCurao(escena) {
 
 const TEXTO_JAURIA = '¡Viene una jauría!';
 const COLOR_JAURIA = 0xffa000;   // naranjo: carril de aviso
-const DIBUJOS_JAURIA = ['rival', 'bravo', 'manada']; // dibujos de src/sprites.js (oscurecidos)
+// v0.46: dibujos nuevos (src/sprites_nuevos.js), alternando rival y manada (oscurecidos).
+// El Quiltro bravo sale por ahora: no tiene dibujo nuevo. Los viejos siguen en src/sprites.js.
+const DIBUJOS_JAURIA = ['nuevo_rival', 'nuevo_manada'];
 
 function actualizarJauria(escena, delta) {
   const J = CONFIG.JAURIA;
@@ -1062,7 +1064,10 @@ function avanzarJaurias(escena, delta) {
       if (ahora < ja.hasta) continue;
       ja.estado = 'correr';
       ja.lugares.forEach((l, k) => {
-        const s = agregarSprite(escena, ja.inicio.x, ja.inicio.y, DIBUJOS_JAURIA[k % DIBUJOS_JAURIA.length]);
+        const clave = DIBUJOS_JAURIA[k % DIBUJOS_JAURIA.length];
+        const s = agregarSprite(escena, ja.inicio.x, ja.inicio.y, clave);
+        // v0.46: misma escala que esos enemigos en partida (32x32 -> ESCALA_32), como crearEnemigo
+        s.setScale(escalaSpriteNuevo(escena, clave));
         // casi negros (siluetas), para que no se confundan con los perros normales
         s.setDepth(11).setTint(k % 2 ? 0x3e2723 : 0x4e342e).setFlipX(ja.dir.x < -0.05).setVisible(false);
         if (escena.anims.exists(s.texture.key + '_caminar')) s.anims.play(s.texture.key + '_caminar');

@@ -2,6 +2,7 @@
 // v0.44: música del menú (inicio, Cómo jugar, selección de raza, mapas, etc.).
 //   musicaMenu(escena) la pide; si ya está sonando, sigue sin reiniciarse.
 //   Al empezar la partida se apaga con fade y recién después entra la del mapa.
+// v0.46: música de La Terminal de buses (musica_terminal). La Feria sigue sin música.
 //
 // - El archivo se carga en el preload de BienvenidaScene con cargarMusica(escena).
 // - GameScene llama a musicaDeMapa(escena, mapaId) al empezar la partida y
@@ -17,16 +18,17 @@
 
 const MUSICA_CFG = {
   VOLUMEN: 0.5,          // volumen normal (si la clave no tiene uno propio en VOLUMENES)
-  VOLUMENES: { musica_menu: 0.4, musica_plaza: 0.5 },
+  VOLUMENES: { musica_menu: 0.4, musica_plaza: 0.5, musica_terminal: 0.5 },
   FACTOR_PAUSA: 0.5,     // en pausa suena a la mitad
   FADE_MS: 500,          // fade out al parar
   ARCHIVOS: {            // clave -> archivo
     musica_plaza: 'assets/audio/plaza_tema.ogg',
-    musica_menu: 'assets/audio/menu_tema.ogg'
+    musica_menu: 'assets/audio/menu_tema.ogg',
+    musica_terminal: 'assets/audio/terminal_tema.ogg' // v0.46
   },
   CLAVE_GUARDADO: 'lomito_musica_on',
   MENU: 'musica_menu',
-  POR_MAPA: { plaza: 'musica_plaza' } // mapa -> clave de la música
+  POR_MAPA: { plaza: 'musica_plaza', terminal: 'musica_terminal' } // mapa -> clave de la música (v0.46: Terminal; la Feria sin música)
 };
 
 const MUSICA = {
