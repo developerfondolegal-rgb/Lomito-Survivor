@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.30';
+const VERSION_JUEGO = '0.31';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -517,8 +517,54 @@ const CONFIG = {
       HUESOS: 1,
       PESO: 0,                  // no sale solo: lo trae el limpiavidrios (ACOMPANANTE)
       SOLO_CON_DUENO: true,     // tampoco sale suelto con la tecla T ni como élite
-      COMPORTAMIENTO: 'perroJabon',
+      COMPORTAMIENTO: 'acompanante', // persigue; embiste con el combo de su dueño (v0.31: lo comparte con el perro del Malandra)
       COMBO_VELOCIDAD: 400,     // embestida cuando el agua de su dueño te moja...
+      COMBO_MS: 300,            // ...y cuánto dura
+      SIN_DUENO_VELOCIDAD_MULT: 1.2 // si su dueño murió, corre un 20% más rápido
+    },
+
+    // --- v0.31: El Malandra y su perro (diseño: _nuevos/docs/diseno_razas.md, 5.4) ---
+
+    // El Malandra: peligroso de mitad y final de la noche. Se acerca, avisa con un brillo
+    // en el filo y corta en arco. Se esquiva alejándose o yéndose al lado.
+    // Siempre sale con su perro (perroMalandra) al lado.
+    malandra: {
+      COLOR: 0x3a3a48,          // oscuro (no se usa: tiene dibujo propio)
+      SPRITE: 'nuevo_cuchilla', // dibujo 48x48 (src/sprites_cuchilla.js), escala 1.5
+      RADIO: 18,
+      VIDA: 80,
+      VELOCIDAD: 85,
+      DANO: 0,                  // al tocarlo no pega: solo hace daño con el corte
+      HUESOS: 4,
+      DESDE_SEGUNDOS: 180,      // desde las 3:00
+      PESO: 2,
+      MAXIMO: 2,                // como mucho 2 a la vez
+      COMPORTAMIENTO: 'malandra',
+      ACOMPANANTE: 'perroMalandra', // cada vez que sale uno, sale este perro a su lado
+      MAPAS: ['feria'],         // para sumarlo a otros mapas, agrega su id aquí
+      CORTE_DISTANCIA: 85,      // si el perro está a menos de esto, prepara el corte
+      CORTE_AVISO_MS: 400,      // aviso antes del corte (brillo en el filo): tiempo para esquivar
+      CORTE_ALCANCE: 80,        // largo del corte (desde el borde del Malandra)
+      CORTE_ANGULO: 100,        // ancho del arco en grados
+      CORTE_DANO: 18,
+      CORTE_ESPERA_MS: 1800,    // después de un corte, espera esto para volver a cortar
+      ATAQUE_MS: 300            // queda quieto mostrando la animación de ataque después de cortar
+    },
+
+    // Perro del Malandra: agresivo. Persigue al perro del jugador y embiste cuando su
+    // dueño corta. Si su dueño muere, se queda y se enoja (igual que el del limpiavidrios).
+    perroMalandra: {
+      COLOR: 0x5a4a3a,          // no se usa: tiene dibujo propio
+      SPRITE: 'nuevo_cuchilla_perro', // dibujo 32x32 (src/sprites_cuchilla.js), escala 2
+      RADIO: 15,
+      VIDA: 28,
+      VELOCIDAD: 150,
+      DANO: 7,
+      HUESOS: 2,
+      PESO: 0,                  // no sale solo: lo trae el Malandra (ACOMPANANTE)
+      SOLO_CON_DUENO: true,     // tampoco sale suelto con la tecla T ni como élite
+      COMPORTAMIENTO: 'acompanante',
+      COMBO_VELOCIDAD: 400,     // embestida al mismo tiempo que el corte de su dueño...
       COMBO_MS: 300,            // ...y cuánto dura
       SIN_DUENO_VELOCIDAD_MULT: 1.2 // si su dueño murió, corre un 20% más rápido
     }

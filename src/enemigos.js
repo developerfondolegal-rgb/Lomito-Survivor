@@ -27,5 +27,8 @@ const ENEMIGOS = [
   { id: 'monaEnemiga', nombre: 'Perrita del moño', descripcion: 'Perrita chica y rápida. Se frena, abre la boca y se lanza un tramo corto.' },
   // v0.30
   { id: 'limpiavidrios', nombre: 'Limpiavidrios', descripcion: 'Con balde y escobilla. De lejos tira agua jabonosa que te deja lento; de cerca, escobillazo.' },
-  { id: 'perroJabon', nombre: 'Perro del limpiavidrios', descripcion: 'Perro crema que acompaña al limpiavidrios. Si el agua te moja, te embiste. Sin su dueño se enoja.' }
+  { id: 'perroJabon', nombre: 'Perro del limpiavidrios', descripcion: 'Perro crema que acompaña al limpiavidrios. Si el agua te moja, te embiste. Sin su dueño se enoja.' },
+  // v0.31
+  { id: 'malandra', nombre: 'El Malandra', descripcion: 'Peligroso. Se acerca, le brilla el filo y corta en arco. Aléjate o hazte a un lado.' },
+  { id: 'perroMalandra', nombre: 'Perro del Malandra', descripcion: 'Perro agresivo del Malandra. Embiste cuando su dueño corta. Sin su dueño se enoja.' }
 ];

@@ -165,6 +165,7 @@ class GameScene extends Phaser.Scene {
 
     // Líneas de aviso del Drogadicto y jaula de la Perrera
     this.avisos = this.add.graphics().setDepth(4);
+    this.brillos = this.add.graphics().setDepth(7); // v0.31: brillo en el filo del Malandra (encima de los enemigos)
     this.jaula = this.add.graphics().setDepth(12);
     this.escudo = this.add.graphics().setDepth(11); // anillo del "Cuero de calle"
     // Avisos de ataque del jefe (encima de la oscuridad para que se vean siempre)
@@ -798,6 +799,7 @@ class GameScene extends Phaser.Scene {
   moverEnemigos() {
     const ahora = this.tiempoSobrevivido;
     this.avisos.clear();
+    this.brillos.clear();
     this.dibujarMojados(ahora);
 
     this.enemigos.getChildren().forEach((enemigo) => {
@@ -825,8 +827,10 @@ class GameScene extends Phaser.Scene {
         avisando = this.moverEmbestida(enemigo, ahora);
       } else if (cfg.COMPORTAMIENTO === 'limpiavidrios') {
         avisando = this.moverLimpiavidrios(enemigo, ahora); // v0.30
-      } else if (cfg.COMPORTAMIENTO === 'perroJabon') {
-        this.moverPerroJabon(enemigo, ahora); // v0.30
+      } else if (cfg.COMPORTAMIENTO === 'malandra') {
+        avisando = this.moverMalandra(enemigo, ahora); // v0.31
+      } else if (cfg.COMPORTAMIENTO === 'acompanante') {
+        this.moverAcompanante(enemigo, ahora); // v0.30 (perro del limpiavidrios y, v0.31, del Malandra)
       } else {
         // 'perseguir' y 'atrapar': van hacia el perro (rodeando obstáculos)
         this.moverHaciaPerro(enemigo, enemigo.velocidad, ahora);
@@ -837,8 +841,9 @@ class GameScene extends Phaser.Scene {
         // v0.29: dibujos nuevos: idle, caminar, ataque (aviso y embestida) y daño
         const v = enemigo.body.velocity;
         const empujado = ahora < enemigo.empujadoHasta;
-        // (v0.30: el limpiavidrios avisa parpadeando y recién al atacar juega 'ataque')
-        const avisoSinAnim = cfg.COMPORTAMIENTO === 'limpiavidrios' && enemigo.estado === 'avisar';
+        // (v0.30: el limpiavidrios y el Malandra avisan parpadeando y recién al atacar juegan 'ataque')
+        const avisoSinAnim = (cfg.COMPORTAMIENTO === 'limpiavidrios' || cfg.COMPORTAMIENTO === 'malandra') &&
+          enemigo.estado === 'avisar';
         animarSpriteNuevo(enemigo, empujado ? 0 : v.x, empujado ? 0 : v.y, {
           dano: ahora < enemigo.danoAnimHasta,
           ataque: !avisoSinAnim && (enemigo.estado === 'avisar' || enemigo.estado === 'embestir' || enemigo.estado === 'atacar')
@@ -959,7 +964,7 @@ class GameScene extends Phaser.Scene {
       }
       if (ahora >= enemigo.estadoHasta) {
         if (enemigo.ataqueLimpia === 'escoba') {
-          this.escobillazo(enemigo);
+          this.golpeArco(enemigo, cfg.ESCOBA_ALCANCE, cfg.ESCOBA_ANGULO, cfg.ESCOBA_DANO, 0xffffff);
           enemigo.recargaHasta = ahora + cfg.ESCOBA_ESPERA_MS;
         } else {
           this.lanzarAguaJabon(enemigo, a);
@@ -993,15 +998,15 @@ class GameScene extends Phaser.Scene {
     return false;
   }
 
-  // Escobillazo: daña a los perros dentro del arco (ESCOBA_ANGULO grados, ESCOBA_ALCANCE px)
-  escobillazo(enemigo) {
-    const cfg = enemigo.cfg;
+  // Golpe en arco frente al enemigo (escobillazo y, v0.31, el corte del Malandra):
+  // daña a los perros dentro del arco (grados de ancho, alcance en px desde su borde)
+  golpeArco(enemigo, alcance, grados, dano, color) {
     const a = enemigo.anguloEmbestida;
-    const medio = Phaser.Math.DegToRad(cfg.ESCOBA_ANGULO / 2);
-    const largo = enemigo.radio + cfg.ESCOBA_ALCANCE;
-    // el golpe se ve un momento (arco blanco que se desvanece)
+    const medio = Phaser.Math.DegToRad(grados / 2);
+    const largo = enemigo.radio + alcance;
+    // el golpe se ve un momento (arco que se desvanece)
     const g = this.add.graphics().setDepth(7);
-    g.fillStyle(0xffffff, 0.35);
+    g.fillStyle(color, 0.35);
     g.slice(enemigo.x, enemigo.y, largo, a - medio, a + medio, false);
     g.fillPath();
     this.tweens.add({ targets: g, alpha: 0, duration: 200, onComplete: () => g.destroy() });
@@ -1010,7 +1015,7 @@ class GameScene extends Phaser.Scene {
       const r = perro.body ? perro.body.halfWidth : 16;
       const d = Phaser.Math.Distance.Between(enemigo.x, enemigo.y, perro.x, perro.y);
       const dif = Math.abs(Phaser.Math.Angle.Wrap(Phaser.Math.Angle.Between(enemigo.x, enemigo.y, perro.x, perro.y) - a));
-      if (d <= largo + r && dif <= medio) this.golpearPerro(perro, enemigo, cfg.ESCOBA_DANO);
+      if (d <= largo + r && dif <= medio) this.golpearPerro(perro, enemigo, dano);
     });
   }
 
@@ -1040,7 +1045,7 @@ class GameScene extends Phaser.Scene {
       const tocado = this.perrosEnJuego().find((perro) => !perro.caido &&
         Phaser.Math.Distance.Between(agua.x, agua.y, perro.x, perro.y) <= c.AGUA_RADIO + (perro.body ? perro.body.halfWidth : 16));
       if (tocado) {
-        if (this.mojarPerro(tocado, c)) this.comboPerroJabon(agua.dueno, tocado);
+        if (this.mojarPerro(tocado, c)) this.comboAcompanante(agua.dueno, tocado);
       } else if (agua.recorrido < c.AGUA_ALCANCE && this.plaza.libre(agua.x, agua.y, 2)) {
         return true;
       }
@@ -1062,8 +1067,8 @@ class GameScene extends Phaser.Scene {
     });
   }
 
-  // Combo: el agua del dueño mojó a un perro, y su perro lo embiste
-  comboPerroJabon(dueno, perro) {
+  // Combo: su perro embiste hacia ese perro (agua del limpiavidrios que mojó, o corte del Malandra)
+  comboAcompanante(dueno, perro) {
     const p = dueno && dueno.acompanante;
     const ahora = this.tiempoSobrevivido;
     if (!p || !p.active || ahora < p.aturdidoHasta || ahora < p.huyendoHasta || ahora < p.empujadoHasta) return;
@@ -1072,9 +1077,9 @@ class GameScene extends Phaser.Scene {
     p.estadoHasta = ahora + p.cfg.COMBO_MS;
   }
 
-  // Perro del limpiavidrios: persigue al perro. Embiste si el agua de su dueño te mojó.
-  // Si su dueño murió, se queda y corre más rápido (y se ve rojizo).
-  moverPerroJabon(enemigo, ahora) {
+  // Perro que acompaña a su dueño (limpiavidrios, Malandra): persigue al perro y embiste
+  // con el combo de su dueño. Si su dueño murió, se queda y corre más rápido (y se ve rojizo).
+  moverAcompanante(enemigo, ahora) {
     const cfg = enemigo.cfg;
     if (enemigo.estado === 'embestir') {
       if (ahora < enemigo.estadoHasta) {
@@ -1091,6 +1096,67 @@ class GameScene extends Phaser.Scene {
       enemigo.tinte = ''; // para que moverEnemigos le ponga el tinte nuevo
     }
     this.moverHaciaPerro(enemigo, enemigo.velocidad * (conDueno ? 1 : cfg.SIN_DUENO_VELOCIDAD_MULT), ahora);
+  }
+
+  // ---------------- v0.31: El Malandra ----------------
+
+  // Se acerca; cerca del perro se detiene, le brilla el filo (CORTE_AVISO_MS) y corta en arco.
+  // La dirección se fija al avisar: alejándose o yéndose al lado se esquiva.
+  // Al cortar, su perro embiste al mismo tiempo. Devuelve true mientras avisa.
+  moverMalandra(enemigo, ahora) {
+    const cfg = enemigo.cfg;
+
+    if (enemigo.estado === 'avisar') {
+      enemigo.body.setVelocity(0, 0);
+      const a = enemigo.anguloEmbestida;
+      const largo = enemigo.radio + cfg.CORTE_ALCANCE;
+      const medio = Phaser.Math.DegToRad(cfg.CORTE_ANGULO / 2);
+      // zona del corte (tenue) y el brillo en el filo, que parpadea
+      this.avisos.fillStyle(0xff8a80, 0.16);
+      this.avisos.slice(enemigo.x, enemigo.y, largo, a - medio, a + medio, false);
+      this.avisos.fillPath();
+      this.avisos.lineStyle(2, 0xff8a80, 0.6);
+      this.avisos.slice(enemigo.x, enemigo.y, largo, a - medio, a + medio, false);
+      this.avisos.strokePath();
+      const fx = enemigo.x + Math.cos(a) * (enemigo.radio + 8);
+      const fy = enemigo.y + Math.sin(a) * (enemigo.radio + 8) - 6;
+      const t = Math.floor(ahora / 80) % 2 === 0 ? 9 : 5; // tamaño del destello (parpadea)
+      this.brillos.fillStyle(0xffffff, 0.95);
+      this.brillos.fillTriangle(fx - t, fy, fx + t, fy, fx, fy - 2);
+      this.brillos.fillTriangle(fx - t, fy, fx + t, fy, fx, fy + 2);
+      this.brillos.fillTriangle(fx, fy - t, fx, fy + t, fx - 2, fy);
+      this.brillos.fillTriangle(fx, fy - t, fx, fy + t, fx + 2, fy);
+      this.brillos.fillStyle(0xfff59d, 0.5);
+      this.brillos.fillCircle(fx, fy, t * 0.45);
+      if (ahora >= enemigo.estadoHasta) {
+        this.golpeArco(enemigo, cfg.CORTE_ALCANCE, cfg.CORTE_ANGULO, cfg.CORTE_DANO, 0xffcdd2);
+        const perro = perroMasCercano(this, enemigo.x, enemigo.y);
+        this.comboAcompanante(enemigo, perro); // su perro embiste al mismo tiempo
+        enemigo.recargaHasta = ahora + cfg.CORTE_ESPERA_MS;
+        enemigo.estado = 'atacar';
+        enemigo.estadoHasta = ahora + cfg.ATAQUE_MS;
+      }
+      return true;
+    }
+
+    if (enemigo.estado === 'atacar') {
+      enemigo.body.setVelocity(0, 0);
+      if (ahora >= enemigo.estadoHasta) enemigo.estado = 'acercarse';
+      return false;
+    }
+
+    enemigo.estado = 'acercarse';
+    const perro = perroMasCercano(this, enemigo.x, enemigo.y);
+    const d = Phaser.Math.Distance.Between(enemigo.x, enemigo.y, perro.x, perro.y);
+    if (ahora >= enemigo.recargaHasta && !perro.caido && d <= cfg.CORTE_DISTANCIA) {
+      enemigo.estado = 'avisar';
+      enemigo.anguloEmbestida = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, perro.x, perro.y);
+      enemigo.estadoHasta = ahora + cfg.CORTE_AVISO_MS;
+      enemigo.body.setVelocity(0, 0);
+      return true;
+    }
+    this.moverHaciaPerro(enemigo, enemigo.velocidad, ahora);
+    return false;
   }
 
   // Charco celeste bajo el perro mientras está mojado
@@ -2513,6 +2579,7 @@ class GameScene extends Phaser.Scene {
     this.perro.setAlpha(1);
     this.flechas.clear();
     this.avisos.clear();
+    this.brillos.clear();
     this.jaula.clear();
     this.escudo.clear();
     limpiarZonas(this);
