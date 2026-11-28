@@ -102,7 +102,7 @@ function crearSpritesNuevos(escena) {
   return listos;
 }
 
-// Anima un sprite nuevo según cómo se mueve (todavía NO se usa en GameScene).
+// Anima un sprite nuevo según cómo se mueve (v0.29: lo usan los enemigos con dibujo nuevo en GameScene).
 // estado: { muerto, dano, ataque } (opcional). El dibujo mira a la derecha: flipX si va a la izquierda.
 // Al moverse usa 'correr' (perros 32x32) o 'caminar' (humanos y jefes 48x48), la que tenga.
 function animarSpriteNuevo(sprite, vx, vy, estado) {
@@ -120,4 +120,12 @@ function animarSpriteNuevo(sprite, vx, vy, estado) {
   const anim = id + '_' + nombre;
   if (sprite.anims.currentAnim && sprite.anims.currentAnim.key === anim) return;
   sprite.anims.play(anim, nombre === 'idle' || nombre === 'caminar' || nombre === 'correr');
+}
+
+// v0.29: escala de un sprite nuevo en la partida según su tamaño
+// (32x32 -> ESCALA_32, 48x48 -> ESCALA_48; están en CONFIG.ENEMIGOS_SPRITE_NUEVO)
+function escalaSpriteNuevo(escena, clave) {
+  const E = CONFIG.ENEMIGOS_SPRITE_NUEVO || {};
+  const lado = escena.textures.get(clave).get(0).height;
+  return lado >= 48 ? (E.ESCALA_48 || 1.5) : (E.ESCALA_32 || 2);
 }

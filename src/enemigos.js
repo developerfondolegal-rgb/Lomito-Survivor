@@ -22,5 +22,7 @@ const ENEMIGOS = [
   // Propios de cada mapa (v0.19; en qué mapa salen: MAPAS en src/config.js)
   { id: 'paloma',     nombre: 'Palomas',     descripcion: 'Bandada de palomas de la plaza. Revolotean en zigzag y picotean.' },
   { id: 'auxiliar',   nombre: 'Auxiliar de micro', descripcion: 'Chaleco amarillo y jockey. Grita "¡suba, suba!" y embiste lejos y fuerte.' },
-  { id: 'bravo',      nombre: 'Quiltro bravo', descripcion: 'Perro café oscuro con collar de púas. Más grande, rápido y fuerte que el rival.' }
+  { id: 'bravo',      nombre: 'Quiltro bravo', descripcion: 'Perro café oscuro con collar de púas. Más grande, rápido y fuerte que el rival.' },
+  // Con dibujo nuevo (v0.29)
+  { id: 'monaEnemiga', nombre: 'Perrita del moño', descripcion: 'Perrita chica y rápida. Se frena, abre la boca y se lanza un tramo corto.' }
 ];

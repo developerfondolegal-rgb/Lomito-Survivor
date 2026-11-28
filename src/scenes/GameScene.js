@@ -122,6 +122,7 @@ class GameScene extends Phaser.Scene {
     // Por si venimos de un Game Over (la física y las animaciones quedaron en pausa)
     this.physics.resume();
     crearSprites(this);
+    crearSpritesNuevos(this); // v0.29: dibujos nuevos de enemigos (src/sprites_nuevos.js)
     crearTexturasObjetos(this);
     this.anims.resumeAll();
     this.tweens.resumeAll();      // por si venimos del menú de pausa
@@ -818,7 +819,15 @@ class GameScene extends Phaser.Scene {
       }
 
       // Caminar y mirar hacia donde va (si lo empujó un ladrido, sigue mirando igual)
-      if (ahora >= enemigo.empujadoHasta) {
+      if (enemigo.spriteNuevo) {
+        // v0.29: dibujos nuevos: idle, caminar, ataque (aviso y embestida) y daño
+        const v = enemigo.body.velocity;
+        const empujado = ahora < enemigo.empujadoHasta;
+        animarSpriteNuevo(enemigo, empujado ? 0 : v.x, empujado ? 0 : v.y, {
+          dano: ahora < enemigo.danoAnimHasta,
+          ataque: enemigo.estado === 'avisar' || enemigo.estado === 'embestir'
+        });
+      } else if (ahora >= enemigo.empujadoHasta) {
         const v = enemigo.body.velocity;
         animarCaminar(enemigo, v.x, v.y);
       }
@@ -1137,13 +1146,18 @@ class GameScene extends Phaser.Scene {
     y = lugar.y;
     // Dibujo en pixel art (src/sprites.js). Si no tiene dibujo propio,
     // usa el del perro rival pintado con su COLOR.
-    const clave = claveSprite(tipo, SPRITE_ENEMIGO_POR_DEFECTO);
+    // v0.29: si tiene SPRITE 'nuevo_...' (src/sprites_nuevos.js) usa ese dibujo, con su escala
+    const nuevo = !!(cfg.SPRITE && this.textures.exists(cfg.SPRITE));
+    const clave = nuevo ? cfg.SPRITE : claveSprite(tipo, SPRITE_ENEMIGO_POR_DEFECTO);
+    const escala = nuevo ? escalaSpriteNuevo(this, clave) : ESCALA_PIXEL;
     const enemigo = agregarSprite(this, x, y, clave);
-    enemigo.tinteBase = clave !== tipo ? cfg.COLOR : null;
+    enemigo.spriteNuevo = nuevo;
+    enemigo.tinteBase = !nuevo && clave !== tipo ? cfg.COLOR : null;
     if (enemigo.tinteBase !== null) enemigo.setTint(enemigo.tinteBase);
     enemigo.tinte = 'normal';
     enemigo.setDepth(6);
-    if (elite) enemigo.setScale(ESCALA_PIXEL * tamano);
+    if (elite || nuevo) enemigo.setScale(escala * tamano);
+    if (nuevo) enemigo.anims.play(clave + '_idle');
 
     this.enemigos.add(enemigo);
     // El "cuerpo" para choques es siempre un círculo de RADIO centrado en el dibujo
@@ -1154,7 +1168,7 @@ class GameScene extends Phaser.Scene {
     enemigo.borde = null;
     if (elite) {
       enemigo.borde = this.add.sprite(x, y, texturaBorde(this, clave), 0)
-        .setScale(ESCALA_PIXEL * tamano).setTint(0xffd54f).setDepth(5.9);
+        .setScale(escala * tamano).setTint(0xffd54f).setDepth(5.9);
       enemigo.once('destroy', () => { if (enemigo.borde) enemigo.borde.destroy(); });
     }
 
@@ -1174,6 +1188,7 @@ class GameScene extends Phaser.Scene {
     enemigo.empujadoHasta = 0;
     enemigo.aturdidoHasta = 0;
     enemigo.destelloHasta = 0;
+    enemigo.danoAnimHasta = 0;    // v0.29: animación de daño (solo dibujos nuevos)
     enemigo.recargaHasta = 0;
     enemigo.estado = 'acercarse';
     enemigo.estadoHasta = 0;
@@ -1298,11 +1313,17 @@ class GameScene extends Phaser.Scene {
     enemigo.vida -= danoContraMarcado(this, enemigo, dano); // Aullido rastreador: los marcados reciben más
 
     if (enemigo.vida <= 0) {
+      // v0.29: los dibujos nuevos dejan un "cadáver" con la animación de muerte;
+      // los huesos y el objeto caen recién cuando termina (ver soltarAlMorir)
+      const cadaver = enemigo.spriteNuevo ? this.cadaverEnemigo(enemigo) : null;
       // Los enemigos del modo de prueba (tecla T) no dan huesos ni cuentan
       if (enemigo.dePrueba) {
         enemigo.destroy();
         return;
       }
+      const ex = enemigo.x;
+      const ey = enemigo.y;
+      const soltarAlMorir = [];   // lo que cae al morir (se suelta ahora o al final de la animación)
 
       const probabilidad = this.base.HUESO_PROBABILIDAD === undefined ? 1 : this.base.HUESO_PROBABILIDAD;
       let cantidad = enemigo.cfg.HUESOS === undefined ? 1 : enemigo.cfg.HUESOS;
@@ -1320,8 +1341,8 @@ class GameScene extends Phaser.Scene {
           const ox = cantidad > 1 ? Phaser.Math.Between(-14, 14) : 0;
           const oy = cantidad > 1 ? Phaser.Math.Between(-14, 14) : 0;
           // si el hueso caería dentro de un obstáculo, cae justo donde estaba el enemigo
-          const libre = this.plaza.libre(enemigo.x + ox, enemigo.y + oy, 4);
-          this.soltarHueso(libre ? enemigo.x + ox : enemigo.x, libre ? enemigo.y + oy : enemigo.y);
+          const libre = this.plaza.libre(ex + ox, ey + oy, 4);
+          soltarAlMorir.push(() => this.soltarHueso(libre ? ex + ox : ex, libre ? ey + oy : ey));
         }
       }
 
@@ -1329,10 +1350,14 @@ class GameScene extends Phaser.Scene {
       if (enemigo.esJefe) {
         this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza(CONFIG.JEFE.OBJETO_RAREZA));
       } else if (enemigo.elite) {
-        this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza(CONFIG.ELITE_RAREZA_MINIMA));
+        const rareza = this.sortearRareza(CONFIG.ELITE_RAREZA_MINIMA);
+        soltarAlMorir.push(() => this.soltarObjeto(ex, ey, null, rareza));
       } else if (Math.random() < CONFIG.OBJETO_PROBABILIDAD * (1 + bonusArbol(this, 'OBJETO'))) { // Árbol: Ojo para lo bueno
-        this.soltarObjeto(enemigo.x, enemigo.y, null, this.sortearRareza());
+        const rareza = this.sortearRareza();
+        soltarAlMorir.push(() => this.soltarObjeto(ex, ey, null, rareza));
       }
+      if (cadaver) cadaver.alTerminar = () => soltarAlMorir.forEach((f) => f());
+      else soltarAlMorir.forEach((f) => f());
       // Muy de vez en cuando, un ultra raro coleccionable (src/coleccionables.js)
       sorteoUltraAlDerrotar(this, enemigo);
       alDerrotarArbol(this, enemigo); // Dueño del barrio (src/arbol.js)
@@ -1343,6 +1368,33 @@ class GameScene extends Phaser.Scene {
     }
 
     enemigo.destelloHasta = this.tiempoSobrevivido + 80; // destello blanco breve
+    if (enemigo.spriteNuevo) enemigo.danoAnimHasta = this.tiempoSobrevivido + CONFIG.ENEMIGOS_SPRITE_NUEVO.DANO_ANIM_MS;
+  }
+
+  // v0.29: copia del enemigo (dibujo nuevo) que juega su animación de muerte y se borra.
+  // Al terminar llama a cadaver.alTerminar (si se puso), para soltar los huesos.
+  // Si no tiene animación de muerte, se desvanece.
+  cadaverEnemigo(enemigo) {
+    const clave = enemigo.texture.key;
+    const cadaver = this.add.sprite(enemigo.x, enemigo.y, clave, enemigo.frame.name)
+      .setScale(enemigo.scaleX).setFlipX(enemigo.flipX).setDepth(5.8);
+    cadaver.alTerminar = null;
+    let listo = false;
+    const terminar = () => {
+      if (listo) return;
+      listo = true;
+      if (cadaver.alTerminar) cadaver.alTerminar();
+      this.tweens.add({ targets: cadaver, alpha: 0, duration: 250, onComplete: () => cadaver.destroy() });
+    };
+    if (this.anims.exists(clave + '_muerte')) {
+      cadaver.once('animationcomplete', terminar);
+      cadaver.anims.play(clave + '_muerte');
+    } else {
+      this.tweens.add({ targets: cadaver, alpha: 0.3, duration: 300, onComplete: terminar });
+    }
+    // por si la animación no llega a terminar (pausa larga no cuenta: el reloj de la escena se detiene)
+    this.time.delayedCall(CONFIG.ENEMIGOS_SPRITE_NUEVO.MUERTE_MAX_MS, terminar);
+    return cadaver;
   }
 
   // El jefe murió: aviso (los huesos y el objeto los suelta danarEnemigo)

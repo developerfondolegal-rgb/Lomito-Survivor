@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.28.1';
+const VERSION_JUEGO = '0.29';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -444,7 +444,38 @@ const CONFIG = {
       PESO: 4,
       COMPORTAMIENTO: 'perseguir',
       MAPAS: ['feria']
+    },
+
+    // --- Enemigos con dibujo nuevo (v0.29) ---
+
+    // Perrita del moño: enemiga temprana. Se frena, abre la boca y se lanza un tramo corto.
+    // (id monaEnemiga: "mona" queda reservado por si después es raza jugable)
+    monaEnemiga: {
+      COLOR: 0x5a6a88,          // gris azulado (no se usa: tiene dibujo propio)
+      SPRITE: 'nuevo_perrita',  // dibujo nuevo (src/sprites_perrita.js); su tamaño está en ENEMIGOS_SPRITE_NUEVO
+      RADIO: 14,
+      VIDA: 16,
+      VELOCIDAD: 128,
+      DANO: 4,
+      HUESOS: 1,
+      DESDE_SEGUNDOS: 20,
+      PESO: 6,
+      COMPORTAMIENTO: 'embestida', // el mismo del Drogadicto, con números chicos
+      DISTANCIA_EMBESTIDA: 130, // a esta distancia del perro se detiene para embestir
+      AVISO_MS: 350,            // tiempo quieto avisando (abre la boca)
+      EMBESTIDA_VELOCIDAD: 380, // velocidad de la embestida
+      EMBESTIDA_MS: 260,        // cuánto dura la embestida (380 x 0,26 s = unos 100 px de tramo)
+      DESCANSO_MS: 700          // tiempo quieto después de embestir
     }
+  },
+
+  // --- Enemigos con dibujo nuevo (SPRITE: 'nuevo_...', src/sprites_nuevos.js) ---
+  // El choque sigue usando el RADIO de cada enemigo, no el tamaño del dibujo.
+  ENEMIGOS_SPRITE_NUEVO: {
+    ESCALA_32: 2,               // dibujos de 32x32 a escala 2 (64 px, igual que los perros jugables)
+    ESCALA_48: 1.5,             // dibujos de 48x48 a escala 1.5 (72 px)
+    DANO_ANIM_MS: 200,          // cuánto se ve la animación de daño después de un golpe
+    MUERTE_MAX_MS: 1500         // por si la animación de muerte no termina: suelta el hueso igual a este tiempo
   },
 
   // --- Aparición de enemigos ---
