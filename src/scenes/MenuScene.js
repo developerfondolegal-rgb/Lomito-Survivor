@@ -50,6 +50,8 @@ class MenuScene extends Phaser.Scene {
     }).setOrigin(1, 1);
 
     this.crearCartas();
+    // v0.38: cuando termina de bajar la letra Cinzel, se redibujan las cartas (si nadie eligió aún)
+    esperarFuenteCarta(this, () => { if (!this.razaJ1 && this.capaAvisoSesion.length === 0) this.crearCartas(); });
     this.crearBotonAlbum();
     this.dibujarTitulo();
 
@@ -168,23 +170,21 @@ class MenuScene extends Phaser.Scene {
     this.razaJ1 = null;
     this.marcasRaza.forEach((o) => o.destroy());
     this.marcasRaza = [];
+    (this.cartas || []).forEach((c) => c.fijar(false));
     this.dibujarTitulo();
   }
 
-  // v0.28: marco y "P1" / "P2" en la carta elegida (P1 a la izquierda, P2 a la derecha,
-  // así se ven las dos si eligen la misma raza)
+  // v0.28: "P1" / "P2" en la carta elegida. v0.38: arriba a la izquierda de la ventana del perro
+  // (sin tapar textos); la carta queda encendida y levantada
   marcarRaza(indice, n) {
     const c = this.posCartas[indice];
-    const color = n === 2 ? CONFIG.COOP.COLOR_J2 : CONFIG.COOP.COLOR_J1;
-    const extra = n === 2 ? 16 : 8;
-    const marco = this.add.rectangle(c.x, c.y, c.ancho + extra, c.alto + extra).setStrokeStyle(4, color);
-    const lado = n === 2 ? 1 : -1;
-    // v0.36: en las cartas de 2 filas las dos marcas van arriba a la izquierda (sobre el perro, sin tapar textos)
-    const x = c.marcasIzq ? c.x - c.ancho / 2 + 8 + (n === 2 ? 36 : 0) : c.x + lado * (c.ancho / 2 - 8);
-    const t = this.add.text(x, c.arriba + 8, 'P' + n, {
-      fontFamily: FUENTE, fontSize: '18px', color: colorTextoJugador(n), fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
-    }).setOrigin(n === 2 && !c.marcasIzq ? 1 : 0, 0);
-    this.marcasRaza.push(marco, t);
+    const v = c.carta.ventana;
+    const t = this.add.text(v.izq + 6 + (n === 2 ? 30 : 0), v.arriba + 5, 'P' + n, {
+      fontFamily: FUENTE, fontSize: '16px', color: colorTextoJugador(n), fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+    });
+    c.carta.contenedor.add(t);
+    c.carta.fijar(true);
+    this.marcasRaza.push(t);
   }
 
   // Aviso de cuenta: sin sesión el puntaje no se guarda (v0.26)
@@ -320,131 +320,48 @@ class MenuScene extends Phaser.Scene {
     return RAZAS.filter((r) => CONFIG.RAZAS[r.id]).slice(0, 9);
   }
 
+  // v0.38: cartas estilo coleccionable (src/cartas_raza.js), en una fila (hasta 6 razas) o en 2.
+  // Ocupan el espacio entre el botón "Cómo jugar" (arriba) y los botones de abajo.
   crearCartas() {
+    (this.cartas || []).forEach((c) => c.contenedor.destroy());
+    this.cartas = [];
     this.razas = this.listaRazas();
     this.posCartas = []; // v0.28: para marcar la raza elegida en cooperativo
-    // v0.36: con más de 5 razas, 2 filas de cartas horizontales (perro a la izquierda, textos a la derecha)
-    if (this.razas.length > 5) this.crearCartasEnFilas();
-    else this.crearCartasEnUnaFila();
-  }
-
-  // Fondo de la carta (se ilumina al pasar el mouse y se elige con clic / toque)
-  fondoCarta(cx, cy, ancho, alto, i) {
-    const fondo = this.add.rectangle(cx, cy, ancho, alto, 0x2b2b3a)
-      .setStrokeStyle(3, 0x888899)
-      .setInteractive({ useHandCursor: true });
-    fondo.on('pointerover', () => fondo.setStrokeStyle(3, 0xf2d64b));
-    fondo.on('pointerout', () => fondo.setStrokeStyle(3, 0x888899));
-    fondo.on('pointerdown', () => this.elegir(i));
-  }
-
-  // El perro corre en su lugar sobre la carta (sprites nuevos v0.23; si no, el dibujo viejo caminando)
-  perroCarta(x, y, raza) {
-    const perro = dibujarPerro(this, x, y, raza.id);
-    const anim = claveSpriteRaza(raza.id) ? claveSpriteRaza(raza.id) + '_correr' : claveSprite(raza.id, SPRITE_PERRO_POR_DEFECTO) + '_caminar';
-    if (this.anims.exists(anim)) perro.play(anim);
-    return perro;
-  }
-
-  // Textos de una carta: [texto, estilo, espacio debajo]
-  textosCarta(raza, chico) {
-    const cfg = CONFIG.RAZAS[raza.id];
-    const espera = cfg.PODER_ESPERA_MS > 0 ? ' (cada ' + (cfg.PODER_ESPERA_MS / 1000) + ' s)' : ' (pasivo)';
-    const f = (n) => (n - chico) + 'px';
-    return [
-      [raza.frase, { fontSize: f(14), color: '#ffffff', fontStyle: 'italic' }, chico ? 6 : 12],
-      ['+ ' + raza.fortalezas, { fontSize: f(14), color: '#9ccc65' }, chico ? 3 : 6],
-      ['− ' + raza.debilidades, { fontSize: f(14), color: '#ef9a9a' }, chico ? 6 : 12],
-      ['Poder: ' + sinTeclas(raza.poder) + espera, { fontSize: f(14), color: '#ffe082', fontStyle: 'bold' }, chico ? 2 : 4],
-      [raza.poderTexto, { fontSize: f(13), color: '#dddddd' }, 0]
-    ];
-  }
-
-  // Hasta 5 razas: una fila de cartas altas (como antes de la v0.36)
-  crearCartasEnUnaFila() {
-    const w = this.scale.width;
-    const n = this.razas.length;
-    const separacion = Math.min(230, (w - 20) / n);
-    const anchoCarta = separacion - 14;
-    const altoCarta = 350;
-    const arriba = 135;
-    const inicioX = w / 2 - ((n - 1) * separacion) / 2;
-    const anchoTexto = anchoCarta - 20;
-
-    this.razas.forEach((raza, i) => {
-      const cx = inicioX + i * separacion;
-      this.posCartas.push({ x: cx, y: arriba + altoCarta / 2, ancho: anchoCarta, alto: altoCarta, arriba });
-      this.fondoCarta(cx, arriba + altoCarta / 2, anchoCarta, altoCarta, i);
-      this.perroCarta(cx, arriba + 38, raza);
-
-      // Textos apilados uno debajo del otro
-      let y = arriba + 68;
-      const poner = (texto, estilo, espacio) => {
-        const t = this.add.text(cx, y, texto, {
-          fontFamily: FUENTE, align: 'center', wordWrap: { width: anchoTexto }, ...estilo
-        }).setOrigin(0.5, 0);
-        y += t.height + espacio;
-      };
-      poner(raza.nombre, { fontSize: '22px', color: '#ffe082', fontStyle: 'bold' }, 6);
-      this.textosCarta(raza, 0).forEach(([t, estilo, espacio]) => poner(t, estilo, espacio));
-    });
-  }
-
-  // v0.36: 6 razas o más: 2 filas. Las cartas quedan entre el botón "Cómo jugar" (arriba)
-  // y los botones de abajo. Si los textos no caben, la letra se achica un poco.
-  crearCartasEnFilas() {
     const w = this.scale.width;
     const e = this.margenExtra;
     const n = this.razas.length;
-    const columnas = Math.ceil(n / 2);
-    const separacion = Math.min(316, (w - 20 - 2 * e) / columnas);
-    const anchoCarta = separacion - 12;
-    const arriba = 135 + e / 2;
+    const filas = n > 6 ? 2 : 1;
+    const columnas = Math.ceil(n / filas);
+    const separacion = Math.min(230, (w - 16 - 2 * e) / columnas);
+    const anchoCarta = Math.floor(separacion - 8);
+    const arriba = 135 + e / 2 + 4;  // aire para que la carta suba al pasar el mouse
     const abajo = this.scale.height - 26 - e / 2 - 17 - 8; // borde de arriba de los botones de abajo, con aire
     const espacioFilas = 8;
-    const altoCarta = Math.floor((abajo - arriba - espacioFilas) / 2);
+    const altoCarta = Math.floor((abajo - arriba - espacioFilas * (filas - 1)) / filas);
     const inicioX = w / 2 - ((columnas - 1) * separacion) / 2;
-    const anchoIzq = 92;                         // columna del perro y el nombre
-    const anchoTexto = anchoCarta - anchoIzq - 12;
 
     this.razas.forEach((raza, i) => {
       const fila = Math.floor(i / columnas);
-      const col = i % columnas;
-      const cx = inicioX + col * separacion;
-      const top = arriba + fila * (altoCarta + espacioFilas);
-      const izq = cx - anchoCarta / 2;
-      this.posCartas.push({ x: cx, y: top + altoCarta / 2, ancho: anchoCarta, alto: altoCarta, arriba: top, marcasIzq: true });
-      this.fondoCarta(cx, top + altoCarta / 2, anchoCarta, altoCarta, i);
-
-      // Izquierda: el perro y su nombre
-      this.perroCarta(izq + anchoIzq / 2 + 2, top + altoCarta / 2 - 14, raza);
-      this.add.text(izq + anchoIzq / 2 + 2, top + altoCarta / 2 + 30, raza.nombre, {
-        fontFamily: FUENTE, fontSize: '17px', color: '#ffe082', fontStyle: 'bold', align: 'center', wordWrap: { width: anchoIzq - 4 }
-      }).setOrigin(0.5, 0);
-
-      // Derecha: los textos, centrados en alto (si no caben, letra más chica)
-      const xTexto = izq + anchoIzq + 4;
-      let objetos = [];
-      for (let chico = 1; chico <= 3; chico++) {
-        objetos.forEach((o) => o.destroy());
-        objetos = [];
-        let y = 0;
-        this.textosCarta(raza, chico).forEach(([t, estilo, espacio]) => {
-          const obj = this.add.text(xTexto, y, t, { fontFamily: FUENTE, wordWrap: { width: anchoTexto }, ...estilo });
-          objetos.push(obj);
-          y += obj.height + espacio;
-        });
-        if (y <= altoCarta - 14) break;
-      }
-      const alto = objetos.reduce((t, o) => Math.max(t, o.y + o.height), 0);
-      const y0 = top + Math.max(6, (altoCarta - alto) / 2);
-      objetos.forEach((o) => { o.y += y0; });
+      const cx = Math.round(inicioX + (i % columnas) * separacion);
+      const cy = Math.round(arriba + fila * (altoCarta + espacioFilas) + altoCarta / 2);
+      const carta = crearCartaRaza(this, cx, cy, anchoCarta, altoCarta, raza, {
+        bloqueada: this.razaBloqueada(raza),
+        alElegir: () => this.elegir(i)
+      });
+      this.cartas.push(carta);
+      this.posCartas.push({ x: cx, y: cy, ancho: anchoCarta, alto: altoCarta, carta });
     });
+  }
+
+  // v0.38: raza bloqueada (gris y con candado, no se puede elegir). Hoy ninguna raza está
+  // bloqueada: se bloquea poniendo BLOQUEADA: true en su bloque de CONFIG.RAZAS (src/config.js)
+  razaBloqueada(raza) {
+    return !!(CONFIG.RAZAS[raza.id] && CONFIG.RAZAS[raza.id].BLOQUEADA);
   }
 
   elegir(indice) {
     const raza = this.razas[indice];
-    if (!raza || this.capaAvisoSesion.length > 0) return;
+    if (!raza || this.capaAvisoSesion.length > 0 || this.razaBloqueada(raza)) return;
     let datos = { raza: raza.id };
     // v0.28: cooperativo: el primer clic es la raza de J1; el segundo, la de J2
     if (coopActivo()) {
