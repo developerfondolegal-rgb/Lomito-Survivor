@@ -818,6 +818,7 @@ function actualizarOscuridad(escena, oscuridad, plaza, perro, alfa, luces) {
   capa.fill(0x05081a, nivel);
   (luces || []).forEach((l) => capa.erase(oscuridad.luzPerro, l.x - cam.scrollX, l.y - cam.scrollY));
   plaza.faroles.forEach((f) => {
+    if (f.bajo) return; // FASE 3: farol parpadeando (src/plaza_vida.js)
     const sx = f.x - cam.scrollX;
     const sy = f.y - cam.scrollY;
     if (sx < -R || sy < -R || sx > w + R || sy > h + R) return; // fuera de pantalla

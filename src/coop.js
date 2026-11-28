@@ -478,6 +478,7 @@ function actualizarOscuridadCoop(escena, oscuridad, plaza, alfa, luces) {
   const oy = v.y - 4;
   (luces || []).forEach((l) => capa.erase(oscuridad.luzPerro, l.x - ox, l.y - oy));
   plaza.faroles.forEach((f) => {
+    if (f.bajo) return; // FASE 3: farol parpadeando (src/plaza_vida.js)
     if (f.x < v.x - R || f.y < v.y - R || f.x > v.x + v.ancho + R || f.y > v.y + v.alto + R) return;
     capa.erase(oscuridad.luzFarol, f.x - ox, f.y - oy);
   });

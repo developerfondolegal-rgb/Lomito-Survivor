@@ -137,12 +137,14 @@ class GameScene extends Phaser.Scene {
     // apuestas) la escena se apaga y la música se va con un fade corto
     musicaDeMapa(this, this.mapaId);
     this.events.once('shutdown', () => pararMusica());
+    this.events.once('shutdown', () => { if (typeof limpiarVidaPlaza === 'function') limpiarVidaPlaza(this); }); // FASE 3 (src/plaza_vida.js)
 
     // Mapa y cámara (el tamaño depende del mapa elegido: CONFIG.MAPAS en config.js)
     aplicarTamanoMapa(this.mapaId);
     this.physics.world.setBounds(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
     this.cameras.main.setBounds(0, 0, CONFIG.MAPA_ANCHO, CONFIG.MAPA_ALTO);
     this.plaza = crearPlaza(this, this.mapaId); // suelo y obstáculos del mapa (src/mapa.js y src/mapas.js)
+    if (typeof iniciarVidaPlaza === 'function') iniciarVidaPlaza(this, this.plaza); // FASE 3 (solo hace algo en la plaza)
 
     // El perro (dibujo de su raza; el choque usa el RADIO de config.js)
     const inicio = this.plaza.buscarLibre(this.plaza.inicio.x, this.plaza.inicio.y, this.base.RADIO + 10);
@@ -362,6 +364,7 @@ class GameScene extends Phaser.Scene {
     this.aparecerComida(delta);
     this.comer();
     this.beberAgua(delta);
+    if (typeof actualizarVidaPlaza === 'function') actualizarVidaPlaza(this, delta); // FASE 3
     this.recogerObjetos();
     this.efectosObjetos(delta);
     actualizarColeccionables(this, delta); // ultra raros en el suelo, peluche, sweater y mantita
