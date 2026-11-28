@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.31';
+const VERSION_JUEGO = '0.32';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -101,6 +101,9 @@ const CONFIG = {
     REVIVIR_BAJA_MULT: 1,       // si el que revive se aleja, el progreso baja a esta rapidez (1 = igual de rápido que sube)
     REVIVIR_VIDA_PCT: 0.4,      // con qué parte de su vida máxima vuelve el perro (0.4 = 40%)
     REVIVIR_INVULN_S: 2,        // segundos sin recibir daño después de revivir
+    // v0.32: la red del Personal de la Perrera (misma idea que revivir, más corto)
+    LIBERAR_RED_RADIO: 60,      // qué tan cerca (px) tiene que estar el compañero para sacarle la red al atrapado
+    LIBERAR_RED_SEGUNDOS: 1.2,  // cuántos segundos tiene que quedarse cerca (si los dos están atrapados, se sueltan solos)
     VIDA_ENEMIGOS_MULT: 1.5,    // con 2 jugadores, los enemigos (y el jefe) tienen esta vida multiplicada (1.5 = 50% más)
     SPAWN_MULT: 1.3             // con 2 jugadores aparecen esta cantidad de enemigos multiplicada (1.3 = 30% más seguido)
   },
@@ -567,6 +570,38 @@ const CONFIG = {
       COMBO_VELOCIDAD: 400,     // embestida al mismo tiempo que el corte de su dueño...
       COMBO_MS: 300,            // ...y cuánto dura
       SIN_DUENO_VELOCIDAD_MULT: 1.2 // si su dueño murió, corre un 20% más rápido
+    },
+
+    // --- v0.32: Personal de la Perrera (diseño: _nuevos/docs/diseno_razas.md, 5.3) ---
+    // El de la red y el silbato. Más tardío y más duro que la Perrera (perrera, arriba), que sigue igual.
+    personalPerrera: {
+      COLOR: 0x4a6a8a,          // no se usa: tiene dibujo propio
+      SPRITE: 'nuevo_perrera',  // dibujo 48x48 (src/sprites_perrera.js), escala 1.5
+      RADIO: 18,
+      VIDA: 110,                // Perrera 90
+      VELOCIDAD: 100,           // Perrera 95
+      DANO: 6,                  // al tocarlo pega poquito (el palo de la red)
+      HUESOS: 6,
+      DESDE_SEGUNDOS: 240,      // desde las 4:00 (la Perrera sale a las 3:30)
+      PESO: 1,
+      MAXIMO: 1,                // nunca más de uno a la vez
+      COMPORTAMIENTO: 'personalPerrera',
+      MAPAS: ['plaza', 'terminal', 'feria'], // todos los mapas (si se agrega uno nuevo, súmalo aquí)
+      // Red: se detiene, avisa y la lanza hacia donde estaba el perro
+      RED_DISTANCIA: 150,       // si el perro está a menos de esto, prepara la red
+      RED_AVISO_MS: 500,        // aviso antes de lanzarla (se ve dónde va a caer): tiempo para esquivar
+      RED_ALCANCE: 160,         // hasta dónde llega la red
+      RED_VELOCIDAD: 380,       // qué tan rápido vuela
+      RED_RADIO: 16,            // tamaño de la red (para pillar al perro)
+      RED_ATRAPA_MS: 2500,      // si te pilla, te deja inmóvil esto (el Gorro de lana lo acorta, igual que la Perrera)
+      RED_ESPERA_MS: 4500,      // después de lanzar la red, espera esto para volver a lanzarla
+      ATAQUE_MS: 350,           // queda quieto mostrando la animación de ataque después de lanzar
+      // Silbato: llama perros de manada
+      SILBATO_CADA_MS: 8000,    // cada cuánto toca el silbato (si no está lanzando la red)
+      SILBATO_MS: 600,          // cuánto se queda quieto tocándolo
+      SILBATO_MANADA: 3,        // cuántos perros de manada llama...
+      SILBATO_DISTANCIA: 180,   // ...y a qué distancia de él aparecen
+      SILBATO_TIPO: 'manada'    // qué enemigo llama (el perrito de manada de siempre)
     }
   },
 

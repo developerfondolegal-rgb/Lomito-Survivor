@@ -641,6 +641,57 @@ function actualizarRevivir(escena, delta) {
   });
 }
 
+// ---------------- Liberar de la red (v0.32) ----------------
+
+// Lo llama GameScene.update después de actualizarRevivir (fuera del turno de J2).
+// Si un perro está atrapado en la red del Personal de la Perrera y su compañero
+// (de pie y libre) se queda a COOP.LIBERAR_RED_RADIO, lo suelta en LIBERAR_RED_SEGUNDOS.
+// Si los dos están atrapados, nadie ayuda: se sueltan solos al terminar el tiempo.
+function actualizarLiberarRed(escena, delta) {
+  if (!escena.jugador2 || escena.gameOver) return;
+  const C = CONFIG.COOP;
+  const g = escena.capaRevivir; // la misma capa del revivir (ya se limpió en este cuadro)
+  const ahora = escena.tiempoSobrevivido;
+  const total = Math.max(1, (C.LIBERAR_RED_SEGUNDOS || 1.2) * 1000);
+  const estados = [escena, escena.jugador2]; // fuera del turno de J2, J1 vive en la escena
+  const enRed = (i) => ahora < estados[i].atrapadoHasta && escena.perrosCoop[i].redHasta >= estados[i].atrapadoHasta;
+  escena.perrosCoop.forEach((perro, i) => {
+    const otro = escena.perrosCoop[1 - i];
+    if (!enRed(i)) {
+      perro.progresoLiberar = 0;
+      return;
+    }
+    if (otro.caido || ahora < estados[1 - i].atrapadoHasta) return; // el compañero no puede ayudar
+    const d = Phaser.Math.Distance.Between(perro.x, perro.y, otro.x, otro.y);
+    const cerca = d <= C.LIBERAR_RED_RADIO;
+    perro.progresoLiberar = Phaser.Math.Clamp((perro.progresoLiberar || 0) + (cerca ? delta : -delta), 0, total);
+    if (perro.progresoLiberar >= total) {
+      estados[i].atrapadoHasta = 0;
+      perro.redHasta = 0;
+      perro.progresoLiberar = 0;
+      escena.mostrarAviso('¡' + (i === 1 ? 'P1' : 'P2') + ' liberó a su compañero!', colorTextoJugador(2 - i));
+      return;
+    }
+    // anillo de ayuda y círculo de progreso sobre el atrapado (como el revivir)
+    const color = i === 0 ? C.COLOR_J1 : C.COLOR_J2;
+    g.lineStyle(2, color, cerca ? 0.7 : 0.35);
+    g.strokeCircle(perro.x, perro.y, C.LIBERAR_RED_RADIO);
+    const f = perro.progresoLiberar / total;
+    const x = perro.x;
+    const y = perro.y - radioPerroCoop(escena, i) - 32;
+    g.fillStyle(0x000000, 0.6);
+    g.fillCircle(x, y, 15);
+    g.lineStyle(2, COLOR_BLANCO, 0.5);
+    g.strokeCircle(x, y, 12);
+    if (f > 0) {
+      g.lineStyle(5, color, 1);
+      g.beginPath();
+      g.arc(x, y, 12, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * f, false);
+      g.strokePath();
+    }
+  });
+}
+
 // El perro i (0 = J1, 1 = J2) vuelve a la partida
 function revivirPerroCoop(escena, i) {
   const C = CONFIG.COOP;

@@ -108,6 +108,7 @@ class GameScene extends Phaser.Scene {
     this.esperaGolpeRastro = 0;
     this.rondaPrueba = 0;         // para que la tecla Y saque objetos distintos cada vez
     this.aguasJabon = [];         // v0.30: chorros de agua jabonosa del limpiavidrios en el aire
+    this.redes = [];              // v0.32: redes del Personal de la Perrera en el aire
 
     // La noche (src/noche.js) y el jefe final (src/jefe.js)
     this.faseActual = -1;         // -1 = todavía no se anuncia la primera fase
@@ -337,6 +338,7 @@ class GameScene extends Phaser.Scene {
     if (this.coop) moverJugador2(this, delta); // J2 y la correa (src/coop.js)
     this.moverEnemigos();
     this.moverAguasJabon(delta);  // v0.30: agua jabonosa del limpiavidrios
+    this.moverRedes(delta);       // v0.32: red del Personal de la Perrera
     if (this.jefeVivo() && !this.amaneciendo) actualizarJefe(this, this.jefe);
     frenarEnemigosEnBarro(this);
     this.moverHuesos(delta);
@@ -399,6 +401,7 @@ class GameScene extends Phaser.Scene {
       actualizarJugador2(this, delta);
       if (this.gameOver || this.eligiendo) return;
       actualizarRevivir(this, delta); // v0.27: revivir al compañero caído
+      actualizarLiberarRed(this, delta); // v0.32: sacarle la red al compañero
     }
 
     // Poder "Rastreo" (Beagle): flechas a enemigos fuera de pantalla
@@ -829,6 +832,8 @@ class GameScene extends Phaser.Scene {
         avisando = this.moverLimpiavidrios(enemigo, ahora); // v0.30
       } else if (cfg.COMPORTAMIENTO === 'malandra') {
         avisando = this.moverMalandra(enemigo, ahora); // v0.31
+      } else if (cfg.COMPORTAMIENTO === 'personalPerrera') {
+        avisando = this.moverPersonalPerrera(enemigo, ahora); // v0.32
       } else if (cfg.COMPORTAMIENTO === 'acompanante') {
         this.moverAcompanante(enemigo, ahora); // v0.30 (perro del limpiavidrios y, v0.31, del Malandra)
       } else {
@@ -842,12 +847,19 @@ class GameScene extends Phaser.Scene {
         const v = enemigo.body.velocity;
         const empujado = ahora < enemigo.empujadoHasta;
         // (v0.30: el limpiavidrios y el Malandra avisan parpadeando y recién al atacar juegan 'ataque')
-        const avisoSinAnim = (cfg.COMPORTAMIENTO === 'limpiavidrios' || cfg.COMPORTAMIENTO === 'malandra') &&
-          enemigo.estado === 'avisar';
-        animarSpriteNuevo(enemigo, empujado ? 0 : v.x, empujado ? 0 : v.y, {
-          dano: ahora < enemigo.danoAnimHasta,
-          ataque: !avisoSinAnim && (enemigo.estado === 'avisar' || enemigo.estado === 'embestir' || enemigo.estado === 'atacar')
-        });
+        const avisoSinAnim = (cfg.COMPORTAMIENTO === 'limpiavidrios' || cfg.COMPORTAMIENTO === 'malandra' ||
+          cfg.COMPORTAMIENTO === 'personalPerrera') && enemigo.estado === 'avisar';
+        const dano = ahora < enemigo.danoAnimHasta;
+        if (enemigo.estado === 'silbar' && !dano && this.anims.exists(enemigo.texture.key + '_silbato')) {
+          // v0.32: Personal de la Perrera tocando el silbato
+          const clave = enemigo.texture.key + '_silbato';
+          if (!enemigo.anims.currentAnim || enemigo.anims.currentAnim.key !== clave) enemigo.anims.play(clave);
+        } else {
+          animarSpriteNuevo(enemigo, empujado ? 0 : v.x, empujado ? 0 : v.y, {
+            dano,
+            ataque: !avisoSinAnim && (enemigo.estado === 'avisar' || enemigo.estado === 'embestir' || enemigo.estado === 'atacar')
+          });
+        }
       } else if (ahora >= enemigo.empujadoHasta) {
         const v = enemigo.body.velocity;
         animarCaminar(enemigo, v.x, v.y);
@@ -1159,6 +1171,136 @@ class GameScene extends Phaser.Scene {
     return false;
   }
 
+  // ---------------- v0.32: Personal de la Perrera ----------------
+
+  // Camina hacia el perro. Cerca, se detiene, avisa (se ve dónde cae la red) y la lanza.
+  // Cada SILBATO_CADA_MS, si no está con la red, toca el silbato y llama perros de manada.
+  // Devuelve true mientras avisa la red.
+  moverPersonalPerrera(enemigo, ahora) {
+    const cfg = enemigo.cfg;
+    if (enemigo.proximoSilbato === undefined) enemigo.proximoSilbato = ahora + cfg.SILBATO_CADA_MS;
+
+    if (enemigo.estado === 'avisar') {
+      enemigo.body.setVelocity(0, 0);
+      const a = enemigo.anguloEmbestida;
+      const tx = enemigo.x + Math.cos(a) * cfg.RED_ALCANCE;
+      const ty = enemigo.y + Math.sin(a) * cfg.RED_ALCANCE;
+      this.avisos.lineStyle(2, COLOR_AVISO, 0.6);
+      this.avisos.lineBetween(enemigo.x, enemigo.y, tx, ty);
+      this.avisos.strokeCircle(tx, ty, cfg.RED_RADIO);
+      if (ahora >= enemigo.estadoHasta) {
+        this.lanzarRed(enemigo, a);
+        enemigo.recargaHasta = ahora + cfg.RED_ESPERA_MS;
+        enemigo.estado = 'atacar';
+        enemigo.estadoHasta = ahora + cfg.ATAQUE_MS;
+      }
+      return true;
+    }
+
+    if (enemigo.estado === 'atacar' || enemigo.estado === 'silbar') {
+      enemigo.body.setVelocity(0, 0);
+      if (ahora >= enemigo.estadoHasta) enemigo.estado = 'acercarse';
+      return false;
+    }
+
+    enemigo.estado = 'acercarse';
+    // Silbato (solo si no está lanzando la red)
+    if (ahora >= enemigo.proximoSilbato) {
+      enemigo.proximoSilbato = ahora + cfg.SILBATO_CADA_MS;
+      enemigo.estado = 'silbar';
+      enemigo.estadoHasta = ahora + cfg.SILBATO_MS;
+      enemigo.body.setVelocity(0, 0);
+      this.tocarSilbato(enemigo);
+      return false;
+    }
+    const perro = perroMasCercano(this, enemigo.x, enemigo.y);
+    const d = Phaser.Math.Distance.Between(enemigo.x, enemigo.y, perro.x, perro.y);
+    if (ahora >= enemigo.recargaHasta && !perro.caido && d <= cfg.RED_DISTANCIA) {
+      // La dirección se fija ahora: moviéndose se esquiva
+      enemigo.estado = 'avisar';
+      enemigo.anguloEmbestida = Phaser.Math.Angle.Between(enemigo.x, enemigo.y, perro.x, perro.y);
+      enemigo.estadoHasta = ahora + cfg.RED_AVISO_MS;
+      enemigo.body.setVelocity(0, 0);
+      return true;
+    }
+    this.moverHaciaPerro(enemigo, enemigo.velocidad, ahora);
+    return false;
+  }
+
+  // Silbato: onda y SILBATO_MANADA perros de manada alrededor de él (a SILBATO_DISTANCIA)
+  tocarSilbato(enemigo) {
+    const cfg = enemigo.cfg;
+    const onda = this.add.circle(enemigo.x, enemigo.y, 20).setStrokeStyle(3, 0xfff59d, 0.9).setDepth(7);
+    this.tweens.add({ targets: onda, scale: cfg.SILBATO_DISTANCIA / 20, alpha: 0, duration: 500, onComplete: () => onda.destroy() });
+    const tipo = CONFIG.ENEMIGOS[cfg.SILBATO_TIPO] ? cfg.SILBATO_TIPO : 'rival';
+    for (let i = 0; i < cfg.SILBATO_MANADA; i++) {
+      const angulo = (i / cfg.SILBATO_MANADA) * Math.PI * 2 + Math.random() * 0.5;
+      const x = Phaser.Math.Clamp(enemigo.x + Math.cos(angulo) * cfg.SILBATO_DISTANCIA, 20, CONFIG.MAPA_ANCHO - 20);
+      const y = Phaser.Math.Clamp(enemigo.y + Math.sin(angulo) * cfg.SILBATO_DISTANCIA, 20, CONFIG.MAPA_ALTO - 20);
+      const llamado = this.crearEnemigo(tipo, x, y, false);
+      if (llamado && enemigo.dePrueba) llamado.dePrueba = true; // los de la tecla T no dan huesos
+    }
+  }
+
+  // Lanza la red en esa dirección (la mueve moverRedes)
+  lanzarRed(enemigo, angulo) {
+    const cfg = enemigo.cfg;
+    const r = cfg.RED_RADIO;
+    const g = this.add.graphics().setDepth(7);
+    g.lineStyle(2, 0xd7ccc8, 1);
+    g.strokeCircle(0, 0, r);
+    g.lineStyle(1, 0xd7ccc8, 0.9);
+    for (let k = -2; k <= 2; k++) {
+      const o = (k * r) / 3;
+      const m = Math.sqrt(r * r - o * o);
+      g.lineBetween(o, -m, o, m);
+      g.lineBetween(-m, o, m, o);
+    }
+    const x = enemigo.x + Math.cos(angulo) * enemigo.radio;
+    const y = enemigo.y + Math.sin(angulo) * enemigo.radio;
+    g.setPosition(x, y);
+    this.redes.push({
+      g, x, y, cfg, recorrido: enemigo.radio,
+      vx: Math.cos(angulo) * cfg.RED_VELOCIDAD, vy: Math.sin(angulo) * cfg.RED_VELOCIDAD
+    });
+  }
+
+  // Mueve las redes: si tocan un perro lo atrapan. Se acaban en RED_ALCANCE o en un obstáculo.
+  moverRedes(delta) {
+    if (this.redes.length === 0) return;
+    const dt = delta / 1000;
+    this.redes = this.redes.filter((red) => {
+      const c = red.cfg;
+      red.x += red.vx * dt;
+      red.y += red.vy * dt;
+      red.recorrido += c.RED_VELOCIDAD * dt;
+      red.g.setPosition(red.x, red.y).setRotation(red.g.rotation + dt * 8);
+      const tocado = this.perrosEnJuego().find((perro) => !perro.caido &&
+        Phaser.Math.Distance.Between(red.x, red.y, perro.x, perro.y) <= c.RED_RADIO + (perro.body ? perro.body.halfWidth : 16));
+      if (tocado) {
+        this.atraparConRed(tocado, c);
+      } else if (red.recorrido < c.RED_ALCANCE && this.plaza.libre(red.x, red.y, 2)) {
+        return true;
+      }
+      this.tweens.add({ targets: red.g, alpha: 0, duration: 200, onComplete: () => red.g.destroy() });
+      return false;
+    });
+  }
+
+  // La red pilló a ese perro: queda inmóvil (el mismo "atrapado" de la Perrera)
+  atraparConRed(perro, c) {
+    this.conPerro(perro, () => {
+      if (this.perro.caido || this.enSprint() || this.amaneciendo) return; // en el sprint no lo pillan
+      if (bonusArbol(this, 'INAMOVIBLE') > 0) return; // Inamovible (Pitbull): no lo pueden atrapar
+      // Gorro de lana: menos rato atrapado (igual que con la Perrera)
+      const ms = c.RED_ATRAPA_MS * Math.max(0, 1 - bonusColeccion('gorro', 'MENOS_LENTITUD'));
+      this.atrapadoHasta = Math.max(this.atrapadoHasta, this.tiempoSobrevivido + ms);
+      this.perro.redHasta = this.atrapadoHasta; // para dibujar la red (y no la jaula) y para liberarlo en coop
+      this.perro.progresoLiberar = 0;
+      this.textoFlotante('¡Atrapado en la red!', '#d7ccc8');
+    });
+  }
+
   // Charco celeste bajo el perro mientras está mojado
   dibujarMojados(ahora) {
     this.perrosEnJuego().forEach((perro) => {
@@ -1248,6 +1390,21 @@ class GameScene extends Phaser.Scene {
     const r = this.base.RADIO + 8;
     const x = this.perro.x;
     const y = this.perro.y;
+    // v0.32: atrapado por la red del Personal de la Perrera: red encima del perro
+    if (this.perro.redHasta >= this.atrapadoHasta) {
+      this.jaula.lineStyle(3, 0xd7ccc8, 1);
+      this.jaula.strokeCircle(x, y, r);
+      this.jaula.lineStyle(2, 0xd7ccc8, 0.85);
+      for (let k = -2; k <= 2; k++) {
+        const o = (k * r) / 3;
+        const m = Math.sqrt(r * r - o * o);
+        // diagonales en las dos direcciones (rombos de red)
+        const c = Math.SQRT1_2;
+        this.jaula.lineBetween(x + (o - m) * c, y + (o + m) * c, x + (o + m) * c, y + (o - m) * c);
+        this.jaula.lineBetween(x + (o - m) * c, y - (o + m) * c, x + (o + m) * c, y - (o - m) * c);
+      }
+      return;
+    }
     this.jaula.lineStyle(3, COLOR_JAULA, 1);
     this.jaula.strokeRect(x - r, y - r, r * 2, r * 2);
     for (let i = 1; i <= 3; i++) {
@@ -2587,6 +2744,8 @@ class GameScene extends Phaser.Scene {
     limpiarAtaques(this);         // auto del curao, terrones, miras (src/ataques.js)
     (this.aguasJabon || []).forEach((a) => a.g.destroy()); // v0.30: agua del limpiavidrios
     this.aguasJabon = [];
+    (this.redes || []).forEach((r) => r.g.destroy()); // v0.32: redes del Personal de la Perrera
+    this.redes = [];
     if (this.coop) {
       // Cooperativo: lo mismo con lo de J2 y el círculo de revivir (src/coop.js)
       conJugador2(this, () => {

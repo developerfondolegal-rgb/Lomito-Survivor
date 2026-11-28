@@ -30,5 +30,7 @@ const ENEMIGOS = [
   { id: 'perroJabon', nombre: 'Perro del limpiavidrios', descripcion: 'Perro crema que acompaña al limpiavidrios. Si el agua te moja, te embiste. Sin su dueño se enoja.' },
   // v0.31
   { id: 'malandra', nombre: 'El Malandra', descripcion: 'Peligroso. Se acerca, le brilla el filo y corta en arco. Aléjate o hazte a un lado.' },
-  { id: 'perroMalandra', nombre: 'Perro del Malandra', descripcion: 'Perro agresivo del Malandra. Embiste cuando su dueño corta. Sin su dueño se enoja.' }
+  { id: 'perroMalandra', nombre: 'Perro del Malandra', descripcion: 'Perro agresivo del Malandra. Embiste cuando su dueño corta. Sin su dueño se enoja.' },
+  // v0.32
+  { id: 'personalPerrera', nombre: 'Personal de la Perrera', descripcion: 'Lanza una red que te deja inmóvil y con el silbato llama perros de manada.' }
 ];
