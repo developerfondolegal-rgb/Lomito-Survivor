@@ -91,11 +91,12 @@ function cartasComoJugar(t) {
     },
     {
       titulo: 'Peligros de la noche',
-      iconos: ['perrera', 'nuevo_limpiavidrios', 'nuevo_cuchilla', 'nuevo_perrera', 'nuevo_tripa_seca'],
+      iconos: ['perrera', 'nuevo_tipoR', 'nuevo_limpiavidrios', 'nuevo_cuchilla', 'nuevo_perrera', 'nuevo_tripa_seca'],
       lineas: [
         ['La noche se pone más difícil por fases: ' + fases + '.', blanco],
         ['El curao al volante (aviso rojo) y la jauría (carril amarillo): ¡sal del camino!', rojo],
         ['La Perrera no pega, pero te deja quieto un momento.', amarillo],
+        ['El Borracho tira botellas de lejos y pega botellazos de cerca: muévete cuando levante la botella.', rojo],
         ['Después llegan otros: el Limpiavidrios y su perro te mojan y te dejan lento (Plaza y Terminal); ' +
           'El Malandra corta con su cuchilla, aléjate cuando brille el filo (Feria); ' +
           'el Personal de la Perrera tira una red y llama perros con el silbato; ' +

@@ -110,6 +110,7 @@ class GameScene extends Phaser.Scene {
     this.esperaGolpeRastro = 0;
     this.rondaPrueba = 0;         // para que la tecla Y saque objetos distintos cada vez
     this.aguasJabon = [];         // v0.30: chorros de agua jabonosa del limpiavidrios en el aire
+    this.botellas = [];           // v0.37: botellas del borracho en el aire (src/borracho.js)
     this.redes = [];              // v0.32: redes del Personal de la Perrera en el aire
 
     // La noche (src/noche.js) y el jefe final (src/jefe.js)
@@ -346,6 +347,7 @@ class GameScene extends Phaser.Scene {
     this.moverEnemigos();
     this.moverAguasJabon(delta);  // v0.30: agua jabonosa del limpiavidrios
     this.moverRedes(delta);       // v0.32: red del Personal de la Perrera
+    moverBotellas(this, delta);   // v0.37: botellas del borracho (src/borracho.js)
     if (this.jefeVivo() && !this.amaneciendo) actualizarJefe(this, this.jefe);
     frenarEnemigosEnBarro(this);
     frenarEnemigosChow(this);     // v0.35: Nube de pelo y Lengua de intimidación (src/chowchow.js)
@@ -843,7 +845,8 @@ class GameScene extends Phaser.Scene {
         enemigo.body.setVelocity(Math.cos(angulo) * enemigo.velocidad, Math.sin(angulo) * enemigo.velocidad);
         enemigo.estado = 'acercarse';
       } else if (cfg.COMPORTAMIENTO === 'zigzag') {
-        this.moverZigzag(enemigo, ahora);
+        if (cfg.BOTELLAS) avisando = moverBorracho(this, enemigo, ahora); // v0.37: botellazo y botella (src/borracho.js)
+        else this.moverZigzag(enemigo, ahora);
       } else if (cfg.COMPORTAMIENTO === 'embestida') {
         avisando = this.moverEmbestida(enemigo, ahora);
       } else if (cfg.COMPORTAMIENTO === 'limpiavidrios') {
@@ -870,7 +873,9 @@ class GameScene extends Phaser.Scene {
         const avisoSinAnim = (cfg.COMPORTAMIENTO === 'limpiavidrios' || cfg.COMPORTAMIENTO === 'malandra' ||
           cfg.COMPORTAMIENTO === 'personalPerrera') && enemigo.estado === 'avisar';
         const dano = ahora < enemigo.danoAnimHasta;
-        if (enemigo.estado === 'silbar' && !dano && this.anims.exists(enemigo.texture.key + '_silbato')) {
+        if (animarBorracho(this, enemigo, ahora)) {
+          // v0.37: el borracho levanta la botella y pega (src/borracho.js)
+        } else if (enemigo.estado === 'silbar' && !dano && this.anims.exists(enemigo.texture.key + '_silbato')) {
           // v0.32: Personal de la Perrera tocando el silbato
           const clave = enemigo.texture.key + '_silbato';
           if (!enemigo.anims.currentAnim || enemigo.anims.currentAnim.key !== clave) enemigo.anims.play(clave);
@@ -2782,6 +2787,7 @@ class GameScene extends Phaser.Scene {
     this.aguasJabon = [];
     (this.redes || []).forEach((r) => r.g.destroy()); // v0.32: redes del Personal de la Perrera
     this.redes = [];
+    limpiarBotellas(this);        // v0.37: botellas del borracho
     if (this.coop) {
       // Cooperativo: lo mismo con lo de J2 y el círculo de revivir (src/coop.js)
       conJugador2(this, () => {

@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.36';
+const VERSION_JUEGO = '0.37';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -386,8 +386,11 @@ const CONFIG = {
     },
 
     // Borracho: lento, zigzaguea, mucha vida y golpe fuerte
+    // v0.37: dibujo nuevo (src/sprites_tipoR.js) + botellazo y botella lanzada (src/borracho.js)
+    // (el dibujo viejo sigue en src/sprites.js, 'borracho': para volver, borra la línea SPRITE)
     borracho: {
-      COLOR: 0xff9800,          // naranjo
+      COLOR: 0xff9800,          // naranjo (no se usa con el dibujo nuevo)
+      SPRITE: 'nuevo_tipoR',    // 32x32 a escala 2 (64 px), igual que la Perrita
       RADIO: 18,                // zona de choque del tamaño del dibujo (era 15)
       VIDA: 70,
       VELOCIDAD: 65,
@@ -397,7 +400,23 @@ const CONFIG = {
       PESO: 3,
       COMPORTAMIENTO: 'zigzag',
       ZIGZAG_GRADOS: 55,        // cuánto se desvía hacia los lados
-      ZIGZAG_CADA_MS: 1400      // cuánto demora en ir de un lado al otro y volver
+      ZIGZAG_CADA_MS: 1400,     // cuánto demora en ir de un lado al otro y volver
+      // v0.37: ataques con la botella (src/borracho.js). Los dos usan el daño DANO
+      // (con los mismos multiplicadores de noche, mapa, global y coop)
+      BOTELLAS: true,           // false = vuelve a ser solo el de antes (zigzag y daño al tocarlo)
+      BOTELLAZO_DISTANCIA: 50,  // de cerca: a menos de esto pega con la botella
+      BOTELLAZO_AVISO_MS: 150,  // levanta la botella un instante antes de pegar
+      BOTELLAZO_ESPERA_MS: 1200, // entre botellazos
+      LANZAR_DISTANCIA_MIN: 120, // de lejos: lanza si el perro está entre esto...
+      LANZAR_DISTANCIA_MAX: 320, // ...y esto
+      LANZAR_CADA_MIN_MS: 4000, // cada 4 a 5 s (al azar, para que no lancen todos juntos)
+      LANZAR_CADA_MAX_MS: 5000,
+      LANZAR_AVISO_MS: 400,     // quieto con la botella arriba antes de lanzar (parpadea)
+      ATAQUE_MS: 250,           // quieto después de pegar o lanzar
+      BOTELLA_VELOCIDAD: 300,   // px por segundo de la botella en el aire
+      BOTELLA_RADIO: 30,        // radio del daño al romperse
+      BOTELLA_ERROR: 28,        // puntería: cae hasta esta distancia del punto al que apuntó
+      VIDRIOS_MS: 2000          // vidrios en el suelo si no le pega a nadie (solo se ven)
     },
 
     // Drogadicto: se queda quieto, avisa y embiste rápido
