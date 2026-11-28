@@ -76,6 +76,14 @@ class MenuScene extends Phaser.Scene {
     botonPantalla(this, 14 + e + 62, yBotones, 124, 34, 'Ranking' + (modoTactil() ? '' : ' (L)'),
       0x4fc3f7, () => this.scene.start('RankingScene'), 15);
 
+    // v0.34: "Cómo jugar" (src/scenes/ComoJugarScene.js), justo sobre las cartas: a la derecha
+    // (a la izquierda está el texto del cooperativo). En celular con el botón de pantalla completa
+    // la cuenta baja hasta ahí, así que va a la izquierda (en celular el texto del coop es corto).
+    const comoJugarIzq = modoTactil() && !esModoApp();
+    const xComoJugar = comoJugarIzq ? 14 + e + 75 : w - 10 - e - 75;
+    botonPantalla(this, xComoJugar, 114 + e / 2, 150, 28, 'Cómo jugar' + (modoTactil() ? '' : ' (I)'),
+      0xffcc80, () => this.scene.start('ComoJugarScene'), 15);
+
     // Cuenta: "Entrar con Google" / "Salir" y el apodo (se redibuja cuando cambia la sesión)
     this.capaCuenta = [];
     this.dibujarCuenta();
@@ -102,6 +110,7 @@ class MenuScene extends Phaser.Scene {
     this.teclaH = this.input.keyboard.addKey('H'); // modo de prueba: +100 huesitos guardados
     this.teclaRanking = this.input.keyboard.addKey('L');
     this.teclaApodo = this.input.keyboard.addKey('N'); // cambiar apodo (con sesión)
+    this.teclaComoJugar = this.input.keyboard.addKey('I'); // v0.34: cartas "Cómo jugar"
   }
 
   // Línea del cooperativo, arriba a la izquierda debajo de los huesitos (v0.26)
@@ -270,6 +279,7 @@ class MenuScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.teclaArbol)) this.scene.start('ArbolScene');
     if (Phaser.Input.Keyboard.JustDown(this.teclaRanking)) this.scene.start('RankingScene');
     if (Phaser.Input.Keyboard.JustDown(this.teclaApodo)) pedirApodo(true);
+    if (Phaser.Input.Keyboard.JustDown(this.teclaComoJugar)) this.scene.start('ComoJugarScene');
     // Modo de prueba: H da huesitos guardados (cuánto, en CONFIG.HUESITOS.PRUEBA_TECLA_H)
     if (Phaser.Input.Keyboard.JustDown(this.teclaH)) {
       sumarHuesitos(CONFIG.HUESITOS.PRUEBA_TECLA_H);

@@ -3,6 +3,7 @@
 // chow y un shar pei; el chow chow ladra de vez en cuando) y una frase al
 // azar (CONFIG.BIENVENIDA.FRASES).
 // Al tocar la pantalla o presionar cualquier tecla, va al menú (MenuScene).
+// v0.34: la primera vez pasa antes por las cartas "Cómo jugar" (src/scenes/ComoJugarScene.js).
 // Si hay sesión de Google con apodo, saluda: "¡Guau, bienvenido de vuelta, [apodo]!".
 // (FUENTE viene de MenuScene.js; margenExtra y modoTactil, de src/tactil.js;
 //  ONLINE y alCambiarOnline, de src/online.js)
@@ -67,7 +68,7 @@ class BienvenidaScene extends Phaser.Scene {
     if (this.yendo) return;
     this.yendo = true;
     this.cameras.main.fadeOut(220, 0, 0, 0);
-    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start('MenuScene'));
+    this.cameras.main.once('camerafadeoutcomplete', () => this.scene.start(tutorialVisto() ? 'MenuScene' : 'ComoJugarScene'));
   }
 
   actualizarSaludo() {

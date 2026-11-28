@@ -28,7 +28,7 @@ const config = {
   disableContextMenu: true,
   scene: MODO_GALERIA
     ? [GaleriaScene] // galería de prueba (no es una partida)
-    : [BienvenidaScene, MenuScene, MapaScene, GameScene, AlbumScene, ApuestasScene, ArbolScene, RankingScene] // la primera de la lista es la que se muestra al abrir
+    : [BienvenidaScene, MenuScene, MapaScene, GameScene, AlbumScene, ApuestasScene, ArbolScene, RankingScene, ComoJugarScene] // la primera de la lista es la que se muestra al abrir
 };
 
 const game = new Phaser.Game(config);
