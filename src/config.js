@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.42';
+const VERSION_JUEGO = '0.43';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -353,7 +353,7 @@ const CONFIG = {
   //        (10 = muy seguido, 1 = poco)
   //  MAXIMO: máximo de este enemigo a la vez (opcional)
   //  COMPORTAMIENTO: cómo se mueve: 'perseguir', 'zigzag',
-  //                  'embestida' o 'atrapar'
+  //                  'embestida' o 'atrapar' (y otros propios: 'pandilla', 'gato'...)
   //  MAPAS: (opcional) ids de los mapas donde aparece. Sin MAPAS = en todos.
   // ---------------------------------------------------------------
   ENEMIGOS: {
@@ -696,6 +696,37 @@ const CONFIG = {
       MORDER_MS: 650,           // cuánto dura la carrera para morder...
       MORDER_VELOCIDAD_MULT: 1.25, // ...y qué tan rápido (x su VELOCIDAD)
       RETIRADA_MS: 900          // después de morder vuelve a su lugar al menos este rato
+    },
+
+    // --- v0.43: Gato callejero (dibujo: src/sprites_gatoJefe.js; código: src/gato.js) ---
+    // Enemigo NORMAL (no es jefe, aunque el archivo del dibujo diga "Jefe").
+    // Rápido y con poca vida. Araña al tocarte y cada varios segundos se agacha
+    // (aviso: parpadea y marca dónde cae) y salta un tramo corto hacia el perro.
+    // Números a partir del Perro rival (rival: VIDA 20, VELOCIDAD 110, DANO 5).
+    gatoCallejero: {
+      COLOR: 0xe07020,          // naranjo (no se usa: tiene dibujo propio)
+      SPRITE: 'nuevo_gatoJefe', // 48x48: con ESCALA 1.35 queda de unos 65 px, como los de 32x32 a escala 2
+      ESCALA: 1.35,
+      ANIM_ATAQUE_MS: 300,      // al arañarte juega 'ataque' este rato (solo se ve)
+      RADIO: 14,
+      VIDA: 14,                 // rival 20: más frágil
+      VELOCIDAD: 150,           // rival 110: más rápido (manada 165)
+      DANO: 4,                  // rival 5: el arañazo
+      HUESOS: 1,
+      DESDE_SEGUNDOS: 60,       // desde el 1:00
+      PESO: 2.5,                // moderado (rival 10, Perrita 6, borracho 3)
+      MAXIMO: 6,                // como mucho 6 gatos a la vez
+      COMPORTAMIENTO: 'gato',
+      MAPAS: ['plaza', 'terminal', 'feria'], // gatos callejeros hay en los tres (en la feria, por el pescado)
+      SALTO_DISTANCIA_MIN: 60,  // salta si el perro está entre esto...
+      SALTO_DISTANCIA_MAX: 170, // ...y esto
+      SALTO_AVISO_MS: 450,      // se agacha y parpadea antes de saltar (para esquivarlo)
+      SALTO_VELOCIDAD: 480,     // velocidad del salto
+      SALTO_MS: 300,            // cuánto dura (480 x 0,3 s = unos 145 px)
+      SALTO_DANO: 7,            // daño si te cae encima (el arañazo es DANO)
+      DESCANSO_MS: 500,         // quieto después de saltar
+      SALTO_CADA_MIN_MS: 4000,  // entre un salto y el siguiente: de 4...
+      SALTO_CADA_MAX_MS: 6500   // ...a 6,5 s (al azar, para que no salten todos juntos)
     },
 
     // --- v0.33: El Tripa Seca (diseño: _nuevos/docs/diseno_razas.md, 5.5) ---

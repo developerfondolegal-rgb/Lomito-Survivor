@@ -867,6 +867,8 @@ class GameScene extends Phaser.Scene {
         this.moverAcompanante(enemigo, ahora); // v0.30 (perro del limpiavidrios y, v0.31, del Malandra)
       } else if (cfg.COMPORTAMIENTO === 'pandilla') {
         moverPandilla(this, enemigo, ahora); // v0.41: pitbulls de pandilla (src/pandilla.js)
+      } else if (cfg.COMPORTAMIENTO === 'gato') {
+        avisando = moverGato(this, enemigo, ahora); // v0.43: gato callejero (src/gato.js)
       } else {
         // 'perseguir' y 'atrapar': van hacia el perro (rodeando obstáculos)
         this.moverHaciaPerro(enemigo, enemigo.velocidad, ahora);
@@ -883,6 +885,8 @@ class GameScene extends Phaser.Scene {
         const dano = ahora < enemigo.danoAnimHasta;
         if (animarBorracho(this, enemigo, ahora)) {
           // v0.37: el borracho levanta la botella y pega (src/borracho.js)
+        } else if (animarGato(this, enemigo, ahora)) {
+          // v0.43: el gato se agacha y salta (src/gato.js)
         } else if (enemigo.estado === 'silbar' && !dano && this.anims.exists(enemigo.texture.key + '_silbato')) {
           // v0.32: Personal de la Perrera tocando el silbato
           const clave = enemigo.texture.key + '_silbato';
@@ -2841,11 +2845,19 @@ class GameScene extends Phaser.Scene {
     ];
 
     // Una línea por cada tipo de enemigo
+    // (v0.43: con más de 8 tipos van en dos columnas; en una sola, la lista tapaba los botones)
     let y = 226;
-    this.listaEnemigos().forEach((e) => {
-      lineas.push({ texto: e.nombre + ': ' + (this.derrotadosPorTipo[e.id] || 0), y, tam: '17px', color: '#cccccc' });
-      y += 21;
+    const tiposFin = this.listaEnemigos();
+    const dosColumnas = tiposFin.length > 8;
+    const filasFin = dosColumnas ? Math.ceil(tiposFin.length / 2) : tiposFin.length;
+    const altoFila = dosColumnas ? 20 : 21;
+    tiposFin.forEach((e, i) => {
+      const columna = dosColumnas ? Math.floor(i / filasFin) : 0;
+      const fila = dosColumnas ? i % filasFin : i;
+      lineas.push({ texto: e.nombre + ': ' + (this.derrotadosPorTipo[e.id] || 0), y: y + fila * altoFila,
+        x: dosColumnas ? cx + (columna === 0 ? -130 : 130) : cx, tam: dosColumnas ? '16px' : '17px', color: '#cccccc' });
     });
+    y += filasFin * altoFila;
     if (this.jefeAparecido) {
       lineas.push({ texto: NOMBRE_JEFE + ': ' + (this.jefeDerrotado ? 'derrotado' : 'sigue vivo'),
         y, tam: '17px', color: this.jefeDerrotado ? '#ffd54f' : '#ff8a80', negrita: this.jefeDerrotado });
@@ -2905,7 +2917,7 @@ class GameScene extends Phaser.Scene {
     lineas.forEach((l) => {
       const estilo = { fontFamily: FUENTE, fontSize: l.tam, color: l.color, fontStyle: l.negrita ? 'bold' : 'normal', align: 'center' };
       if (l.ancho) estilo.wordWrap = { width: l.ancho };
-      this.add.text(cx, l.y, l.texto, estilo).setOrigin(0.5).setScrollFactor(0).setDepth(2001);
+      this.add.text(l.x !== undefined ? l.x : cx, l.y, l.texto, estilo).setOrigin(0.5).setScrollFactor(0).setDepth(2001);
     });
 
     // Botones (se pueden tocar o clickear; también funcionan R y M)

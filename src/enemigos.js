@@ -36,5 +36,7 @@ const ENEMIGOS = [
   // v0.33: mini jefe de la noche (evento, src/tripaseca.js)
   { id: 'tripaseca', nombre: 'El Tripa Seca', descripcion: 'Flaco y larguísimo. Te agarra con el brazo y te tira hacia él, o se estira y cruza de golpe.' },
   // v0.41
-  { id: 'pitbullPandilla', nombre: 'Pitbull de pandilla', descripcion: 'Pitbulls con pañuelo rojo. Llegan de a 3 a 5 por el mismo lado y te rodean antes de morder.' }
+  { id: 'pitbullPandilla', nombre: 'Pitbull de pandilla', descripcion: 'Pitbulls con pañuelo rojo. Llegan de a 3 a 5 por el mismo lado y te rodean antes de morder.' },
+  // v0.43
+  { id: 'gatoCallejero', nombre: 'Gato callejero', descripcion: 'Gato naranjo con pañuelo. Rápido y frágil: araña de cerca y a veces se agacha y salta hacia ti.' }
 ];
