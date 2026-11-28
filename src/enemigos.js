@@ -34,5 +34,7 @@ const ENEMIGOS = [
   // v0.32
   { id: 'personalPerrera', nombre: 'Personal de la Perrera', descripcion: 'Lanza una red que te deja inmóvil y con el silbato llama perros de manada.' },
   // v0.33: mini jefe de la noche (evento, src/tripaseca.js)
-  { id: 'tripaseca', nombre: 'El Tripa Seca', descripcion: 'Flaco y larguísimo. Te agarra con el brazo y te tira hacia él, o se estira y cruza de golpe.' }
+  { id: 'tripaseca', nombre: 'El Tripa Seca', descripcion: 'Flaco y larguísimo. Te agarra con el brazo y te tira hacia él, o se estira y cruza de golpe.' },
+  // v0.41
+  { id: 'pitbullPandilla', nombre: 'Pitbull de pandilla', descripcion: 'Pitbulls con pañuelo rojo. Llegan de a 3 a 5 por el mismo lado y te rodean antes de morder.' }
 ];

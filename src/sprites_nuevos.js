@@ -3,7 +3,7 @@
 //  Los dibujos están en src/sprites_perrita.js, sprites_limpiavidrios.js,
 //  sprites_perrera.js, sprites_cuchilla.js, sprites_tripa_seca.js,
 //  sprites_perros_nuevos.js, sprites_perros_artista.js (v0.37) sprites_tipoR.js (Borracho)
-//  y (v0.39) sprites_drogadicto.js.
+//  (v0.39) sprites_drogadicto.js y (v0.41) sprites_pitbullPandilla.js.
 //  Formato de cada uno: { size (32 o 48), paleta, anims }. Miran a la derecha.
 //  Todavía NO salen en una partida: por ahora solo los usa la galería
 //  de prueba (src/scenes/GaleriaScene.js, se abre con ?galeria=1).
@@ -35,6 +35,7 @@ const SPRITES_NUEVOS = {
   nuevo_cuchilla_perro: { nombre: 'Perro del Malandra', datos: () => (typeof CUCHILLA_PERRO_SPRITE !== 'undefined' ? CUCHILLA_PERRO_SPRITE : null) },
   nuevo_tipoR: { nombre: 'Borracho', datos: () => (typeof TIPOR_SPRITE !== 'undefined' ? TIPOR_SPRITE : null) },
   nuevo_drogadicto: { nombre: 'Drogadicto', datos: () => (typeof DROGADICTO_SPRITE !== 'undefined' ? DROGADICTO_SPRITE : null) },
+  nuevo_pitbullPandilla: { nombre: 'Pitbull de pandilla', datos: () => (typeof PITBULL_PANDILLA_SPRITE !== 'undefined' ? PITBULL_PANDILLA_SPRITE : null) },
   nuevo_tripa_seca: { nombre: 'Tripa seca', datos: () => (typeof TRIPA_SECA_SPRITE !== 'undefined' ? TRIPA_SECA_SPRITE : null) },
   nuevo_pastor: { nombre: 'Pastor alemán', datos: () => (typeof PERROS_NUEVOS_SPRITES !== 'undefined' ? PERROS_NUEVOS_SPRITES.pastor || null : null) },
   nuevo_salchicha: { nombre: 'Salchicha', datos: () => (typeof PERROS_NUEVOS_SPRITES !== 'undefined' ? PERROS_NUEVOS_SPRITES.salchicha || null : null) },

@@ -73,6 +73,7 @@ class GameScene extends Phaser.Scene {
     this.eligiendo = false;       // true mientras se muestran las cartas de instintos
     this.pausado = false;         // true mientras está abierto el menú de pausa (src/pausa.js)
     this.pestanaPausa = 0;        // pestaña del menú de pausa que se muestra
+    this.ultimoGrupo = {};        // v0.41: cuándo salió el último grupo de cada tipo (ESPERA_GRUPO_MS)
     this.sinergiasActivas = {};   // sinergias ya avisadas (src/sinergias.js)
     this.nivel = 1;
     this.xp = 0;
@@ -859,6 +860,8 @@ class GameScene extends Phaser.Scene {
         avisando = moverTripaSeca(this, enemigo, ahora); // v0.33 (src/tripaseca.js)
       } else if (cfg.COMPORTAMIENTO === 'acompanante') {
         this.moverAcompanante(enemigo, ahora); // v0.30 (perro del limpiavidrios y, v0.31, del Malandra)
+      } else if (cfg.COMPORTAMIENTO === 'pandilla') {
+        moverPandilla(this, enemigo, ahora); // v0.41: pitbulls de pandilla (src/pandilla.js)
       } else {
         // 'perseguir' y 'atrapar': van hacia el perro (rodeando obstáculos)
         this.moverHaciaPerro(enemigo, enemigo.velocidad, ahora);
@@ -1561,6 +1564,9 @@ class GameScene extends Phaser.Scene {
       if (!this.enemigoDelMapa(id)) return false;
       if (segundos < (cfg.DESDE_SEGUNDOS || 0)) return false;
       if (cfg.MAXIMO !== undefined && this.contarTipo(id) >= cfg.MAXIMO) return false;
+      // v0.41: pausa mínima entre un grupo y el siguiente (pitbulls de pandilla)
+      if (cfg.ESPERA_GRUPO_MS && this.ultimoGrupo[id] !== undefined &&
+        this.tiempoSobrevivido < this.ultimoGrupo[id] + cfg.ESPERA_GRUPO_MS) return false;
       return (cfg.PESO || 0) > 0;
     });
     if (disponibles.length === 0) return;
@@ -1574,7 +1580,7 @@ class GameScene extends Phaser.Scene {
     }
 
     const pos = this.posicionFueraDePantalla();
-    this.crearGrupo(tipo, pos.x, pos.y, false);
+    if (this.crearGrupo(tipo, pos.x, pos.y, false).length) this.ultimoGrupo[tipo] = this.tiempoSobrevivido;
   }
 
   // Crea un enemigo (o un grupo, si el tipo tiene GRUPO_MIN / GRUPO_MAX)
@@ -1582,12 +1588,15 @@ class GameScene extends Phaser.Scene {
     const cfg = CONFIG.ENEMIGOS[tipo];
     const cantidad = cfg.GRUPO_MIN ? Phaser.Math.Between(cfg.GRUPO_MIN, cfg.GRUPO_MAX || cfg.GRUPO_MIN) : 1;
     const creados = [];
+    const separacion = cfg.GRUPO_SEPARACION || 40; // v0.41: los pitbulls llegan más repartidos
     for (let i = 0; i < cantidad; i++) {
-      const ox = cantidad > 1 ? Phaser.Math.Between(-40, 40) : 0;
-      const oy = cantidad > 1 ? Phaser.Math.Between(-40, 40) : 0;
+      const ox = cantidad > 1 ? Phaser.Math.Between(-separacion, separacion) : 0;
+      const oy = cantidad > 1 ? Phaser.Math.Between(-separacion, separacion) : 0;
       const enemigo = this.crearEnemigo(tipo, x + ox, y + oy, ignorarLimite);
       if (enemigo) creados.push(enemigo);
     }
+    // v0.41: pandilla de pitbulls: cada uno con su lugar alrededor del perro (src/pandilla.js)
+    if (cfg.COMPORTAMIENTO === 'pandilla') asignarCercoPandilla(this, creados, x, y);
     // v0.30: el limpiavidrios trae a su perro (ACOMPANANTE), al lado
     if (cfg.ACOMPANANTE && CONFIG.ENEMIGOS[cfg.ACOMPANANTE]) {
       creados.slice().forEach((dueno) => {

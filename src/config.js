@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.40';
+const VERSION_JUEGO = '0.41';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).
@@ -663,6 +663,39 @@ const CONFIG = {
       SILBATO_MANADA: 3,        // cuántos perros de manada llama...
       SILBATO_DISTANCIA: 180,   // ...y a qué distancia de él aparecen
       SILBATO_TIPO: 'manada'    // qué enemigo llama (el perrito de manada de siempre)
+    },
+
+    // --- v0.41: Pitbull de pandilla (dibujo: src/sprites_pitbullPandilla.js; código: src/pandilla.js) ---
+    // Llegan de a 3 a 5 por el mismo lado de la pantalla. Cerca del perro cada uno toma
+    // su lugar alrededor de él (un ángulo distinto) y desde ahí se lanza a morder.
+    // Números a partir del Quiltro bravo (bravo: VIDA 45, VELOCIDAD 135, DANO 9):
+    // un poco más rápidos y con menos vida porque llegan varios.
+    pitbullPandilla: {
+      COLOR: 0x4d4548,          // gris (no se usa: tiene dibujo propio)
+      SPRITE: 'nuevo_pitbullPandilla', // 32x32 a escala 2 (64 px), igual que el Borracho
+      ANIM_ATAQUE_MS: 300,      // al morderte juega 'ataque' este rato (solo se ve)
+      RADIO: 16,
+      VIDA: 32,                 // bravo 45
+      VELOCIDAD: 148,           // bravo 135
+      DANO: 6,                  // bravo 9: menos, porque muerden varios por turno (rival 5, perro del Malandra 7)
+      HUESOS: 2,
+      DESDE_SEGUNDOS: 120,      // desde el 2:00
+      PESO: 1.2,                // poco seguido: cada vez que sale trae de 3 a 5 perros
+      MAXIMO: 10,               // como mucho 10 pitbulls a la vez (unas 2 pandillas)
+      ESPERA_GRUPO_MS: 25000,   // después de una pandilla, la siguiente no sale antes de 25 s
+      GRUPO_MIN: 3,             // llegan de a 3...
+      GRUPO_MAX: 5,             // ...hasta 5 juntos
+      GRUPO_SEPARACION: 70,     // qué tan repartidos aparecen (px alrededor del punto de llegada)
+      COMPORTAMIENTO: 'pandilla',
+      MAPAS: ['plaza', 'terminal'], // la feria ya tiene sus perros (Quiltro bravo y el del Malandra)
+      CERCO_DISTANCIA: 260,     // a menos de esto del perro dejan de ir directo y lo rodean
+      CERCO_RADIO: 75,          // a qué distancia del perro se ubica cada uno
+      CERCO_GIRO: 0.7,          // cuánto avanzan por cuadro alrededor del perro hacia su lugar (radianes)
+      CERCO_LLEGADA: 28,        // a esta distancia de su lugar se lanza a morder
+      CERCO_MAX_MS: 2500,       // si no llega a su lugar en este rato (lo tapan otros), muerde igual
+      MORDER_MS: 650,           // cuánto dura la carrera para morder...
+      MORDER_VELOCIDAD_MULT: 1.25, // ...y qué tan rápido (x su VELOCIDAD)
+      RETIRADA_MS: 900          // después de morder vuelve a su lugar al menos este rato
     },
 
     // --- v0.33: El Tripa Seca (diseño: _nuevos/docs/diseno_razas.md, 5.5) ---
