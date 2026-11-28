@@ -7,7 +7,7 @@
 // ===============================================================
 
 // Versión del juego (se ve en pantalla y se guarda con cada partida del ranking)
-const VERSION_JUEGO = '0.43';
+const VERSION_JUEGO = '0.44';
 
 const CONFIG = {
   // Tamaño del mapa que se está jugando (en píxeles).

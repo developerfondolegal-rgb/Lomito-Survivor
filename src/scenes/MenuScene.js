@@ -36,6 +36,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   create() {
+    musicaMenu(this); // v0.44: si ya sonaba (venimos del inicio), sigue sin reiniciarse
     const w = this.scale.width;
     const e = margenExtra(); // en celular, todo lo de las esquinas se aleja un poco más del borde (0 en PC)
     this.margenExtra = e;

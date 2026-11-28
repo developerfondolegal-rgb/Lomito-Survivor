@@ -1,4 +1,7 @@
 // v0.42: música de fondo de los mapas (por ahora solo La Plaza) y botón de silencio.
+// v0.44: música del menú (inicio, Cómo jugar, selección de raza, mapas, etc.).
+//   musicaMenu(escena) la pide; si ya está sonando, sigue sin reiniciarse.
+//   Al empezar la partida se apaga con fade y recién después entra la del mapa.
 //
 // - El archivo se carga en el preload de BienvenidaScene con cargarMusica(escena).
 // - GameScene llama a musicaDeMapa(escena, mapaId) al empezar la partida y
@@ -13,11 +16,16 @@
 //   Phaser (Web Audio), así que se usa un <audio> normal.
 
 const MUSICA_CFG = {
-  VOLUMEN: 0.5,          // volumen normal
+  VOLUMEN: 0.5,          // volumen normal (si la clave no tiene uno propio en VOLUMENES)
+  VOLUMENES: { musica_menu: 0.4, musica_plaza: 0.5 },
   FACTOR_PAUSA: 0.5,     // en pausa suena a la mitad
   FADE_MS: 500,          // fade out al parar
-  ARCHIVO: 'assets/audio/plaza_tema.ogg',
+  ARCHIVOS: {            // clave -> archivo
+    musica_plaza: 'assets/audio/plaza_tema.ogg',
+    musica_menu: 'assets/audio/menu_tema.ogg'
+  },
   CLAVE_GUARDADO: 'lomito_musica_on',
+  MENU: 'musica_menu',
   POR_MAPA: { plaza: 'musica_plaza' } // mapa -> clave de la música
 };
 
@@ -27,7 +35,8 @@ const MUSICA = {
   apagandose: [],      // copias haciendo fade out
   deseada: null,       // clave que debería sonar en este momento (null = ninguna)
   enPausa: false,
-  fallo: false,        // el archivo no cargó: no se vuelve a intentar
+  fallos: {},          // claves cuyo archivo no cargó: no se vuelve a intentar
+  turno: 0,            // sube con cada cambio: invalida esperas viejas (fade -> música del mapa)
   activada: leerMusicaActivada()
 };
 
@@ -44,32 +53,36 @@ function cargarMusica(escena) {
   MUSICA.game = escena.game;
   if (musicaPorArchivoLocal() || !escena.sound || escena.sound.noAudio) return;
   escena.load.on('loaderror', (archivo) => {
-    if (archivo && archivo.key === 'musica_plaza') MUSICA.fallo = true;
+    if (archivo && MUSICA_CFG.ARCHIVOS[archivo.key]) MUSICA.fallos[archivo.key] = true;
   });
-  escena.load.audio('musica_plaza', MUSICA_CFG.ARCHIVO + '?v=' + VERSION_JUEGO);
+  Object.keys(MUSICA_CFG.ARCHIVOS).forEach((clave) => {
+    escena.load.audio(clave, MUSICA_CFG.ARCHIVOS[clave] + '?v=' + VERSION_JUEGO);
+  });
 }
 
 // Crea una copia de la música con la misma forma para Phaser y para <audio>:
-// { play(), setVolumen(v), destruir() }
+// { clave, play(), setVolumen(v), destruir() }
 function crearSonido(clave) {
   const game = MUSICA.game;
-  if (MUSICA.fallo || !game) return null;
+  if (MUSICA.fallos[clave] || !game || !MUSICA_CFG.ARCHIVOS[clave]) return null;
   try {
     if (!musicaPorArchivoLocal()) {
       if (!game.cache.audio.exists(clave)) return null;
       const s = game.sound.add(clave, { loop: true, volume: 0 });
       return {
+        clave,
         play: () => s.play(),
         setVolumen: (v) => { if (s.setVolume) s.setVolume(v); },
         destruir: () => { try { s.stop(); s.destroy(); } catch (e) { /* ya no existe */ } }
       };
     }
     // Doble clic (file://): <audio> normal
-    const a = new Audio(MUSICA_CFG.ARCHIVO);
+    const a = new Audio(MUSICA_CFG.ARCHIVOS[clave]);
     a.loop = true;
     a.volume = 0;
-    a.addEventListener('error', () => { MUSICA.fallo = true; }, { once: true });
+    a.addEventListener('error', () => { MUSICA.fallos[clave] = true; }, { once: true });
     return {
+      clave,
       play: () => {
         const p = a.play();
         // El navegador no deja sonar hasta el primer toque: se reintenta ahí
@@ -94,8 +107,10 @@ function esperarToque(fn) {
   eventos.forEach((ev) => document.addEventListener(ev, una, true));
 }
 
-function volumenMusica() {
-  return MUSICA_CFG.VOLUMEN * (MUSICA.enPausa ? MUSICA_CFG.FACTOR_PAUSA : 1);
+function volumenMusica(clave) {
+  const c = clave || (MUSICA.sonido && MUSICA.sonido.clave);
+  const base = MUSICA_CFG.VOLUMENES[c] !== undefined ? MUSICA_CFG.VOLUMENES[c] : MUSICA_CFG.VOLUMEN;
+  return base * (MUSICA.enPausa ? MUSICA_CFG.FACTOR_PAUSA : 1);
 }
 
 // Corta de inmediato todo lo que suene (incluye los fades a medias)
@@ -114,9 +129,9 @@ function empezarMusica(clave) {
   const arrancar = () => {
     if (MUSICA.sonido !== s) return; // cambió algo mientras esperaba
     try {
-      s.setVolumen(volumenMusica());
+      s.setVolumen(volumenMusica(clave));
       s.play();
-      s.setVolumen(volumenMusica());
+      s.setVolumen(volumenMusica(clave));
     } catch (e) { /* sin música */ }
   };
   // Web Audio bloqueado hasta el primer toque: Phaser avisa con 'unlocked'
@@ -127,14 +142,20 @@ function empezarMusica(clave) {
 
 // Fade out corto y después se destruye. No bloquea: puede empezar otra música enseguida
 function pararMusica(ms) {
+  MUSICA.turno++;
   MUSICA.deseada = null;
+  apagarConFade(ms);
   MUSICA.enPausa = false;
+}
+
+// Fade out de la copia actual (no toca MUSICA.deseada). Devuelve true si había algo sonando
+function apagarConFade(ms) {
   const s = MUSICA.sonido;
-  if (!s) return;
+  if (!s) return false;
   MUSICA.sonido = null;
   const dura = ms === undefined ? MUSICA_CFG.FADE_MS : ms;
   const inicio = Date.now();
-  const desde = volumenMusica();
+  const desde = volumenMusica(s.clave);
   const fade = { sonido: s, timer: null };
   fade.timer = setInterval(() => {
     const t = Math.min(1, (Date.now() - inicio) / Math.max(1, dura));
@@ -146,22 +167,46 @@ function pararMusica(ms) {
     }
   }, 25);
   MUSICA.apagandose.push(fade);
+  return true;
 }
 
-// Al empezar una partida: suena la música del mapa (o nada si el mapa no tiene)
+// Al empezar una partida: suena la música del mapa (o nada si el mapa no tiene).
+// Si venía sonando la del menú, primero se apaga con fade y después entra la del mapa
+// (nunca dos músicas a la vez).
 function musicaDeMapa(escena, mapaId) {
   if (!MUSICA.game) MUSICA.game = escena.game;
   MUSICA.enPausa = false;
   const clave = MUSICA_CFG.POR_MAPA[mapaId] || null;
   MUSICA.deseada = clave;
-  cortarMusica();
-  if (clave && MUSICA.activada) empezarMusica(clave);
+  const turno = ++MUSICA.turno;
+  const habiaMenu = !!(MUSICA.sonido && MUSICA.sonido.clave === MUSICA_CFG.MENU);
+  if (habiaMenu) apagarConFade();
+  else cortarMusica();
+  if (!clave || !MUSICA.activada) return;
+  if (!habiaMenu) { empezarMusica(clave); return; }
+  setTimeout(() => {
+    if (MUSICA.turno !== turno || MUSICA.deseada !== clave || !MUSICA.activada || MUSICA.sonido) return;
+    empezarMusica(clave);
+  }, MUSICA_CFG.FADE_MS + 30);
+}
+
+// v0.44: pantallas del menú. Si la música del menú ya suena (o está esperando el
+// primer toque), sigue igual, sin reiniciarse
+function musicaMenu(escena) {
+  if (!MUSICA.game && escena) MUSICA.game = escena.game;
+  const clave = MUSICA_CFG.MENU;
+  MUSICA.enPausa = false;
+  if (MUSICA.deseada === clave && (MUSICA.sonido || !MUSICA.activada)) return;
+  MUSICA.turno++;
+  MUSICA.deseada = clave;
+  if (MUSICA.activada) empezarMusica(clave);
+  else cortarMusica();
 }
 
 // Pausa: baja a la mitad; al reanudar vuelve
 function musicaEnPausa(pausada) {
   MUSICA.enPausa = !!pausada;
-  if (MUSICA.sonido) MUSICA.sonido.setVolumen(volumenMusica());
+  if (MUSICA.sonido) MUSICA.sonido.setVolumen(volumenMusica(MUSICA.sonido.clave));
 }
 
 function cambiarMusicaActivada() {
@@ -174,6 +219,7 @@ function cambiarMusicaActivada() {
     MUSICA.deseada = deseada; // sigue en el mapa: si se vuelve a activar, suena
     MUSICA.enPausa = pausa;
   } else if (MUSICA.deseada) {
+    MUSICA.turno++;
     empezarMusica(MUSICA.deseada);
   }
 }

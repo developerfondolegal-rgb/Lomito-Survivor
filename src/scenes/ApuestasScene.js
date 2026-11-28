@@ -166,6 +166,7 @@ class ApuestasScene extends Phaser.Scene {
   }
 
   create() {
+    musicaMenu(this); // v0.44: al salir de la partida hacia el Rincón vuelve la música del menú
     const A = CONFIG.APUESTAS;
     this.anims.resumeAll(); // por si venimos de la pantalla final (animaciones en pausa)
     if (!this.textures.exists('dado')) crearTexturaPixel(this, 'dado', SPRITE_DADO);
