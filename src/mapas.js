@@ -55,9 +55,12 @@ const MAPAS = [
         [0xe0b000, 0x9c7a00]    // amarillo
       ]
     },
-    crearTexturas: (escena, p) => crearTexturasPlaza(escena, p),
-    generar: () => generarPlaza(),
-    pintarSuelo: (h, mapa, p) => pintarSueloPlaza(h, mapa, p)
+    crearTexturas: (escena, p) => {
+      crearTexturasPlaza(escena, p);                                                    // las de siempre (la fase 1 las usa de respaldo)
+      if (typeof crearTexturasPlazaNueva === 'function') crearTexturasPlazaNueva(escena); // FASE 2 (src/plaza_objetos.js, aún no se carga)
+    },
+    generar: () => generarPlazaNueva(),                            // Plaza renovada FASE 1 (src/plaza_generar.js)
+    pintarSuelo: (h, mapa, p) => pintarSueloPlazaNueva(h, mapa, p) // Plaza renovada FASE 1 (src/plaza_suelo.js)
   },
 
   {
